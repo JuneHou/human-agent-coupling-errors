@@ -25,3 +25,8 @@ env/
 
 # Annotation — derived input files (regenerate with annotation/prepare_data.py)
 annotation/data/
+wildchat/data/wildchat-1m/data/*.parquet
+wildchat/data/wildchat-1m/derived/thinking_divergence.json.raw
+data/sharechat/*.csv
+annotation/data/english_conversations.csv
+**/.cache/huggingface/

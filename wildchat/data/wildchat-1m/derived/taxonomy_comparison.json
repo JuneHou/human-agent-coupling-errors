@@ -1,0 +1,102 @@
+{
+  "corpus": {
+    "n_conversations": 10000,
+    "n_signals_total": 65,
+    "n_coupling_signals": 45,
+    "n_mechanism_signals": 20
+  },
+  "metric_A_signal_coverage": {
+    "clark_5_acts": {
+      "type_count": {
+        "present": 15,
+        "clarify": 5,
+        "accept": 4,
+        "repair": 10,
+        "maintain": 11
+      },
+      "mass": {
+        "present": 16441,
+        "clarify": 5441,
+        "accept": 2279,
+        "repair": 4535,
+        "maintain": 33093
+      },
+      "empty_cells": [],
+      "near_empty_cells": [],
+      "n_cells": 5,
+      "n_placed_signals": 45,
+      "type_entropy_bits": 2.17,
+      "mass_entropy_bits": 1.752
+    },
+    "control_8_ops": {
+      "type_count": {
+        "maintain_state": 6,
+        "ask_clarify": 5,
+        "seek_inspect": 0,
+        "confirm_authorize": 1,
+        "act_execute": 6,
+        "stop_defer": 1,
+        "report_state": 14,
+        "recover_repair": 12
+      },
+      "mass": {
+        "maintain_state": 12073,
+        "ask_clarify": 5441,
+        "seek_inspect": 0,
+        "confirm_authorize": 55,
+        "act_execute": 21508,
+        "stop_defer": 420,
+        "report_state": 16021,
+        "recover_repair": 6271
+      },
+      "empty_cells": [
+        "seek_inspect"
+      ],
+      "near_empty_cells": [
+        "confirm_authorize",
+        "stop_defer"
+      ],
+      "n_cells": 8,
+      "n_placed_signals": 45,
+      "type_entropy_bits": 2.404,
+      "mass_entropy_bits": 2.197
+    },
+    "orphans_clark": [],
+    "orphans_control": []
+  },
+  "metric_B_agentic_coverage": {
+    "n_turns": 4182,
+    "agentic_turns": 248,
+    "tool_calls": 1233,
+    "read_only": 897,
+    "consequential": 336,
+    "op_counts": {
+      "act_execute": 336,
+      "seek_inspect": 897
+    },
+    "control_coverage_pct": 100.0,
+    "clark_coverage_pct": 0.0
+  },
+  "mechanism_signals": [
+    "ai_validates_user",
+    "ai_empathy_expressed",
+    "ai_structured_response",
+    "ai_provides_example",
+    "ai_provides_step_by_step",
+    "ai_asks_for_feedback",
+    "ai_normalizes_difficulty",
+    "ai_offers_to_elaborate",
+    "ai_summarizes",
+    "user_misled",
+    "factual_error",
+    "over_delivered",
+    "user_validation_seeking",
+    "user_ambiguous_request",
+    "user_multi_request",
+    "user_abandons_thread",
+    "ai_malfunction",
+    "ethical_tension",
+    "user_provides_invalid_input",
+    "user_scope_change"
+  ]
+}
