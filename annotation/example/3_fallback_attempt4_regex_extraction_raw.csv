@@ -1,0 +1,16 @@
+message_index,action,raw_content,parse_note
+1,human,"Create code for the following:
+A small game where the player plays as a king hearing requests from people visiting the court.
+Each turn, a new person gives their request, and the player can choose what to do out of a list of options.
+The player's choices can affect the following variables: Kingdom h",
+2,reasoning,"{'meta': {'header': '', 'time': ''}, 'content': ""Let me create a simple King's Court game where the player is a king hearing requests from visitors. The game will involve making choices that affect kingdom happiness, treasury, and military size.\nI'll approach this project as follows:\n\nCreate a Re",parsed via attempt1
+2,ai,nan,plain_text
+3,human,"Create code (Python 3) for the following:
+* A small game where the player plays as a king hearing requests from people visiting the court.
+* Each turn, a new person gives their request, and the player can choose what to do out of a list of options.
+* The player's choices can affect the following var",
+4,reasoning,"{'meta': {'header': 'Engineered immersive kingdom management game with strategic choices.', 'time': '2m, <DATE_TIME>}, 'content': 'This is a request to create a Python text-based game where the player acts as a king who hears requests from various visitors to the court. <REDACTED>'s break down what ",parsed via attempt4(regex)
+4,code,"[{'id': 1, 'meta': {'title': ""The King's Court - A Kingdom Management Game"", 'version': '', 'labels': 'Code', 'smallline': 'Code'}, 'preview_header': ""The King's Court - A Kingdom Management Game"", 'right_title': '', 'right_content': 'import random\nimport time\nimport sys\n\nclass Kingdom:\n    def",ast.literal_eval
+4,ai,"I'll create a text-based Python game where the player is a king making decisions based on requests from court visitors. Here's the code:
+[The King's Court - A Kingdom Management Game]
+I've created a text-based game called ""The King's Court"" where you play as a ruler making decisions that affect your",plain_text

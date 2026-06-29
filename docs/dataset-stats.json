@@ -1,0 +1,860 @@
+{
+  "wildchat": {
+    "n_conversations": 837989,
+    "n_messages_est": 3920148,
+    "turns_per_conversation": {
+      "n": 837989,
+      "mean": 2.339,
+      "median": 1.0,
+      "p90": 5.0,
+      "p99": 14.0,
+      "max": 249.0,
+      "multi_turn_pct": 39.56
+    },
+    "languages_top": [
+      [
+        "English",
+        478498,
+        57.1
+      ],
+      [
+        "Chinese",
+        119302,
+        14.24
+      ],
+      [
+        "Russian",
+        87127,
+        10.4
+      ],
+      [
+        "French",
+        26977,
+        3.22
+      ],
+      [
+        "Spanish",
+        20447,
+        2.44
+      ],
+      [
+        "German",
+        16865,
+        2.01
+      ],
+      [
+        "Arabic",
+        11919,
+        1.42
+      ],
+      [
+        "Portuguese",
+        10386,
+        1.24
+      ],
+      [
+        "Turkish",
+        6104,
+        0.73
+      ],
+      [
+        "Italian",
+        5120,
+        0.61
+      ],
+      [
+        "Vietnamese",
+        4746,
+        0.57
+      ],
+      [
+        "Persian",
+        3913,
+        0.47
+      ]
+    ],
+    "n_languages": 74,
+    "models_top": [
+      [
+        "gpt-3.5-turbo-0613",
+        371271,
+        44.3
+      ],
+      [
+        "gpt-3.5-turbo-0301",
+        195157,
+        23.29
+      ],
+      [
+        "gpt-4-1106-preview",
+        98905,
+        11.8
+      ],
+      [
+        "gpt-4-0125-preview",
+        61951,
+        7.39
+      ],
+      [
+        "gpt-3.5-turbo-0125",
+        57426,
+        6.85
+      ],
+      [
+        "gpt-4-0314",
+        53277,
+        6.36
+      ],
+      [
+        "gpt-4-0613",
+        2,
+        0.0
+      ]
+    ],
+    "time_range": [
+      "2023-04-09 00:02:53+00:00",
+      "2024-04-29 23:59:51+00:00"
+    ]
+  },
+  "sharechat": {
+    "total_conversations": 129584,
+    "total_messages": 1199899,
+    "per_platform": {
+      "chatgpt": {
+        "platform": "chatgpt",
+        "n_messages": 976378,
+        "n_conversations": 94086,
+        "turns_per_conversation": {
+          "n": 94086,
+          "mean": 5.255,
+          "median": 2.0,
+          "p90": 11.0,
+          "p99": 51.0,
+          "max": 851.0,
+          "multi_turn_pct": 59.02
+        },
+        "roles": {
+          "user": 489031,
+          "llm": 487347
+        },
+        "has_thinking_column": false,
+        "assistant_messages": 487347,
+        "assistant_with_thinking": 0,
+        "thinking_coverage_pct": null,
+        "languages_top": [
+          [
+            "English",
+            633783,
+            64.91
+          ],
+          [
+            "Japanese",
+            179253,
+            18.36
+          ],
+          [
+            "Spanish",
+            29334,
+            3.0
+          ],
+          [
+            "Chinese",
+            27912,
+            2.86
+          ],
+          [
+            "German",
+            27424,
+            2.81
+          ],
+          [
+            "French",
+            20721,
+            2.12
+          ],
+          [
+            "Portuguese",
+            16967,
+            1.74
+          ],
+          [
+            "Russian",
+            15361,
+            1.57
+          ],
+          [
+            "Italian",
+            8645,
+            0.89
+          ],
+          [
+            "Dutch",
+            5218,
+            0.53
+          ],
+          [
+            "unknown",
+            2613,
+            0.27
+          ],
+          [
+            "Hebrew",
+            2133,
+            0.22
+          ]
+        ],
+        "n_languages": 143,
+        "topics_top": [
+          [
+            "specific_info",
+            159506,
+            32.62
+          ],
+          [
+            "other",
+            58805,
+            12.02
+          ],
+          [
+            "unclear",
+            38730,
+            7.92
+          ],
+          [
+            "mathematical_calculation",
+            32513,
+            6.65
+          ],
+          [
+            "tutoring_or_teaching",
+            32053,
+            6.55
+          ],
+          [
+            "computer_programming",
+            26848,
+            5.49
+          ],
+          [
+            "greetings_and_chitchat",
+            19884,
+            4.07
+          ],
+          [
+            "relationships_and_personal_reflection",
+            19566,
+            4.0
+          ],
+          [
+            "argument_or_summary_generation",
+            16469,
+            3.37
+          ],
+          [
+            "write_fiction",
+            16187,
+            3.31
+          ],
+          [
+            "edit_or_critique_provided_text",
+            13467,
+            2.75
+          ],
+          [
+            "data_analysis",
+            8476,
+            1.73
+          ]
+        ]
+      },
+      "claude": {
+        "platform": "claude",
+        "n_messages": 8364,
+        "n_conversations": 911,
+        "turns_per_conversation": {
+          "n": 911,
+          "mean": 4.591,
+          "median": 2.0,
+          "p90": 9.0,
+          "p99": 43.89999999999998,
+          "max": 98.0,
+          "multi_turn_pct": 57.63
+        },
+        "roles": {
+          "user": 4182,
+          "llm": 4182
+        },
+        "has_thinking_column": true,
+        "assistant_messages": 4182,
+        "assistant_with_thinking": 1197,
+        "thinking_coverage_pct": 28.62,
+        "languages_top": [
+          [
+            "English",
+            6848,
+            81.87
+          ],
+          [
+            "Japanese",
+            785,
+            9.39
+          ],
+          [
+            "Spanish",
+            220,
+            2.63
+          ],
+          [
+            "German",
+            148,
+            1.77
+          ],
+          [
+            "Portuguese",
+            129,
+            1.54
+          ],
+          [
+            "unknown",
+            53,
+            0.63
+          ],
+          [
+            "French",
+            51,
+            0.61
+          ],
+          [
+            "Chinese",
+            45,
+            0.54
+          ],
+          [
+            "Russian",
+            38,
+            0.45
+          ],
+          [
+            "Dutch",
+            10,
+            0.12
+          ],
+          [
+            "Persian",
+            7,
+            0.08
+          ],
+          [
+            "Telugu",
+            5,
+            0.06
+          ]
+        ],
+        "n_languages": 29,
+        "topics_top": [
+          [
+            "specific_info",
+            753,
+            18.01
+          ],
+          [
+            "other",
+            653,
+            15.61
+          ],
+          [
+            "computer_programming",
+            423,
+            10.11
+          ],
+          [
+            "relationships_and_personal_reflection",
+            365,
+            8.73
+          ],
+          [
+            "unclear",
+            331,
+            7.91
+          ],
+          [
+            "tutoring_or_teaching",
+            321,
+            7.68
+          ],
+          [
+            "mathematical_calculation",
+            240,
+            5.74
+          ],
+          [
+            "greetings_and_chitchat",
+            211,
+            5.05
+          ],
+          [
+            "edit_or_critique_provided_text",
+            172,
+            4.11
+          ],
+          [
+            "argument_or_summary_generation",
+            156,
+            3.73
+          ],
+          [
+            "write_fiction",
+            133,
+            3.18
+          ],
+          [
+            "how_to_advice",
+            78,
+            1.87
+          ]
+        ]
+      },
+      "grok": {
+        "platform": "grok",
+        "n_messages": 98888,
+        "n_conversations": 13149,
+        "turns_per_conversation": {
+          "n": 13149,
+          "mean": 3.761,
+          "median": 1.0,
+          "p90": 8.0,
+          "p99": 34.52000000000044,
+          "max": 239.0,
+          "multi_turn_pct": 46.93
+        },
+        "roles": {
+          "user": 49476,
+          "llm": 49412
+        },
+        "has_thinking_column": true,
+        "assistant_messages": 49412,
+        "assistant_with_thinking": 164,
+        "thinking_coverage_pct": 0.33,
+        "languages_top": [
+          [
+            "English",
+            76551,
+            77.41
+          ],
+          [
+            "Japanese",
+            9104,
+            9.21
+          ],
+          [
+            "Chinese",
+            5720,
+            5.78
+          ],
+          [
+            "unknown",
+            2031,
+            2.05
+          ],
+          [
+            "German",
+            1214,
+            1.23
+          ],
+          [
+            "Spanish",
+            1075,
+            1.09
+          ],
+          [
+            "Russian",
+            873,
+            0.88
+          ],
+          [
+            "Portuguese",
+            768,
+            0.78
+          ],
+          [
+            "French",
+            755,
+            0.76
+          ],
+          [
+            "Italian",
+            165,
+            0.17
+          ],
+          [
+            "Dutch",
+            165,
+            0.17
+          ],
+          [
+            "Hebrew",
+            128,
+            0.13
+          ]
+        ],
+        "n_languages": 68,
+        "topics_top": [
+          [
+            "specific_info",
+            20280,
+            40.99
+          ],
+          [
+            "other",
+            4940,
+            9.98
+          ],
+          [
+            "unclear",
+            2657,
+            5.37
+          ],
+          [
+            "mathematical_calculation",
+            2434,
+            4.92
+          ],
+          [
+            "tutoring_or_teaching",
+            2253,
+            4.55
+          ],
+          [
+            "greetings_and_chitchat",
+            2172,
+            4.39
+          ],
+          [
+            "write_fiction",
+            2161,
+            4.37
+          ],
+          [
+            "argument_or_summary_generation",
+            2064,
+            4.17
+          ],
+          [
+            "relationships_and_personal_reflection",
+            2018,
+            4.08
+          ],
+          [
+            "computer_programming",
+            1548,
+            3.13
+          ],
+          [
+            "create_an_image",
+            1250,
+            2.53
+          ],
+          [
+            "edit_or_critique_provided_text",
+            724,
+            1.46
+          ]
+        ]
+      },
+      "perplexity": {
+        "platform": "perplexity",
+        "n_messages": 48601,
+        "n_conversations": 14612,
+        "turns_per_conversation": {
+          "n": 14612,
+          "mean": 1.662,
+          "median": 1.0,
+          "p90": 3.0,
+          "p99": 7.0,
+          "max": 275.0,
+          "multi_turn_pct": 37.75
+        },
+        "roles": {
+          "user": 24304,
+          "llm": 24297
+        },
+        "has_thinking_column": false,
+        "assistant_messages": 24297,
+        "assistant_with_thinking": 0,
+        "thinking_coverage_pct": null,
+        "languages_top": [
+          [
+            "English",
+            36861,
+            75.84
+          ],
+          [
+            "Japanese",
+            5520,
+            11.36
+          ],
+          [
+            "French",
+            2524,
+            5.19
+          ],
+          [
+            "German",
+            1004,
+            2.07
+          ],
+          [
+            "Spanish",
+            922,
+            1.9
+          ],
+          [
+            "Chinese",
+            591,
+            1.22
+          ],
+          [
+            "Russian",
+            322,
+            0.66
+          ],
+          [
+            "Italian",
+            245,
+            0.5
+          ],
+          [
+            "Dutch",
+            217,
+            0.45
+          ],
+          [
+            "Portuguese",
+            211,
+            0.43
+          ],
+          [
+            "unknown",
+            68,
+            0.14
+          ],
+          [
+            "Czech",
+            20,
+            0.04
+          ]
+        ],
+        "n_languages": 48,
+        "topics_top": [
+          [
+            "specific_info",
+            15207,
+            62.57
+          ],
+          [
+            "other",
+            1585,
+            6.52
+          ],
+          [
+            "computer_programming",
+            1385,
+            5.7
+          ],
+          [
+            "mathematical_calculation",
+            932,
+            3.83
+          ],
+          [
+            "tutoring_or_teaching",
+            691,
+            2.84
+          ],
+          [
+            "health_fitness_beauty_or_self_care",
+            611,
+            2.51
+          ],
+          [
+            "unclear",
+            545,
+            2.24
+          ],
+          [
+            "argument_or_summary_generation",
+            539,
+            2.22
+          ],
+          [
+            "purchasable_products",
+            463,
+            1.91
+          ],
+          [
+            "edit_or_critique_provided_text",
+            379,
+            1.56
+          ],
+          [
+            "how_to_advice",
+            344,
+            1.42
+          ],
+          [
+            "write_fiction",
+            265,
+            1.09
+          ]
+        ]
+      },
+      "gemini": {
+        "platform": "gemini",
+        "n_messages": 67668,
+        "n_conversations": 6826,
+        "turns_per_conversation": {
+          "n": 6826,
+          "mean": 4.957,
+          "median": 1.0,
+          "p90": 9.0,
+          "p99": 59.75,
+          "max": 1337.0,
+          "multi_turn_pct": 44.04
+        },
+        "roles": {
+          "user": 33834,
+          "llm": 33834
+        },
+        "has_thinking_column": false,
+        "assistant_messages": 33834,
+        "assistant_with_thinking": 0,
+        "thinking_coverage_pct": null,
+        "languages_top": [
+          [
+            "English",
+            35777,
+            52.87
+          ],
+          [
+            "Japanese",
+            12452,
+            18.4
+          ],
+          [
+            "German",
+            10215,
+            15.1
+          ],
+          [
+            "Spanish",
+            2615,
+            3.86
+          ],
+          [
+            "French",
+            2005,
+            2.96
+          ],
+          [
+            "Chinese",
+            1425,
+            2.11
+          ],
+          [
+            "Italian",
+            1297,
+            1.92
+          ],
+          [
+            "Portuguese",
+            650,
+            0.96
+          ],
+          [
+            "unknown",
+            457,
+            0.68
+          ],
+          [
+            "Russian",
+            230,
+            0.34
+          ],
+          [
+            "Dutch",
+            161,
+            0.24
+          ],
+          [
+            "Urdu",
+            75,
+            0.11
+          ]
+        ],
+        "n_languages": 61,
+        "topics_top": [
+          [
+            "specific_info",
+            12732,
+            37.63
+          ],
+          [
+            "other",
+            3359,
+            9.93
+          ],
+          [
+            "unclear",
+            3017,
+            8.92
+          ],
+          [
+            "computer_programming",
+            2016,
+            5.96
+          ],
+          [
+            "tutoring_or_teaching",
+            1970,
+            5.82
+          ],
+          [
+            "mathematical_calculation",
+            1939,
+            5.73
+          ],
+          [
+            "relationships_and_personal_reflection",
+            1677,
+            4.96
+          ],
+          [
+            "write_fiction",
+            1542,
+            4.56
+          ],
+          [
+            "greetings_and_chitchat",
+            1036,
+            3.06
+          ],
+          [
+            "argument_or_summary_generation",
+            1018,
+            3.01
+          ],
+          [
+            "edit_or_critique_provided_text",
+            736,
+            2.18
+          ],
+          [
+            "create_an_image",
+            558,
+            1.65
+          ]
+        ]
+      }
+    }
+  }
+}

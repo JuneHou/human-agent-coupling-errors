@@ -1,0 +1,91 @@
+<View>
+  <!-- Conversation display -->
+  <Paragraphs name="dialogue" value="$dialogue"
+              layout="dialogue" nameKey="author" textKey="text"/>
+
+  <!-- Color key — based on κ (inter-rater reliability), then signal type:
+         Blue   (#4e79a7) = κ ≥ 0.4, AI behavior signal
+         Teal   (#76b7b2) = κ ≥ 0.4, evaluation / failure signal
+         Purple (#b07aa1) = user behavior signal, κ ≥ 0.4
+         Orange (#f28e2b) = κ unknown — not yet measured
+         Grey   (#666666) = candidate — not yet in confirmed taxonomy
+         (Signals κ < 0.4 removed — excluded from analysis, see Decisions 6 & 7)
+  -->
+
+  <ParagraphLabels name="signals" toName="dialogue" choice="multiple">
+
+    <!-- ══ BLUE: AI behavior, κ ≥ 0.4 ══════════════════════════════ -->
+    <Label value="ai_asked_clarifying_question" background="#4e79a7"/>  <!-- κ=0.70 -->
+    <Label value="ai_offered_options"           background="#4e79a7"/>  <!-- κ=0.41 -->
+    <Label value="ai_hedges_uncertainty"        background="#4e79a7"/>  <!-- κ=0.57 -->
+    <Label value="ai_asserts_knowledge_limit"   background="#4e79a7"/>  <!-- κ=0.72 -->
+    <Label value="ai_cites_source"              background="#4e79a7"/>  <!-- κ=0.59 -->
+    <Label value="ai_flags_complexity"          background="#4e79a7"/>  <!-- κ=0.60 -->
+    <Label value="ai_provides_caveats"          background="#4e79a7"/>  <!-- κ=0.71 -->
+    <Label value="ai_warns_user"                background="#4e79a7"/>  <!-- κ=0.55 -->
+    <Label value="ai_refuses_or_declines"       background="#4e79a7"/>  <!-- κ=0.76 -->
+    <Label value="ai_references_prior_turn"     background="#4e79a7"/>  <!-- κ=0.53 -->
+    <Label value="ai_acknowledges_correction"   background="#4e79a7"/>  <!-- κ=0.81 -->
+    <Label value="ai_provides_alternatives"     background="#4e79a7"/>  <!-- κ=0.43 -->
+    <Label value="adaptation"                   background="#4e79a7"/>  <!-- κ=0.71 -->
+    <Label value="error_recovery"               background="#4e79a7"/>  <!-- κ=0.59 -->
+    <!-- promoted from Orange in Decision 7 (paper Appendix C.3 κ values) -->
+    <Label value="ai_asked_probing_question"    background="#4e79a7"/>  <!-- κ=0.59 (restored Decision 8) -->
+    <Label value="ai_malfunction"               background="#4e79a7"/>  <!-- κ=0.78 -->
+    <Label value="ai_provides_step_by_step"     background="#4e79a7"/>  <!-- κ=0.72 -->
+    <Label value="ai_structured_response"       background="#4e79a7"/>  <!-- κ=0.65 -->
+    <Label value="ai_normalizes_difficulty"     background="#4e79a7"/>  <!-- κ=0.57 -->
+    <Label value="ai_provides_example"          background="#4e79a7"/>  <!-- κ=0.53 -->
+    <Label value="ai_offers_to_elaborate"       background="#4e79a7"/>  <!-- κ=0.48 -->
+    <Label value="ai_validates_user"            background="#4e79a7"/>  <!-- κ=0.43 -->
+
+    <!-- ══ TEAL: evaluation / failure signal, κ ≥ 0.4 ══════════════ -->
+    <Label value="false_confidence"             background="#76b7b2"/>  <!-- κ=0.46 -->
+    <Label value="performative_hedge"           background="#76b7b2"/>  <!-- κ=0.67 -->
+    <Label value="appropriate_confidence"       background="#76b7b2"/>  <!-- κ=0.49 -->
+    <Label value="problem_ignored"              background="#76b7b2"/>  <!-- κ=0.56 -->
+    <Label value="repetition"                   background="#76b7b2"/>  <!-- κ=0.44 -->
+    <Label value="intent_missed"                background="#76b7b2"/>  <!-- κ=0.55 -->
+    <Label value="under_delivered"              background="#76b7b2"/>  <!-- κ=0.48 -->
+    <Label value="off_topic_drift"              background="#76b7b2"/>  <!-- κ=0.42 -->
+    <Label value="conversation_advanced"        background="#76b7b2"/>  <!-- κ=0.44 -->
+    <Label value="conversation_stalled"         background="#76b7b2"/>  <!-- κ=0.47 -->
+    <!-- promoted from Orange in Decision 7 -->
+    <Label value="ethical_tension"              background="#76b7b2"/>  <!-- κ=0.50 -->
+    <Label value="factual_error"                background="#76b7b2"/>  <!-- κ=0.49 -->
+
+    <!-- ══ ORANGE: κ not yet measured ══════════════════════════════ -->
+    <Label value="user_empowered"               background="#f28e2b"/>
+    <Label value="user_misled"                  background="#f28e2b"/>
+
+    <!-- ══ PURPLE: user behavior, κ ≥ 0.4 ══════════════════════════ -->
+    <Label value="user_asks_clarification"      background="#b07aa1"/>  <!-- κ=0.60 -->
+    <Label value="user_corrects_ai"             background="#b07aa1"/>  <!-- κ=0.70 -->
+    <Label value="user_implicit_correction"     background="#b07aa1"/>  <!-- κ=0.67 -->
+    <Label value="user_expresses_frustration"   background="#b07aa1"/>  <!-- κ=0.60 -->
+    <Label value="user_expresses_dissatisfaction" background="#b07aa1"/><!-- κ=0.61 -->
+    <Label value="user_repeats_request"         background="#b07aa1"/>  <!-- κ=0.61 -->
+    <Label value="user_positive_feedback"       background="#b07aa1"/>  <!-- κ=0.81 -->
+    <Label value="user_ambiguous_request"       background="#b07aa1"/>
+    <Label value="user_validation_seeking"      background="#b07aa1"/>
+    <Label value="user_multi_request"           background="#b07aa1"/>
+    <Label value="user_abandons_thread"         background="#b07aa1"/>
+    <Label value="user_provides_invalid_input"  background="#b07aa1"/>
+
+    <!-- ══ GREY: candidate signals ══════════════════════════════════ -->
+    <Label value="CANDIDATE_SIGNAL"             background="#666666"/>
+    <Label value="ai_missing_retrieval"         background="#666666"/>
+    <Label value="ai_asks_followup"             background="#666666"/>
+
+  </ParagraphLabels>
+
+  <TextArea name="span_note" toName="dialogue"
+            perRegion="true"
+            placeholder="Uncertain? Alternative label? Why this one?"
+            rows="1" editable="true"/>
+
+  <TextArea name="notes" toName="dialogue"
+            placeholder="NEW: signal_name — what you observed  |  whole-conversation patterns"
+            rows="3" editable="true"/>
+
+</View>

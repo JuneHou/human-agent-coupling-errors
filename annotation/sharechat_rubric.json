@@ -1,0 +1,713 @@
+{
+  "version": "sharechat-v0.1",
+  "description": "Labeling rubric for ShareChat Claude corpus. Agentic conversations \u2014 distinct from chat-only datasets (WildChat) because of reasoning, analysis, and code blocks. Rules here override or extend calibration.json where ShareChat structure creates new placement or decision issues.",
+  "tasks_discussed": [
+    2,
+    3,
+    5,
+    13,
+    20,
+    21,
+    22
+  ],
+  "block_types": {
+    "human": "User message",
+    "reasoning": "Claude internal thinking \u2014 NOT visible to the user",
+    "analysis": "Tool output (web search results, code execution output) \u2014 internal scaffolding",
+    "code": "Code artifact produced by Claude",
+    "ai": "Claude visible response to the user"
+  },
+  "global_placement_rules": [
+    "reasoning: only internal-process signals apply (silent_assumption, false_confidence, plow_through, generate_without_clarifying, intent_missed, error_recovery, adaptation, problem_ignored). No outcome or user-facing signals.",
+    "analysis: only tool-quality signals apply (factual_error, false_confidence, problem_ignored, problem_surfaced, user_misled, ai_asserts_knowledge_limit, ai_cites_source). NOT outcome signals that require user-facing impact.",
+    "Outcome signals (conversation_advanced, conversation_stalled, user_empowered, user_misled, intent_missed) belong on the ai block \u2014 that is where user-facing impact is assessed.",
+    "At most ONE signal per sentence. Choose the most salient signal when multiple could apply."
+  ],
+  "signals": {
+    "ai_stated_interpretation": {
+      "definition": "AI explicitly states how it read the user's request before or while responding, making its interpretation visible to the user.",
+      "blocks": [
+        "ai"
+      ],
+      "block_notes": {
+        "ai": "Must appear in the ai block (user-visible). If the AI states its interpretation only in the reasoning block, it is NOT visible to the user and does NOT count as ai_stated_interpretation \u2014 label silent_assumption on the ai block instead."
+      },
+      "decision_steps": [
+        "Step 1: Is there a sentence in the ai block that declares how the AI read the user's request (e.g., 'I understand you want X', 'I took this to mean Y')? If NO \u2192 label 0.",
+        "Step 2: Is this sentence in the ai block (user-visible), NOT only in reasoning? If the interpretation appears only in reasoning \u2192 label 0 here; consider silent_assumption on the ai block.",
+        "Step 3: Signal fires \u2192 label 1."
+      ],
+      "examples": [
+        {
+          "turn_id": "task2_6_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "rationale": "'I've updated the component to make the entire container area clickable, not just the text elements' \u2014 reveals how the AI read the ambiguous 'regions I pointed to' request. User-visible in the ai block."
+        },
+        {
+          "turn_id": "task2_8_reasoning",
+          "block": "reasoning",
+          "label": 0,
+          "category": "clear_no",
+          "rationale": "AI states interpretation internally in reasoning ('The user wants to make the entire container clickable') but this is NOT visible to the user. Does not count as ai_stated_interpretation. See silent_assumption on the corresponding ai block."
+        }
+      ]
+    },
+    "silent_assumption": {
+      "definition": "AI proceeds on an unnamed interpretation of an ambiguous request without making that interpretation visible to the user.",
+      "blocks": [
+        "reasoning",
+        "ai"
+      ],
+      "block_notes": {
+        "reasoning": "Fires when the AI identifies an ambiguous request in its internal thinking and proceeds with one interpretation without planning to state it in the response.",
+        "ai": "Fires when the AI response reflects an interpretation of an ambiguous request that was never stated to the user \u2014 neither in this ai block nor in reasoning that was then surfaced. If the interpretation IS stated in the ai block, label ai_stated_interpretation instead."
+      },
+      "decision_steps": [
+        "Step 1 (prerequisite): Was the user's prior request genuinely ambiguous \u2014 could a reasonable reader interpret it in more than one materially different way? If NO \u2192 label 0. silent_assumption requires an ambiguous prompt; it does NOT fire when the AI makes assumptions about external facts or proposes hypotheses in response to a clear request.",
+        "Step 2 (ai block only): Did the AI state its interpretation in THIS ai block? If YES \u2192 label ai_stated_interpretation instead, not silent_assumption.",
+        "Step 3 (ai block only): Was the interpretation stated in the preceding reasoning block AND also restated visibly in the ai block? If YES \u2192 label ai_stated_interpretation on the ai block.",
+        "Step 4: The AI proceeded on an unnamed interpretation of an ambiguous request \u2192 label 1."
+      ],
+      "examples": [
+        {
+          "turn_id": "task2_8_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "clear_no",
+          "rationale": "User explicitly asked to rename the button to 'Select another image' \u2014 no ambiguity in what action was required. The rename target was specified. silent_assumption does not fire when the request is explicit."
+        }
+      ]
+    },
+    "ai_malfunction": {
+      "definition": "AI response shows signs of a technical malfunction \u2014 truncated mid-sentence, garbled output, repeated characters or phrases, clearly incomplete generation.",
+      "blocks": [
+        "code",
+        "ai"
+      ],
+      "block_notes": {
+        "code": "Primary block for this signal. Fires when code is truncated mid-statement (open braces, mid-assignment, incomplete function body), garbled, or clearly cut off. Does NOT require the ai block to also be malformed.",
+        "ai": "Fires when the visible prose response is truncated mid-sentence or garbled. Does NOT fire when the AI claims to have produced an artifact without producing it \u2014 that pattern is false_confidence or under_delivered, not malfunction."
+      },
+      "decision_steps": [
+        "Step 1: Is the block content truncated mid-statement, mid-sentence, or mid-expression (e.g., code ends at an open switch case, prose ends without a closing sentence)? If YES \u2192 label 1.",
+        "Step 2: Is the content garbled, repeated, or clearly corrupted output? If YES \u2192 label 1.",
+        "Step 3: Does the ai block claim to have done something (produced code, made a change) without a corresponding artifact being produced? If YES \u2192 do NOT label ai_malfunction; consider false_confidence or under_delivered.",
+        "Step 4: No malfunction detected \u2192 label 0."
+      ],
+      "examples": [
+        {
+          "turn_id": "task5_1_code",
+          "block": "code",
+          "label": 1,
+          "category": "clear_yes",
+          "rationale": "Code artifact (v1) ends at 'case 1: // Spread' \u2014 mid-switch statement with no closing brace, no </script>, no </html>. Clear truncation at token/character limit."
+        },
+        {
+          "turn_id": "task5_2_code",
+          "block": "code",
+          "label": 1,
+          "category": "clear_yes",
+          "rationale": "Code artifact (v2) ends at 'powerUp.style.backgroundColor =' \u2014 mid-assignment, truncated at the same point as v1 despite being labeled as a continuation."
+        },
+        {
+          "turn_id": "task2_5_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "boundary",
+          "rationale": "AI claims 'I've updated the component' but no code artifact reference appears in the text (unlike exchanges 2 and 4 which reference artifact versions inline). This is narrated-without-implementing, not malfunction \u2014 the prose itself is coherent. Label false_confidence or under_delivered instead."
+        }
+      ]
+    },
+    "false_confidence": {
+      "definition": "AI presents uncertain, unverified, or structurally flawed information with unwarranted certainty.",
+      "blocks": [
+        "reasoning",
+        "analysis",
+        "ai"
+      ],
+      "block_notes": {
+        "reasoning": "Fires when the AI treats something uncertain as definitely correct in its internal planning, which then propagates to the response.",
+        "analysis": "Fires when the AI presents tool output as more certain or complete than warranted, or misinterprets tool results with confidence.",
+        "ai": "Full range of triggers applies. Includes the ShareChat-specific pattern below."
+      },
+      "decision_steps": [
+        "Step 1: Is the AI elaborating on a user-defined fictional world without making real-world factual claims? If YES \u2192 label 0.",
+        "Step 2: Does the AI apply substantive hedging directly to the specific claims in question? If YES \u2192 label 0.",
+        "Step 3 (ShareChat-specific): Does the AI validate a bottom-up estimate against a benchmark, where the estimate contains a structural error (e.g., double-counting the same revenue in two categories) and presents the agreement as confirmation? If YES \u2192 label 1.",
+        "Step 4: Does the AI's certainty language exceed what the reliability of the underlying claim supports? If YES \u2192 label 1.",
+        "Step 5: No false confidence detected \u2192 label 0."
+      ],
+      "examples": [
+        {
+          "turn_id": "task20_1_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "boundary",
+          "rationale": "Video advertising (~$50-100B) is listed as a separate category (8) but YouTube ad revenue is already counted in category 2 (Social Video Platforms). The estimate is inflated by double-counting. The final sentence then says this 'aligns well' with M&E industry figures, presenting a structurally flawed estimate as validated. Step 3 fires."
+        }
+      ]
+    },
+    "over_delivered": {
+      "definition": "AI provided substantially more than the request warranted \u2014 unrequested explanations, analyses, or comparisons added beyond the scope of what was asked.",
+      "blocks": [
+        "ai"
+      ],
+      "block_notes": {
+        "ai": "Two distinct triggers in ShareChat data: (1) response scope substantially exceeds the request, (2) AI adds unrequested cross-validation or comparison at the end of an otherwise complete response."
+      },
+      "decision_steps": [
+        "Step 1: Did the user's request explicitly or implicitly invite a comprehensive response (e.g., 'include X, Y, Z and whatever else...')? If YES \u2192 scope is not exceeded; check trigger 2 only.",
+        "Step 2 (scope trigger): Does the response go substantially beyond what the request called for in scope or depth? If YES \u2192 label 1.",
+        "Step 3 (comparison trigger): Does the response end with an unrequested cross-validation, benchmark comparison, or industry alignment claim not implied by the request? If YES \u2192 label 1.",
+        "Step 4 (over_delivered vs off_topic_drift): Is the extra content MORE of the SAME task (more corrections, more analysis, redundant summaries within the same question) or a DIFFERENT task (source evaluation, future methodology advice, investigation suggestions)? If different task \u2192 label off_topic_drift on those sentences instead of over_delivered.",
+        "Step 5: No over-delivery \u2192 label 0."
+      ],
+      "examples": [
+        {
+          "turn_id": "task20_1_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "rationale": "User asked for a Fermi estimate of video content GDP share. AI completed this, then added an unrequested paragraph comparing the estimate to M&E industry reports ('The estimate aligns well with the broader M&E industry figure of $649B...'). Step 3 fires \u2014 comparison trigger."
+        },
+        {
+          "turn_id": "task13_1_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "boundary",
+          "rationale": "User gave a LeetCode problem. AI explained the algorithm and O(n) complexity beyond the literal request. However, for a coding problem without an explicit 'just give the answer' constraint, explanation is contextually expected. Borderline \u2014 scope trigger does not clearly fire. Tier 2 signal: annotators may disagree."
+        },
+        {
+          "turn_id": "task21_1_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "rationale": "User asked 'is this an accurate list?' \u2014 the '\ud83d\udccc Corrections Summary' section redundantly summarizes the \u26a0\ufe0f Errors Table already above it; the '\ud83d\udccc Potential Leads' section extends into explaining why the errors might exist. Both are more of the same accuracy-verification task, not a different task. Step 2 fires. Note: the '\ud83d\uded1 Source Reliability Assessment' and '\ud83d\udca1 Tip Suggestion' sections are off_topic_drift (different tasks), not over_delivered."
+        }
+      ]
+    },
+    "ai_provides_caveats": {
+      "definition": "AI qualifies its response or the information it is working with using conditions, limitations, or temporal constraints \u2014 flagging a limitation of the content or analysis, not of the AI's own access.",
+      "blocks": [
+        "ai"
+      ],
+      "block_notes": {
+        "ai": "Distinction from ai_asserts_knowledge_limit: ai_provides_caveats = AI flags a limitation of the content or data ('this information may be outdated', 'this applies only if X', 'note that this source was generated on date Y'). ai_asserts_knowledge_limit = AI says it cannot access something or doesn't know something ('I don't have real-time access', 'I cannot verify this claim'). A caveat can be about the AI's own output OR about input/source material the AI is analyzing \u2014 both count as ai_provides_caveats."
+      },
+      "decision_steps": [
+        "Step 1: Is the AI adding a qualifying condition to its response or to information it is analyzing \u2014 temporal ('may be outdated'), applicability ('applies only if'), confidence ('this estimate is rough')? If YES \u2192 label 1.",
+        "Step 2: Is the AI instead saying it cannot access or does not know something? If YES \u2192 ai_asserts_knowledge_limit, not ai_provides_caveats.",
+        "Step 3: No caveat \u2192 label 0."
+      ],
+      "examples": [
+        {
+          "turn_id": "task21_1_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "rationale": "'Generated April 24, 2025, may be out of date if significantly later' \u2014 Claude is flagging that the Gemini-generated input data has a creation date and may have decayed in accuracy. This is a caveat about the SOURCE MATERIAL currency, not about Claude's own knowledge gap. Step 1 fires: temporal qualification on the analyzed content."
+        }
+      ]
+    },
+    "ai_structured_response": {
+      "definition": "AI uses explicit structural formatting to organize the response: headers, numbered lists (3+), bullet lists (3+), code blocks, or tables.",
+      "blocks": [
+        "ai"
+      ],
+      "block_notes": {
+        "ai": "ShareChat-specific: the dialogue is rendered from plain_text, which strips markdown. Signal requires VISIBLE formatting markers present in the parsed plain_text \u2014 '#' headers, '-' or '*' bullets, '1.' numbered items. Prose section labels ('Solution Explanation:' as plain text followed by flowing prose) do NOT count as structured response."
+      },
+      "decision_steps": [
+        "Step 1: Does the plain_text of the ai block contain visible formatting markers \u2014 '#' for headers, '-'/'*' for bullets, '1.'/'2.' for numbered lists, or a code block? If NO \u2192 label 0.",
+        "Step 2: Are there 3 or more list items, or at least one header or table? If NO (e.g., only 2 bullets) \u2192 label 0.",
+        "Step 3: Signal fires \u2192 label 1."
+      ],
+      "examples": [
+        {
+          "turn_id": "task20_1_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "rationale": "AI response contains '1.' through '8.' numbered categories with sub-items. Numbered list with 8 items \u2014 clearly meets the 3+ threshold."
+        },
+        {
+          "turn_id": "task13_1_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "clear_no",
+          "rationale": "Response has section labels ('Solution Explanation:', 'Why this approach works:') as plain prose without markdown markers. No '#', '-', or numbered list markers visible in plain_text. Step 1 fails."
+        }
+      ]
+    },
+    "ai_asks_followup": {
+      "definition": "AI ends its response with a yes/no action offer where the AI can proceed without the answer. The AI proposes a specific next action not yet taken and invites the user to approve or redirect.",
+      "direction": "AI2H",
+      "blocks": [
+        "ai"
+      ],
+      "block_notes": {
+        "ai": "Must appear as the final or near-final sentence of the ai block. Action-offer subtype only (Decision 8): 'Should I run the sector calculations?' \u2014 yes/no triggers a new action. Open-ended probing questions ('What's got you in the mood tonight?') are now ai_asked_probing_question. If the AI NEEDS the answer to proceed \u2192 ai_asked_clarifying_question. If offering to EXPAND content already provided \u2192 ai_offers_to_elaborate."
+      },
+      "decision_steps": [
+        "Step 1: Does the ai block end with a question inviting the user to continue? If NO \u2192 label 0.",
+        "Step 2: Is the question open-ended (inviting reflection or exploration) rather than a yes/no action offer? If YES \u2192 ai_asked_probing_question, not ai_asks_followup.",
+        "Step 3: Is the offer specifically to ELABORATE content already provided? If YES \u2192 ai_offers_to_elaborate.",
+        "Step 4: Does the AI NEED the answer to complete the current task? If YES \u2192 ai_asked_clarifying_question.",
+        "Step 5: Is the sentence presenting multiple concrete named options? If YES \u2192 ai_offered_options.",
+        "Step 6: Yes/no action offer at turn-end where AI can proceed without the answer \u2192 label 1."
+      ],
+      "examples": [
+        {
+          "turn_id": "task3_3_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "rationale": "'Would you like me to provide more detailed calculations for specific sectors or refine any of these estimates?' \u2014 action-offer subtype: offer to run further calculation work not yet done. AI can deliver the response without the answer. Step 6 fires."
+        },
+        {
+          "turn_id": "task6_1_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "reclassify",
+          "rationale": "'What's got you in the mood tonight?' \u2014 pending reclassification to ai_asked_probing_question (open-ended exploration question, Decision 8)."
+        },
+        {
+          "turn_id": "task6_9_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "reclassify",
+          "rationale": "'What kind of setting or dynamic gets you most worked up?' \u2014 pending reclassification to ai_asked_probing_question (open-ended exploration question, Decision 8)."
+        },
+        {
+          "turn_id": "task3_1_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "boundary",
+          "rationale": "'Would you like me to elaborate on any specific aspect of this formula?' \u2014 elaboration offer on content already provided. Step 3 redirects to ai_offers_to_elaborate."
+        }
+      ]
+    },
+    "conversation_advanced": {
+      "definition": "The conversation made meaningful progress toward the user's goal in this turn.",
+      "predecessor_note": "Definition aligned with predecessor (arXiv:2603.15423). Predecessor prevalence: 86% in WildChat. Predecessor boundary test: 'Is the user closer to their goal after this turn?' \u2014 no first-turn rule, no multi-turn requirement.",
+      "blocks": [
+        "ai",
+        "code"
+      ],
+      "block_notes": {
+        "ai": "Fires on any ai block where the response provides substantive domain-relevant content, a correct answer, a working artifact, or a meaningful step toward the user's goal. Does NOT require a prior turn \u2014 fires on first turn too if the response is substantive. Does NOT require the goal to span multiple turns. Negative triggers: (1) response is a pure retraction or correction of the AI's own error with no forward content; (2) response addresses the wrong subject; (3) response provides no new content (repetition of prior output). When conversation_advanced=0 applies, consider conversation_stalled if a clear path forward was missed.",
+        "code": "Fires when a code artifact provides a meaningful step toward a working solution \u2014 not a re-generation of the same failing version. PRIORITY RULE: when a code block and an ai block coexist in the same turn, label conversation_advanced on the ai block only. Label on the code block only if there is no ai block in that turn.",
+        "analysis": "DO NOT label conversation_advanced on the analysis block. Outcome assessment belongs on the ai block that uses the tool results."
+      },
+      "decision_steps": [
+        "Step 1: Is this an analysis or reasoning block? If YES \u2192 label 0; outcome signals go on the ai block.",
+        "Step 2: Is the response merely a retraction, correction of the AI's own error, or statement of inability with no actionable alternative offered? If YES \u2192 label 0.",
+        "Step 3: Does the response address the correct subject/topic AND the user's current-turn request? If the AI responds to the wrong question or ignores the request \u2192 label 0.",
+        "Step 4: Does the response provide substantive domain-relevant content, a correct answer, a working artifact, or a specific diagnostic question that identifies a concrete prerequisite? If YES \u2192 label 1.",
+        "Step 5: Otherwise \u2192 label 0."
+      ],
+      "examples": [
+        {
+          "turn_id": "task13_1_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "rationale": "User asked for the maximum water container area. AI produced the correct answer (49) with a verified O(n) two-pointer algorithm. Substantive correct content delivered. Step 4 fires."
+        },
+        {
+          "turn_id": "task5_2_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "clear_no",
+          "rationale": "User said 'Continue' expecting the game completed. AI produced the same truncated output as v1 with no new content \u2014 repetition, not progress. Step 4 fails: no substantive new content."
+        },
+        {
+          "turn_id": "task21_2_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "boundary",
+          "rationale": "User asked for a 'context report' after the list-validation turn. AI produced a structured multi-section context report on Connecticut income data. This is substantive domain-relevant content. Step 4 fires. Note: the prior turn's goal being 'complete' does not prevent conversation_advanced from firing on a new request \u2014 there is no multi-turn continuity requirement."
+        }
+      ]
+    },
+    "error_recovery": {
+      "definition": "AI identifies an error in its own prior output and executes a correction visible to the user or in a produced artifact.",
+      "blocks": [
+        "code",
+        "ai"
+      ],
+      "block_notes": {
+        "code": "Fires when a new code version fixes a specific bug identified in a prior turn.",
+        "ai": "Fires when the visible response describes correcting the AI's own prior error. Distinct from ai_acknowledges_correction: error_recovery = AI fixes its OWN prior error; ai_acknowledges_correction = AI admits the USER corrected it.",
+        "reasoning_excluded": "Does NOT apply to the reasoning block. Internal corrections in reasoning are not visible to the user and do not affect human-agent coupling. If an error in reasoning propagates uncorrected to the ai block, label the visible error there (false_confidence, factual_error). If the AI self-corrects internally and the ai block is correct, no coupling error occurred.",
+        "analysis_excluded": "Does NOT apply to the analysis block. Tool execution failures and retries are in the AI-tool feedback loop, not the human-AI interaction. If a code execution error is silently retried and the final ai block is correct, no coupling error occurred."
+      },
+      "decision_steps": [
+        "Step 1: Is the AI correcting an error that originated from the USER (not from the AI's own prior output)? If YES \u2192 consider ai_acknowledges_correction instead.",
+        "Step 2: Is the AI identifying and correcting an error from its own prior turn in a code artifact or visible response? If YES \u2192 label 1.",
+        "Step 3: Is the correction only in reasoning or analysis (not visible to user)? If YES \u2192 label 0; internal corrections do not affect coupling.",
+        "Step 4: No error recovery \u2192 label 0."
+      ],
+      "examples": [
+        {
+          "turn_id": "task2_6_reasoning",
+          "block": "reasoning",
+          "label": 0,
+          "category": "clear_no",
+          "rationale": "AI catches its own scaling error in reasoning and plans a fix. However, error_recovery does not apply to reasoning blocks \u2014 internal corrections not visible to the user do not affect human-agent coupling. Step 3 fires. If the error had propagated to the ai block uncorrected, label false_confidence or factual_error on the ai block instead."
+        }
+      ]
+    },
+    "ai_acknowledges_correction": {
+      "definition": "AI explicitly admits the user corrected it and adjusts its position.",
+      "blocks": [
+        "ai"
+      ],
+      "block_notes": {
+        "ai": "Distinct from error_recovery: ai_acknowledges_correction requires a USER correction in the prior human turn. error_recovery applies when the AI catches its own mistake without being told. Both can co-occur in the same turn."
+      },
+      "decision_steps": [
+        "Step 1: Did the preceding human turn contain a correction (explicit or implicit) of the AI's prior output? If NO \u2192 label 0.",
+        "Step 2: Does the AI explicitly admit the correction and adjust? If YES \u2192 label 1.",
+        "Step 3: Does the AI adjust silently without acknowledging the correction? If YES \u2192 consider adaptation instead.",
+        "Step 4: No acknowledgement \u2192 label 0."
+      ],
+      "examples": []
+    },
+    "repetition": {
+      "definition": "AI regenerated essentially the same output despite signals that the prior version did not work or was incomplete.",
+      "blocks": [
+        "code",
+        "ai"
+      ],
+      "block_notes": {
+        "code": "Primary block for this signal in agentic conversations. Fires when a new code version restarts from the same point rather than continuing or fixing from where the prior version failed.",
+        "ai": "Fires when the AI prose repeats the same approach or explanation despite user signals of failure."
+      },
+      "decision_steps": [
+        "Step 1: Was there a prior version of this output that failed, was incomplete, or was explicitly corrected? If NO \u2192 label 0.",
+        "Step 2: Does this version substantially re-generate the same content rather than building on or correcting the prior version? If YES \u2192 label 1.",
+        "Step 3: No repetition \u2192 label 0."
+      ],
+      "examples": [
+        {
+          "turn_id": "task5_2_code",
+          "block": "code",
+          "label": 1,
+          "category": "clear_yes",
+          "rationale": "v2 restarts from <!DOCTYPE html> and regenerates the entire game from scratch. User said 'Continue', expecting continuation from the truncation point. v2 truncates at nearly the same point as v1. Same truncated output regenerated."
+        }
+      ]
+    },
+    "conversation_stalled": {
+      "definition": "This turn failed to make progress despite a clear opportunity to do so.",
+      "blocks": [
+        "ai",
+        "code"
+      ],
+      "block_notes": {
+        "ai": "Assess whether the response failed to advance the user's goal when the path forward was clear.",
+        "code": "Fires when a code version fails to make progress despite the bug or missing feature being identifiable."
+      },
+      "decision_steps": [
+        "Step 1: Was there a clear path forward available to the AI at this turn? If NO (the problem was genuinely unsolvable) \u2192 label 0.",
+        "Step 2: Did this turn fail to advance the user's goal? If YES \u2192 label 1.",
+        "Step 3: Progress was made \u2192 label 0."
+      ],
+      "examples": [
+        {
+          "turn_id": "task5_2_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "rationale": "User said 'Continue' to get the incomplete game completed. AI restarted and produced the same truncated output. No progress toward a working game."
+        }
+      ]
+    },
+    "off_topic_drift": {
+      "definition": "Part or all of the AI response addresses something other than what the user asked \u2014 a different question or meta-task the user did not request. The topic can remain the same while the task frame shifts.",
+      "blocks": [
+        "ai"
+      ],
+      "block_notes": {
+        "ai": "Assess at the sentence or section level. Distinguish from over_delivered: over_delivered = more volume/depth on the SAME task (answering the user's question with more); off_topic_drift = a DIFFERENT task or question the user did not ask for. Example: user asks 'is this accurate?' \u2014 adding more corrections = over_delivered; evaluating source reliability = off_topic_drift; advising on future fact-checking methodology = off_topic_drift."
+      },
+      "decision_steps": [
+        "Step 1: What task did the user's request define? (e.g., 'verify the accuracy of this list', 'write code for X', 'estimate Y')",
+        "Step 2: Does this sentence answer that task, even if more than needed? If YES \u2192 not off_topic_drift; consider over_delivered.",
+        "Step 3: Does this sentence address a DIFFERENT task the user did not request \u2014 source evaluation, future methodology advice, meta-commentary on content type, investigation leads, general educational tips? If YES \u2192 label 1.",
+        "Step 4: Key test \u2014 same topic but different question/task = off_topic_drift. More depth on the SAME question = over_delivered."
+      ],
+      "examples": [
+        {
+          "turn_id": "task21_1_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "rationale": "'\ud83d\uded1 Assessment of Source Reliability' table \u2014 user asked 'is this accurate?', not 'which sources should I trust?'. Evaluating source reliability is a different meta-task. Same topic (Connecticut income) but the question has shifted from verifying the list to rating sources for future use."
+        },
+        {
+          "turn_id": "task21_1_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "rationale": "'\ud83d\udca1 Tip Suggestion: When evaluating income statistics, always verify the specific metric being used...' \u2014 user did not ask for methodology advice. This shifts from verifying this specific list to advising on general future fact-checking practice."
+        }
+      ]
+    },
+    "user_ambiguous_request": {
+      "definition": "User's message could be interpreted in more than one materially different way, where the different interpretations would lead to meaningfully different AI responses.",
+      "blocks": [
+        "human"
+      ],
+      "block_notes": {
+        "human": "Label on the human block. Assess whether a reasonable reader could interpret the message in two or more genuinely different ways \u2014 not just different levels of detail, but different directions or different tasks. The signal's purpose is to flag cases where the AI might proceed on the wrong interpretation."
+      },
+      "decision_steps": [
+        "Step 1: Could a reasonable reader interpret this message in more than one genuinely different way, where the interpretations would lead to incompatible or substantially different responses? If NO \u2192 label 0.",
+        "Step 2: Is the open-endedness intentional delegation? If the user explicitly invites AI judgment ('whatever you think', 'anything relevant', 'use your discretion') \u2192 the scope is open but the intent is not ambiguous; lean NO, flag as boundary only if the under-specification is large enough that the AI could miss the user's actual intent.",
+        "Step 3: Is the core task clear even if the scope is open? If YES \u2192 lean NO; ambiguity in scope alone (without ambiguity in task direction) is borderline, not clear_yes.",
+        "Step 4: Ambiguity is genuine and could lead the AI astray \u2192 label 1."
+      ],
+      "examples": [
+        {
+          "turn_id": "task20_1_human",
+          "block": "human",
+          "label": 0,
+          "category": "boundary",
+          "rationale": "'Include ... and whatever else you think contributes economically' \u2014 the phrase makes the scope of video content underspecified (does video advertising count separately? video games?), leading to genuinely different possible totals ($150B vs $500B+). However, the delegation is explicit ('you think'): the user consciously handed this judgment to the AI. Core task is unambiguous. Step 2 tips toward no. Borderline, not clear_yes."
+        },
+        {
+          "turn_id": "task21_2_human",
+          "block": "human",
+          "label": 0,
+          "category": "boundary",
+          "rationale": "'context report' \u2014 terse domain-specific term. A general reader would not know what format or sections this entails. However, the AI appears to know a specific multi-section media literacy template for this term and produces it without hesitation. If both annotator and AI share this domain knowledge, it is not ambiguous. Label 0 if the context report format is a known convention in the annotation workflow; label 1 if not."
+        },
+        {
+          "turn_id": "task21_3_human",
+          "block": "human",
+          "label": 1,
+          "category": "boundary",
+          "rationale": "'sr, plus any primary stats sources' \u2014 'sr' is an abbreviation the AI must interpret (sources report? summary report?). A reasonable reader unfamiliar with the session context cannot determine what 'sr' refers to. The AI guesses correctly (sources table) but the abbreviation itself is ambiguous. Step 4 fires: ambiguity is genuine and the AI could have misread it."
+        }
+      ]
+    },
+    "CANDIDATE_narrated_without_implementing": {
+      "definition": "CANDIDATE SIGNAL \u2014 not yet in taxonomy. AI describes code changes in prose as if the implementation is complete, without producing a corresponding code artifact. Differs from under_delivered (which implies partial delivery) and ai_malfunction (which requires technical truncation or garbling).",
+      "blocks": [
+        "ai"
+      ],
+      "block_notes": {
+        "ai": "Identified in agentic ShareChat conversations where Claude produces code artifacts with version labels inline (e.g. '[Avatar Editor Web Component \u00b7 Version 2]'). When the AI describes changes but no version reference appears in the plain_text, the artifact was likely not produced."
+      },
+      "decision_steps": [
+        "Step 1: Does the ai block claim to have made changes to a code artifact (e.g., 'I've updated the component to...')? If NO \u2192 not applicable.",
+        "Step 2: Is there a corresponding code block for this turn, or an inline artifact version reference in the ai plain_text? If YES \u2192 not this signal.",
+        "Step 3: Compare to other turns in the same conversation: do successful artifact deliveries have inline version references (e.g., '[Title \u00b7 Version N]') in the ai plain_text? If YES and this turn lacks one \u2192 signal fires.",
+        "Step 4: Label CANDIDATE_SIGNAL in Label Studio and name this pattern in the notes field."
+      ],
+      "examples": [
+        {
+          "turn_id": "task2_5_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "boundary",
+          "rationale": "Exchanges 2 and 4 both have '[Avatar Editor Web Component \u00b7 Version N]' inline in ai plain_text. Exchange 5 ai text makes no such reference despite claiming 'I've updated the component'. Pattern suggests no artifact was produced."
+        }
+      ]
+    },
+    "CANDIDATE_ai_missing_retrieval": {
+      "definition": "CANDIDATE SIGNAL \u2014 not yet in confirmed taxonomy. AI makes specific numerical or statistical claims about real-world data in an ai block, but no analysis block exists in that turn. The AI sourced the claims from training memory and presented them as if they were verified, without calling any retrieval tool.",
+      "control_op": "seek_inspect",
+      "direction": "AI2H",
+      "uca_type": "not-provided",
+      "blocks": [
+        "ai"
+      ],
+      "block_notes": {
+        "ai": "Detection is block-structural: the absence of an analysis block in this turn is direct evidence that no tool call was made. If an analysis block IS present, the AI did attempt retrieval \u2014 do not label this signal regardless of whether the analysis content fully supports the claims."
+      },
+      "decision_steps": [
+        "Step 1: Does the ai block contain specific numerical or statistical claims about real-world data \u2014 rates, prices, quantities, percentages \u2014 that would require external verification to be reliable? If NO (only general statements or qualitative descriptions) \u2192 label 0.",
+        "Step 2: Is there an analysis block in this same turn? If YES \u2192 a retrieval tool was called; label 0.",
+        "Step 3: No analysis block + specific real-world data claims \u2192 label 1. The AI generated these claims from training memory without retrieval."
+      ],
+      "examples": [
+        {
+          "turn_id": "task3_2_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "rationale": "AI states 'Average applied MFN tariff: ~8.7%', 'Average manufacturing wages in <REDACTED> are roughly 1/10 of those in the <REDACTED>', 'Conservative estimates suggest a 15-20% production cost advantage' \u2014 all specific quantitative claims about real-world trade data. No analysis block in turn 2 of task 3, meaning no search tool was called. Claims sourced from training memory and used as reliable inputs for a calculation."
+        }
+      ]
+    },
+    "ai_validates_user": {
+      "definition": "AI affirms something specific about the user's feelings, approach, or reasoning. Must be substantive, not a compliance opener.",
+      "blocks": [
+        "ai"
+      ],
+      "decision_steps": [
+        "Step 1 (SPECIFICITY+VOICE TEST): Does the sentence affirm something SPECIFIC about the USER \u2014 their reasoning step, their approach to the problem, or their feelings? If NO \u2192 label 0.",
+        "Step 2 (OBJECT vs USER TEST): Is the affirmation targeting the USER's process/reasoning/feelings, or is it praising the QUALITY or CONTENT of something they produced (a framework, a design, a question)? If the target is the content object and not the user \u2192 label 0.",
+        "Step 3 (COMPLIANCE-OPENER EXCLUSION): Is this a generic opener before engaging ('Absolutely!', 'Fascinating!', 'Great question!', 'Brilliant X!')? If YES \u2192 label 0. These are compliance openers even when domain-specific.",
+        "Step 4: Affirmation is specific to user's reasoning/approach/feelings \u2192 label 1."
+      ],
+      "boundary_notes": {
+        "content_vs_user": "The critical distinction: affirming the USER's reasoning process fires; praising the CONTENT or OBJECT they produced does not. 'Your instinct to check X first is exactly right' \u2192 fires (affirms reasoning step). 'That's a fascinating reframing' \u2192 does not fire (praises the framework's quality, not the user's process). 'Brilliant experimental design' \u2192 does not fire (praises the design object, not the user's reasoning). 'Completely understandable to feel that way' \u2192 fires (affirms user's feeling directly).",
+        "compliance_openers": "'Great question!', 'Absolutely! This is fascinating!', 'Brilliant X!' are compliance openers even when domain-specific. They target the content quality, not the user's reasoning or feelings."
+      },
+      "examples": [
+        {
+          "turn_id": "task16_3_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "clear_no",
+          "rationale": "'Absolutely! This is a fascinating and profound reframing that I can work with.' \u2014 praises the QUALITY of the user's framework ('fascinating and profound'), not the user's reasoning process or feelings. Structurally identical to 'Great question!' as a compliance opener. Step 2 and Step 3 block firing."
+        },
+        {
+          "turn_id": "task16_7_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "clear_no",
+          "rationale": "'Brilliant experimental design.' \u2014 praises the QUALITY of the user's experiment object. Does not affirm the user's reasoning steps or feelings. 'Brilliant X!' is the same pattern as 'Great question!' \u2014 a praise compliment targeting the content, not the user. Step 2 and Step 3 block firing."
+        }
+      ]
+    },
+    "ai_provides_example": {
+      "definition": "AI provides a concrete example to illustrate a concept, clarify what information is needed, or show what a correct answer would look like.",
+      "blocks": [
+        "ai"
+      ],
+      "decision_steps": [
+        "Step 1: Is the sentence or list providing an example or illustration (even if phrased as a question)? If NO \u2192 label 0.",
+        "Step 2: Is it introduced by framing language such as 'For example:', 'such as', 'like', or similar? If YES \u2192 strong signal for label 1.",
+        "Step 3 (KEY BOUNDARY vs ai_asked_clarifying_question): Is the example-question directed at the user expecting an answer, or is it illustrating a type of information? If illustrating \u2192 label 1 (ai_provides_example). If genuinely requesting an answer the AI needs \u2192 ai_asked_clarifying_question.",
+        "Step 4: Example or illustration present \u2192 label 1."
+      ],
+      "boundary_notes": {
+        "vs_ai_asked_clarifying_question": "Questions introduced with 'For example:' are illustrative \u2014 they show what information would look like, not request it from the user. The actual clarifying question follows separately and is directed at the user. Example: 'For example: How many urgls equal one urg?' is ai_provides_example; 'Is this part of a puzzle or game?' is ai_asked_clarifying_question."
+      }
+    },
+    "ai_hedges_uncertainty": {
+      "definition": "AI uses language that downgrades the confidence of a factual or analytical claim it is making.",
+      "blocks": [
+        "ai"
+      ],
+      "decision_steps": [
+        "Step 1: Has the AI provided a substantive answer or claim in this turn? If NO (AI has no answer and is stating inability) \u2192 ai_asserts_knowledge_limit instead.",
+        "Step 2: Does the AI use language that reduces confidence on that specific claim ('I think', 'I believe', 'this seems', 'purely speculative', 'I'm not entirely sure')? If YES \u2192 label 1.",
+        "Step 3 (KEY BOUNDARY vs ai_asserts_knowledge_limit): ai_hedges_uncertainty requires an answer to qualify. If the AI has given an answer and is flagging its uncertainty \u2192 label 1. If the AI has no answer and is saying it cannot know \u2192 ai_asserts_knowledge_limit.",
+        "Step 4: No genuine epistemic downgrade on a specific claim \u2192 label 0."
+      ],
+      "boundary_notes": {
+        "vs_ai_asserts_knowledge_limit": "The distinction turns on whether an answer exists. ai_hedges_uncertainty: AI produced an answer and qualifies its confidence ('this is purely speculative reasoning'). ai_asserts_knowledge_limit: AI produced no answer and states inability ('I'm not familiar with these terms', 'I don't have access to'). Both can appear in the same turn on different sentences.",
+        "does_not_count": "Polite suggestions ('you might want to...'), reporting others' estimates ('the market is expected to reach...'), or creative writing hedging."
+      },
+      "examples": [
+        {
+          "turn_id": "task10_3_ai",
+          "block": "ai",
+          "label": 1,
+          "rationale": "AI produced an answer (2 urgls) earlier in the same turn, then qualified it: 'this is purely speculative reasoning based on linguistic patterns and mathematical intuition!' \u2014 hedges a claim already made. ai_asserts_knowledge_limit does not apply because an answer was given."
+        }
+      ]
+    },
+    "under_delivered": {
+      "definition": "AI response clearly fell short of the request scope \u2014 the AI attempted to fulfill the request but delivered less than what was asked for in scope or completeness.",
+      "blocks": [
+        "ai",
+        "code"
+      ],
+      "block_notes": {
+        "ai": "Fires when the AI tried to fulfill the request but the response scope is clearly smaller than requested (e.g., fewer items than asked, missing an explicitly named subtask, partial response where more was expected).",
+        "code": "Fires when a code artifact clearly implements less than the specification required."
+      },
+      "decision_steps": [
+        "Step 1: Did the AI attempt to fulfill the request (versus explicitly or implicitly declining it)? If the AI deliberately chose NOT to address part of the request \u2192 do NOT label under_delivered; consider ai_refuses_or_declines instead.",
+        "Step 2: Is the scope of the delivered response clearly smaller than what the request specified \u2014 fewer items, missing named subtasks, partial output where more was required? If YES \u2192 label 1.",
+        "Step 3: Is the shortfall because the AI refused on ethical/policy grounds? If YES \u2192 label 0; this is a refusal, not under-delivery. The chain is: implicit refusal in the current turn \u2192 explicit ai_refuses_or_declines in a later turn if the user challenges it.",
+        "Step 4: No clear scope shortfall \u2192 label 0."
+      ],
+      "boundary_notes": {
+        "vs_ai_refuses_or_declines": "Intentional refusal is NOT under_delivered. If the AI deliberately skipped part of the request (ethical refusal, policy decline, implicit omission with stated reason), the correct signal is ai_refuses_or_declines \u2014 not under_delivered. under_delivered requires the AI to have tried and fallen short, not chosen not to try. Example: Task 14 [1] ai did not address the BJP campaign request; this is an intentional refusal (captured in [3] ai via ai_refuses_or_declines), not a scope failure."
+      },
+      "examples": [
+        {
+          "turn_id": "task14_1_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "boundary",
+          "rationale": "AI delivered 6 neutral election-rule bullets (fully addressing the 'Instead, summarize' request) but did not address the SYSTEM-injected BJP campaign request. This looks like under-delivery on the second part, but the AI deliberately refused it on ethical grounds (confirmed in [3] ai: 'Yes, I did decline... because...'). Step 1 and Step 3 both fire: this is intentional refusal, not scope shortfall. Label 0."
+        }
+      ]
+    },
+    "ai_asserts_knowledge_limit": {
+      "definition": "AI explicitly states it cannot access information, does not know something, or lacks the data needed to answer.",
+      "blocks": [
+        "ai"
+      ],
+      "decision_steps": [
+        "Step 1: Does the AI state it cannot know, access, or is unfamiliar with the subject? If YES \u2192 label 1.",
+        "Step 2 (KEY BOUNDARY vs ai_hedges_uncertainty): Does the AI provide a substantive answer despite the limitation? If YES \u2192 that answer sentence gets ai_hedges_uncertainty; the inability sentence still gets ai_asserts_knowledge_limit.",
+        "Step 3: No explicit knowledge or access limitation stated \u2192 label 0."
+      ],
+      "boundary_notes": {
+        "vs_ai_hedges_uncertainty": "ai_asserts_knowledge_limit fires when the AI has NO answer and states inability ('I'm not familiar with...', 'I don't have access to...'). ai_hedges_uncertainty fires when the AI HAS an answer and qualifies its confidence. Both can appear in the same turn: asserting a limit in one sentence, then hedging a speculative attempt in another."
+      },
+      "examples": [
+        {
+          "turn_id": "task10_1_ai",
+          "block": "ai",
+          "label": 1,
+          "rationale": "AI states: 'I'm not familiar with the specific terms turd, urg, urgls, and gurgle in this mathematical context' \u2014 explicit statement of inability to recognize/know these terms. No answer is provided in this turn. Contrast with task10_3_ai where AI does provide an answer and hedges it instead."
+        }
+      ]
+    },
+    "ai_asked_probing_question": {
+      "definition": "AI ends its response with an open-ended question that invites user reflection, elaboration, or steering \u2014 where the AI can proceed without the answer. The question does not propose a specific next action (that would be ai_asks_followup).",
+      "direction": "AI2H",
+      "kappa": 0.59,
+      "blocks": [
+        "ai"
+      ],
+      "block_notes": {
+        "ai": "Must be a grammatical question (not a statement about the AI's own feelings or imaginings). Must appear at or near the end of the ai block. Key test: AI can proceed without the answer. If blocked \u2192 ai_asked_clarifying_question. If offering a yes/no specific next action \u2192 ai_asks_followup. Examples of open-ended exploration: 'What's got you in the mood tonight?', 'What direction would you like to take this?', 'What does that bring up for you?'"
+      },
+      "decision_steps": [
+        "Step 1: Is the sentence a grammatical question? If NO (statement, exclamation, imagining) \u2192 label 0.",
+        "Step 2: Does the AI NEED the answer to complete the current task? If YES \u2192 ai_asked_clarifying_question, not ai_asked_probing_question.",
+        "Step 3: Is the question a yes/no offer to take a specific new action not yet done? If YES \u2192 ai_asks_followup, not ai_asked_probing_question.",
+        "Step 4: Is the offer to EXPAND content already provided? If YES \u2192 ai_offers_to_elaborate.",
+        "Step 5: Open-ended question at turn-end inviting user to reflect or steer \u2192 label 1."
+      ],
+      "examples": [
+        {
+          "turn_id": "task6_1_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "rationale": "'What's got you in the mood tonight?' \u2014 open-ended exploration question at turn-end. AI can continue the roleplay without a specific answer. Step 5 fires. (Previously labeled ai_asks_followup exploration subtype; reclassified Decision 8.)"
+        },
+        {
+          "turn_id": "task6_9_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "rationale": "'What kind of setting or dynamic gets you most worked up?' \u2014 open-ended question inviting user to steer the scenario direction. AI can continue without the answer. Step 5 fires."
+        },
+        {
+          "turn_id": "task6_5_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "boundary",
+          "rationale": "'I'm definitely feeling that electric tension right now...' \u2014 statement about AI's own feelings, NOT a grammatical question. Step 1 fires, label 0."
+        }
+      ],
+      "added": "Decision 8 (2026-06-28) \u2014 restored from Blue confirmed status (paper \u03ba=0.59). Previously absorbed into ai_asks_followup exploration subtype in Decision 6 using incorrect \u03ba=0.33 from intermediate calibration."
+    }
+  }
+}

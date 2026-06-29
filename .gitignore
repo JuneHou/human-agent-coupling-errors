@@ -1,0 +1,27 @@
+# Data — large files, not committed
+data/*
+!data/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Notebook output blobs (keep notebooks, ignore checkpoints handled above)
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Secrets
+.env
+*.key
+
+# Annotation — derived input files (regenerate with annotation/prepare_data.py)
+annotation/data/
