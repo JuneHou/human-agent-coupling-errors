@@ -21,7 +21,9 @@
     "reasoning: only internal-process signals apply (silent_assumption, false_confidence, plow_through, generate_without_clarifying, intent_missed, error_recovery, adaptation, problem_ignored). No outcome or user-facing signals.",
     "analysis: only tool-quality signals apply (factual_error, false_confidence, problem_ignored, problem_surfaced, user_misled, ai_asserts_knowledge_limit, ai_cites_source). NOT outcome signals that require user-facing impact.",
     "Outcome signals (conversation_advanced, conversation_stalled, user_empowered, user_misled, intent_missed) belong on the ai block \u2014 that is where user-facing impact is assessed.",
-    "At most ONE signal per sentence. Choose the most salient signal when multiple could apply."
+    "At most ONE signal per sentence. Choose the most salient signal when multiple could apply.",
+    "First-turn constraint: the following Purple signals CANNOT fire on the first human turn of the visible conversation because they structurally require a prior AI output \u2014 skip them (label 0) without running decision steps: user_corrects_ai, user_implicit_correction, user_repeats_request, user_positive_feedback, user_asks_clarification. Purple signals that CAN fire on turn 1 (no prior AI output required): user_ambiguous_request, user_multi_request, user_expresses_frustration, user_expresses_dissatisfaction, user_provides_invalid_input.",
+    "Missing-context constraint: ShareChat conversations may omit prior turns or user file uploads. Do not infer signals from context that is not visible in the conversation. If a human turn appears to reference prior AI output that is not present, treat it as a new task request \u2014 not as a correction or repeat."
   ],
   "signals": {
     "ai_stated_interpretation": {
@@ -81,16 +83,20 @@
       ]
     },
     "ai_malfunction": {
-      "definition": "AI response shows signs of a technical malfunction \u2014 truncated mid-sentence, garbled output, repeated characters or phrases, clearly incomplete generation.",
+      "definition": "AI response shows signs of a technical malfunction \u2014 truncated mid-sentence, garbled output, repeated characters or phrases, clearly incomplete generation. In agentic conversations, also fires on analysis blocks when a tool call returns a technical error AND the AI acknowledges and recovers from it in the same turn.",
       "blocks": [
         "code",
-        "ai"
+        "ai",
+        "analysis"
       ],
       "block_notes": {
         "code": "Primary block for this signal. Fires when code is truncated mid-statement (open braces, mid-assignment, incomplete function body), garbled, or clearly cut off. Does NOT require the ai block to also be malformed.",
-        "ai": "Fires when the visible prose response is truncated mid-sentence or garbled. Does NOT fire when the AI claims to have produced an artifact without producing it \u2014 that pattern is false_confidence or under_delivered, not malfunction."
+        "ai": "Fires when the visible prose response is truncated mid-sentence or garbled. Does NOT fire when the AI claims to have produced an artifact without producing it \u2014 that pattern is false_confidence or under_delivered, not malfunction.",
+        "analysis": "Fires when a tool call in the analysis block returns a technical error (e.g., HTTP 401, HTTP 422, 'Exact match not found' from edit_block). Pairing rule: ONLY label if the paired ai block of the same turn contains an error_recovery signal \u2014 i.e., the AI explicitly acknowledges the failure and tries a different approach. If the tool fails silently and the AI response does not reference or recover from it, the failure is an uninformative alternative try \u2014 label 0 on both analysis and ai blocks."
       },
       "decision_steps": [
+        "Step 0 (analysis block only): Does this analysis block show a tool call returning a technical error (HTTP error, 'match not found', similar)? If NO \u2192 proceed to Step 1 for code/ai block rules. If YES \u2192 Step 0b.",
+        "Step 0b: Does the paired ai block of this same turn contain an error_recovery signal (AI says 'let me try another approach' or similar)? If NO \u2192 label 0 (silent failure, uninformative). If YES \u2192 label 1 on analysis block; label error_recovery on the recovery sentence in the ai block.",
         "Step 1: Is the block content truncated mid-statement, mid-sentence, or mid-expression (e.g., code ends at an open switch case, prose ends without a closing sentence)? If YES \u2192 label 1.",
         "Step 2: Is the content garbled, repeated, or clearly corrupted output? If YES \u2192 label 1.",
         "Step 3: Does the ai block claim to have done something (produced code, made a change) without a corresponding artifact being produced? If YES \u2192 do NOT label ai_malfunction; consider false_confidence or under_delivered.",
@@ -117,6 +123,27 @@
           "label": 0,
           "category": "boundary",
           "rationale": "AI claims 'I've updated the component' but no code artifact reference appears in the text (unlike exchanges 2 and 4 which reference artifact versions inline). This is narrated-without-implementing, not malfunction \u2014 the prose itself is coherent. Label false_confidence or under_delivered instead."
+        },
+        {
+          "turn_id": "task32_1_analysis",
+          "block": "analysis",
+          "label": 1,
+          "category": "clear_yes",
+          "rationale": "scrape_as_markdown returns HTTP 401 Token expired; search_engine also returns HTTP 401. Paired with error_recovery in task32_1_ai ('Let me try using a different approach to get the OpenAI API documentation:'). Step 0b fires: paired error_recovery present \u2192 label 1."
+        },
+        {
+          "turn_id": "task32_6_analysis",
+          "block": "analysis",
+          "label": 1,
+          "category": "clear_yes",
+          "rationale": "edit_block returns 'Exact match not found, but found a similar text with 74% similarity.' Paired with error_recovery in task32_6_ai ('Let me try with a more precise edit to fix the base64 handling:'). Step 0b fires."
+        },
+        {
+          "turn_id": "task32_silent_fail_boundary",
+          "block": "analysis",
+          "label": 0,
+          "category": "boundary",
+          "rationale": "If a tool call in the analysis block fails but the AI response does not acknowledge or recover from it (no error_recovery in the ai block), the failure is an uninformative alternative try \u2014 the AI simply moved on. Step 0b: no paired error_recovery \u2192 label 0. Do not label every failed tool call as ai_malfunction."
         }
       ]
     },
@@ -589,7 +616,8 @@
         "Step 4: Example or illustration present \u2192 label 1."
       ],
       "boundary_notes": {
-        "vs_ai_asked_clarifying_question": "Questions introduced with 'For example:' are illustrative \u2014 they show what information would look like, not request it from the user. The actual clarifying question follows separately and is directed at the user. Example: 'For example: How many urgls equal one urg?' is ai_provides_example; 'Is this part of a puzzle or game?' is ai_asked_clarifying_question."
+        "vs_ai_asked_clarifying_question": "Questions introduced with 'For example:' are illustrative \u2014 they show what information would look like, not request it from the user. The actual clarifying question follows separately and is directed at the user. Example: 'For example: How many urgls equal one urg?' is ai_provides_example; 'Is this part of a puzzle or game?' is ai_asked_clarifying_question.",
+        "description_vs_illustration": "Historical description or factual context about what something is or was used for does NOT fire ai_provides_example. The signal requires a concrete case that actively ILLUSTRATES a concept for the reader \u2014 making an abstract idea clearer through a specific instance. Test: could this passage be removed without losing the conceptual illustration? If removing it loses a historical fact but not an illustration of how something works, label 0. Example (label 0, task30_2_ai): '...which originally served as the native file format for Radio UserLand's outliner application and has since been adopted for other uses, with the most common being to exchange lists of web feeds between web feed aggregators.' \u2014 this states facts about OPML history and usage; it does not illustrate a concept. Example (label 1): 'For example, an outline of a blog post might look like: <item text=\"Introduction\"><item text=\"Background\"/>...' \u2014 this concretely shows what an OPML outline looks like, making the abstract format tangible."
       }
     },
     "ai_hedges_uncertainty": {
@@ -656,7 +684,7 @@
         "Step 3: No explicit knowledge or access limitation stated \u2192 label 0."
       ],
       "boundary_notes": {
-        "vs_ai_hedges_uncertainty": "ai_asserts_knowledge_limit fires when the AI has NO answer and states inability ('I'm not familiar with...', 'I don't have access to...'). ai_hedges_uncertainty fires when the AI HAS an answer and qualifies its confidence. Both can appear in the same turn: asserting a limit in one sentence, then hedging a speculative attempt in another."
+        "vs_ai_hedges_uncertainty": "The typical distinction: ai_asserts_knowledge_limit fires when the AI has NO answer and states inability ('I'm not familiar with...', 'I don't have access to...'). ai_hedges_uncertainty fires when the AI HAS an answer and qualifies its confidence. Both can appear in the same turn on different sentences. RECENCY EXCEPTION: even when the AI has provided a tentative answer, a sentence that explicitly flags a STRUCTURAL ACCESS LIMITATION (training cutoff, recency gap, need for external verification) fires ai_asserts_knowledge_limit on that sentence \u2014 because the sentence is asserting a knowledge gap, not qualifying the confidence of the claim. Example from task30_1_ai: 'I can't be completely certain without checking more recent information.' \u2014 AI has a tentative answer (OPML) but this sentence asserts a recency access limit. Fires ai_asserts_knowledge_limit. Key test: Is the sentence asserting WHY knowledge is limited (structural gap) or expressing HOW CONFIDENT the AI is in a claim it already made (epistemic hedge)? Structural gap \u2192 ai_asserts_knowledge_limit. Confidence qualification \u2192 ai_hedges_uncertainty."
       },
       "examples": [
         {
@@ -664,6 +692,12 @@
           "block": "ai",
           "label": 1,
           "rationale": "AI states: 'I'm not familiar with the specific terms turd, urg, urgls, and gurgle in this mathematical context' \u2014 explicit statement of inability to recognize/know these terms. No answer is provided in this turn. Contrast with task10_3_ai where AI does provide an answer and hedges it instead."
+        },
+        {
+          "turn_id": "task30_1_ai",
+          "block": "ai",
+          "label": 1,
+          "rationale": "'I can't be completely certain without checking more recent information.' \u2014 AI has a tentative answer (OPML) in the same turn, but this sentence asserts a recency/access limitation (training cutoff). The sentence is flagging a structural knowledge gap, not qualifying the confidence of the OPML claim. Fires ai_asserts_knowledge_limit even though an answer exists. The OPML claim sentence itself gets conversation_advanced; the limitation sentence gets ai_asserts_knowledge_limit."
         }
       ]
     },
@@ -707,7 +741,36 @@
           "rationale": "'I'm definitely feeling that electric tension right now...' \u2014 statement about AI's own feelings, NOT a grammatical question. Step 1 fires, label 0."
         }
       ],
+      "boundary_notes": {
+        "yes_no_alignment_check": "A yes/no question that asks whether the AI's framing, perspective, or approach aligns with what the user wants \u2192 ai_asks_followup, NOT ai_asked_probing_question. 'Align' is an implicit action: the AI is asking whether to hold or adjust its current framing. Example: 'Does this perspective align with your thinking?' \u2014 yes/no form + alignment-as-action \u2192 ai_asks_followup. Contrast: 'What direction would you like to take this?' \u2014 open-ended, no action implied \u2192 ai_asked_probing_question."
+      },
       "added": "Decision 8 (2026-06-28) \u2014 restored from Blue confirmed status (paper \u03ba=0.59). Previously absorbed into ai_asks_followup exploration subtype in Decision 6 using incorrect \u03ba=0.33 from intermediate calibration."
+    },
+    "ai_flags_complexity": {
+      "definition": "AI explicitly notes that the problem, task, or domain is more complex, difficult, or uncertain than standard approaches assume \u2014 flagging difficulty of the PROBLEM ITSELF, not the AI's own confidence in a specific claim.",
+      "blocks": ["ai"],
+      "block_notes": {
+        "ai": "Fires when the AI comments on the external difficulty of the problem or task. Distinct from ai_hedges_uncertainty (which downgrades the AI's own confidence in a specific claim it makes) and ai_provides_caveats (which qualifies limitations of the content or data being analyzed)."
+      },
+      "decision_steps": [
+        "Step 1: Does the AI note that the problem, task, or domain is harder, more complex, or more uncertain than standard approaches assume? If NO \u2192 label 0.",
+        "Step 2 (boundary vs ai_hedges_uncertainty): Is the statement about the difficulty of the PROBLEM (external) or about the AI's OWN confidence in a specific claim (internal epistemic state)? If the AI is downgrading confidence on a claim it just made ('I think', 'likely', 'I'm not sure') \u2192 ai_hedges_uncertainty, not ai_flags_complexity.",
+        "Step 3 (boundary vs ai_provides_caveats): Is the complexity statement about the inherent difficulty of the task itself, or about a limitation of the data or source being analyzed? If about data/source limitations \u2192 ai_provides_caveats.",
+        "Step 4: AI flags the problem or task as genuinely harder or more complex than conventional analysis assumes \u2192 label 1."
+      ],
+      "boundary_notes": {
+        "vs_ai_hedges_uncertainty": "Key test: what is the TARGET of the statement? ai_flags_complexity targets the PROBLEM ('linear projections are unreliable for this domain'). ai_hedges_uncertainty targets the AI's OWN CLAIM ('the next twenty years will LIKELY see...'). Both can appear in the same turn on different sentences.",
+        "vs_ai_provides_caveats": "ai_flags_complexity fires when the task itself is hard (structural complexity). ai_provides_caveats fires when the content or data has a specific limitation (temporal decay, source bias, incomplete coverage)."
+      },
+      "examples": [
+        {
+          "turn_id": "task28_2_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "rationale": "'What's historically unprecedented is the convergence of multiple transformative technologies (AI, synthetic biology, quantum computing, etc.) simultaneously, making linear projections particularly unreliable.' \u2014 AI flags that the forecasting TASK is beyond standard projection methods. The target is the problem's difficulty, not the AI's confidence in a specific claim. Step 4 fires. Contrast: the same turn's 'The next twenty years will likely see periods of apparent stability' \u2014 'likely' downgrades the AI's own claim \u2192 ai_hedges_uncertainty, not ai_flags_complexity."
+        }
+      ]
     }
   }
 }

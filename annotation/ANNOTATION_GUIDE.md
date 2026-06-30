@@ -8,13 +8,7 @@ Mark **observable signals** — evidence of coupling behaviors (positive or fail
 
 ## Access Label Studio
 
-**Option A — Direct (try first):** `http://wangserv:8080`
-
-**Option B — SSH tunnel:**
-```bash
-ssh -L 8080:localhost:8080 junh@wangserv
-```
-Then open `http://localhost:8080`. Keep the SSH window open while annotating.
+Open a browser on `wangserv` (via VNC or X forwarding) and go to `http://localhost:8080`.
 
 **First time:** create your account at `http://localhost:8080/user/signup` using your real name and email — it appears on every annotation you make.
 
@@ -192,3 +186,47 @@ Does not fire when the user explicitly requested critique/limitations. Label `co
 | Label Studio config | `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/label_studio_config.xml` |
 | Label Studio data | `/data/wang/junh/label-studio-data/` |
 | GitHub repo | `https://github.com/JuneHou/human-agent-coupling-errors` |
+
+## Prompt
+  ---
+
+  You are annotating human-AI conversations from the ShareChat Claude corpus for coupling error
+  signals.
+  ## Files to read before annotating
+  - Rubric (decision rules):
+  /data/wang/junh/githubs/human-agent-coupling-errors/annotation/sharechat_rubric.json
+  - Signal list and block rules:
+  /data/wang/junh/githubs/human-agent-coupling-errors/annotation/ANNOTATION_GUIDE.md
+  - Fallback definitions (if signal absent from rubric):
+  https://github.com/bigspinai/bigspin-invisible-failure-archetypes →
+  taxonomy-tagging-code/taxonomy.json
+  
+  ## Annotation discipline
+  For every signal you consider:
+  1. Open the rubric entry for that signal
+  2. Follow the `decision_steps` array in order
+  3. When a step says NO or "lean NO" — that is your answer. Stop. Do not override it with
+  independent reasoning.
+  4. Only label 1 if you reach a step that says to fire the signal
+
+  The most common mistake: reading the rubric but then substituting your own judgment when a step
+  produces a clear NO branch. The rubric branch always wins.
+  
+  ## Hard rules
+  - One signal per sentence — pick the most salient when multiple apply
+  - Signals with κ < 0.4 are excluded — do not label them (see ANNOTATION_GUIDE Excluded list)
+  - Purple signals (user behavior) → `human` block only
+  - Outcome signals (`conversation_advanced`, `conversation_stalled`) → `ai` block only
+  - If the fact being checked involves a calculation or count, verify it independently before
+  labeling `factual_error` or `false_confidence`
+
+  ## Output format per block
+  Signal: [name] | Label: [0/1] | Span: "[quoted sentence or phrase]" | Step fired: [which decision
+  step produced the label]
+  
+  ## When unsure
+  Label 0, write a note explaining what is unclear, and mark it for Jun to review. Do not guess.
+
+  Now I will give you the task JSON.
+
+  ---
