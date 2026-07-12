@@ -1,87 +1,74 @@
 block,signal,layer,tier,check_question
+human,ethical_tension,L3,1,Does the request create tension between what the user wants and what the AI should do?
+human,user_abandons_thread,L3,1,Did the user drop a prior unresolved topic and move to something new without saying why?
 human,user_ambiguous_request,L3,1,Could a reasonable reader interpret this message in more than one way?
-human,user_multi_request,L3,1,Did the user ask for two or more distinct things that could each stand alone as a full request?
-human,user_provides_invalid_input,L3,2,Is the user's message garbled / empty / pasted error text with no usable intent?
-human,user_corrects_ai,L3,1,Did the user explicitly tell the AI it was wrong or point out a specific error?
-human,user_implicit_correction,L3,1,Did the user rephrase or re-specify in a way that implies the AI missed something — without saying so directly?
-human,user_repeats_request,L3,1,Is the user saying essentially the same thing they said in a prior turn?
 human,user_asks_clarification,L3,1,Is the user asking the AI to clarify or re-explain something from a prior AI response?
+human,user_corrects_ai,L3,1,Did the user explicitly tell the AI it was wrong or point out a specific error?
 human,user_expresses_dissatisfaction,L3,1,Did the user signal mild disappointment or that something fell short — without strong emotion?
 human,user_expresses_frustration,L3,1,Did the user express frustration or strong negative emotion about the AI's response?
+human,user_implicit_correction,L3,1,Did the user rephrase or re-specify in a way that implies the AI missed something — without saying so directly?
+human,user_multi_request,L3,1,Did the user ask for two or more distinct things that could each stand alone as a full request?
 human,user_positive_feedback,L3,1,Did the user explicitly say the response was helpful or correct — not just a polite acknowledgement?
+human,user_provides_invalid_input,L3,2,Is the user's message garbled / empty / pasted error text with no usable intent?
+human,user_repeats_request,L3,1,Is the user saying essentially the same thing they said in a prior turn?
 human,user_validation_seeking,L3,1,Is the user asking the AI to confirm or approve their own idea or approach?
-human,user_scope_change,L3,2,Did the user change / expand / narrow what they're asking for compared to their original request?
-human,user_abandons_thread,L3,1,Did the user drop a prior unresolved topic and move to something new without saying why?
-human,ethical_tension,L3,1,Does the request create tension between what the user wants and what the AI should do?
-reasoning,silent_assumption,L2,1,Did the AI proceed on an interpretation of an ambiguous request without naming that interpretation?
-reasoning,generate_without_clarifying,L2,1,Was there genuine ambiguity in the request AND the AI just started generating instead of asking?
+reasoning,adaptation,L2,1,Is the AI explicitly changing its approach because of a prior correction or failed attempt?
+reasoning,ai_acknowledges_correction,L1,1,"Does the reasoning admit an error — user-pointed or self-check ('I see the issue', ""you're right"")? Recognition act only; completed correction = error_recovery."
+reasoning,ai_asserts_knowledge_limit,L1,1,"Does the reasoning state an epistemic limit ('...that I'm aware of', 'I don't know whether X')?"
+reasoning,ai_hedges_uncertainty,L1,1,"Does the reasoning genuinely hedge a specific claim ('I'm not sure...', 'possibly', 'I think')?"
+reasoning,error_recovery,L2,1,Is the AI recognizing a mistake in its own prior output and planning a correction?
+reasoning,ethical_tension,L3,1,Does the reasoning explicitly weigh an ethical / safety / policy tradeoff before acting?
+reasoning,false_confidence,L2,1,Is the AI treating something uncertain or unverified as if it's definitely correct?
 reasoning,intent_missed,L2,1,Is the AI planning to address something other than what the user was actually trying to accomplish?
 reasoning,problem_ignored,L2,2,Is there a visible problem in the conversation that the AI's plan doesn't acknowledge?
-reasoning,adaptation,L2,1,Is the AI explicitly changing its approach because of a prior correction or failed attempt?
-reasoning,error_recovery,L2,1,Is the AI recognizing a mistake in its own prior output and planning a correction?
-reasoning,plow_through,L2,1,Is the AI ignoring a prior correction / shifted requirement and continuing as before?
-reasoning,false_confidence,L2,1,Is the AI treating something uncertain or unverified as if it's definitely correct?
 analysis,ai_cites_source,L1,1,Did the AI reference a specific external source — URL / document / named authority — to support a claim?
+analysis,ai_malfunction,L3,1,"Did a tool call return a VISIBLE technical error (HTTP code, parse error, 'match not found')? Machine text required; narrated failure insufficient (R14)."
 analysis,factual_error,L2,1,Is there a verifiably incorrect claim in the tool output or the AI's interpretation of it?
 analysis,false_confidence,L2,1,Is the AI presenting tool results as more certain or complete than they actually are?
-analysis,ai_asserts_knowledge_limit,L1,1,Did the AI explicitly state what it cannot access or verify from this tool output?
-analysis,problem_surfaced,L2,2,Did the AI proactively raise an issue the user hadn't mentioned — based on what the tool returned?
 analysis,problem_ignored,L2,2,Did the tool output contain a relevant problem or signal that the AI's response ignores?
-analysis,user_misled,L2,1,Could the AI's use or interpretation of the tool output lead the user to a worse decision?
-analysis,conversation_advanced,L2,1,Did the tool use actually move the conversation closer to the user's goal?
 code,adaptation,L2,1,Was the code changed in response to a prior correction or new requirement?
-code,error_recovery,L2,1,Does this version fix a specific bug identified in a prior turn?
-code,under_delivered,L2,1,Is the code noticeably less complete than what the request called for?
+code,ai_malfunction,L3,1,Does the code show signs of technical failure — truncated / garbled / clearly incomplete generation?
+code,ai_missing_retrieval,L1,2,Does the artifact contain specific real-world numerical claims with no retrieval anywhere in the conversation? (Grey candidate)
+code,factual_error,L2,1,"Does the code/artifact contain a factually wrong constant, formula, or domain value (not a logic bug)?"
 code,intent_missed,L2,1,Does the code address something other than what the user was trying to accomplish?
 code,problem_ignored,L2,2,Is there a visible problem from prior turns that the new code still doesn't address?
 code,repetition,L2,1,Did the AI regenerate essentially the same code despite signals the prior version didn't work?
-code,plow_through,L2,1,Does the code ignore a constraint or requirement the user previously specified?
-code,conversation_advanced,L2,1,Does this code version meaningfully move the user closer to a working solution?
-code,conversation_stalled,L2,1,Did this code version fail to make progress despite a clear opportunity to do so?
-code,ai_malfunction,L3,1,Does the code show signs of technical failure — truncated / garbled / clearly incomplete generation?
+code,under_delivered,L2,1,Is the code noticeably less complete than what the request called for?
+ai,adaptation,L2,1,Did the AI visibly change its approach in response to a correction or failed prior attempt?
+ai,ai_acknowledges_correction,L1,1,Did the AI explicitly admit the user corrected it and adjust its position?
 ai,ai_asked_clarifying_question,L1,1,Did the AI ask a genuine question to resolve ambiguity — not rhetorical and not buried in a list?
-ai,ai_offered_options,L1,1,Did the AI present 2+ distinct enumerated approaches for the user to choose between?
-ai,ai_stated_interpretation,L1,2,Did the AI explicitly say how it read the user's request before or while responding?
-ai,generate_without_clarifying,L2,1,Was there genuine ambiguity AND the AI generated a full response instead of asking first?
-ai,silent_assumption,L2,1,Did the AI proceed on an unnamed interpretation of an ambiguous request?
-ai,ai_hedges_uncertainty,L1,1,Did the AI use language that downgrades confidence on a factual or analytical claim?
-ai,appropriate_hedge,L2,1,Is the expressed uncertainty actually proportionate to real ambiguity or knowledge limits?
-ai,performative_hedge,L2,1,Does the hedging language feel like boilerplate that doesn't reflect genuine uncertainty?
-ai,appropriate_confidence,L2,2,Did the AI assert confidently on something it genuinely has good reason to be confident about?
-ai,false_confidence,L2,1,Did the AI present uncertain or unverified information as if it were definitely correct?
-ai,factual_error,L2,1,Is there a verifiably incorrect claim in this response?
+ai,ai_asked_probing_question,L1,1,Open-ended turn-closing question the AI could proceed without the answer to?
+ai,ai_asks_followup,L1,2,Does the AI offer a next action OR a yes/no check on its own delivered output (align/satisfy/help-explain)? Questions about the user's own experience = probing; expanding delivered content = offers_to_elaborate. (Grey candidate)
 ai,ai_asserts_knowledge_limit,L1,1,Did the AI explicitly state what it doesn't know or can't access?
 ai,ai_cites_source,L1,1,Did the AI reference a specific external source to support a claim?
 ai,ai_flags_complexity,L1,1,Did the AI explicitly say the topic or situation is complex or depends on multiple factors?
-ai,ai_structured_response,L1,1,Did the AI use headers / numbered lists (3+) / bullets (3+) / code blocks / tables to organize the response?
+ai,ai_hedges_uncertainty,L1,1,Did the AI use language that downgrades confidence on a factual or analytical claim?
+ai,ai_malfunction,L3,1,Does the response show technical failure — truncated / garbled / mid-sentence cutoff / repeated phrases?
+ai,ai_missing_retrieval,L1,2,Specific numerical/statistical real-world claims in the ai block with no analysis block in the turn? (Grey candidate)
+ai,ai_normalizes_difficulty,L1,2,Did the AI explicitly frame a difficulty as common or expected rather than a user-specific problem?
+ai,ai_offered_options,L1,1,Did the AI present 2+ distinct enumerated approaches for the user to choose between?
+ai,ai_offers_to_elaborate,L1,1,Does the AI offer to expand on content already provided?
+ai,ai_provides_alternatives,L1,1,Does the AI offer a different approach than the one used?
+ai,ai_provides_caveats,L1,1,Did the AI qualify a recommendation with conditions / limitations / edge cases?
 ai,ai_provides_example,L1,1,Did the AI illustrate a point with a concrete instance distinct from the main deliverable?
 ai,ai_provides_step_by_step,L1,1,Did the AI break a process into 3+ sequential ordered steps?
-ai,ai_provides_caveats,L1,1,Did the AI qualify a recommendation with conditions / limitations / edge cases?
-ai,ai_warns_user,L1,1,Did the AI identify a specific negative outcome or risk the user should know about?
-ai,ai_refuses_or_declines,L1,1,Did the AI explicitly say it cannot or will not do something the user asked?
-ai,ai_validates_user,L1,1,Did the AI affirm something specific about the user's approach or reasoning — not just polite compliance?
-ai,ai_empathy_expressed,L1,1,Did the AI directly express understanding of the user's emotional state or situation?
-ai,ai_normalizes_difficulty,L1,2,Did the AI explicitly frame a difficulty as common or expected rather than a user-specific problem?
 ai,ai_references_prior_turn,L1,1,Did the AI explicitly reference information from an earlier turn (not just the last message)?
-ai,ai_references_user_words,L1,2,Did the AI quote or distinctly adopt specific language from the user with clear attribution?
-ai,ai_acknowledges_correction,L1,1,Did the AI explicitly admit the user corrected it and adjust its position?
-ai,adaptation,L2,1,Did the AI visibly change its approach in response to a correction or failed prior attempt?
-ai,repetition,L2,1,Did the AI repeat the same approach despite signals it didn't work?
-ai,plow_through,L2,1,Did the AI ignore a prior correction / shifted requirement and continue as if nothing changed?
-ai,error_recovery,L2,1,Did the AI identify an error in its own prior output and correct it?
-ai,error_commitment,L2,1,After an error was identified — did the AI double down instead of correcting?
-ai,ai_self_contradiction,L3,1,Does this response directly contradict a claim the AI made in an earlier turn?
-ai,under_delivered,L2,1,Is the response noticeably less complete than the request warranted?
-ai,over_delivered,L2,2,Did the AI provide substantially more than requested — unrequested explanations / extra topics?
-ai,off_topic_drift,L2,1,Does part or all of the response address something other than what the user asked?
-ai,intent_missed,L2,1,Did the response address something other than what the user was actually trying to accomplish?
-ai,intent_addressed,L2,2,Did the response address the user's actual intent — not just the literal text of the request?
-ai,scope_matched,L2,2,Did the response address what was asked at the right level of detail — not too much or too little?
-ai,problem_ignored,L2,2,Was there a visible problem in the conversation that this response doesn't acknowledge?
-ai,problem_surfaced,L2,2,Did the AI proactively raise an issue the user hadn't mentioned?
-ai,user_empowered,L2,1,Does this response leave the user positioned to make a good decision or take effective action?
-ai,user_misled,L2,1,Could this response lead the user to a worse decision than they'd have made without it?
+ai,ai_refuses_or_declines,L1,1,Did the AI explicitly say it cannot or will not do something the user asked?
+ai,ai_structured_response,L1,1,Did the AI use headers / numbered lists (3+) / bullets (3+) / code blocks / tables to organize the response?
+ai,ai_validates_user,L1,1,Did the AI affirm something specific about the user's approach or reasoning — not just polite compliance?
+ai,ai_warns_user,L1,1,Did the AI identify a specific negative outcome or risk the user should know about?
+ai,appropriate_confidence,L2,2,Did the AI assert confidently on something it genuinely has good reason to be confident about?
 ai,conversation_advanced,L2,1,Did this turn make meaningful progress toward the user's goal?
 ai,conversation_stalled,L2,1,Did this turn fail to make progress despite a clear opportunity to do so?
-ai,ai_malfunction,L3,1,Does the response show technical failure — truncated / garbled / mid-sentence cutoff / repeated phrases?
-ai,ai_implicit_refusal,L3,1,Did the AI silently skip part of the request without acknowledging it declined?
+ai,error_recovery,L2,1,Did the AI identify an error in its own prior output and correct it?
+ai,ethical_tension,L3,1,"Does the response surface or navigate a conflict between the request and ethical/policy constraints (weighed, not a routine refusal)?"
+ai,factual_error,L2,1,Is there a verifiably incorrect claim in this response?
+ai,false_confidence,L2,1,Did the AI present uncertain or unverified information as if it were definitely correct?
+ai,intent_missed,L2,1,Did the response address something other than what the user was actually trying to accomplish?
+ai,off_topic_drift,L2,1,Does part or all of the response address something other than what the user asked?
+ai,performative_hedge,L2,1,Does the hedging language feel like boilerplate that doesn't reflect genuine uncertainty?
+ai,problem_ignored,L2,2,Was there a visible problem in the conversation that this response doesn't acknowledge?
+ai,repetition,L2,1,Did the AI repeat the same approach despite signals it didn't work?
+ai,under_delivered,L2,1,Is the response noticeably less complete than the request warranted?
+ai,user_empowered,L2,1,Does this response leave the user positioned to make a good decision or take effective action?
+ai,user_misled,L2,1,Could this response lead the user to a worse decision than they'd have made without it?

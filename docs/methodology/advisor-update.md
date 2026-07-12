@@ -14,9 +14,9 @@ Data pipeline complete. Label Studio annotation interface ready. Beginning Step 
 |-------|--------------|-------|
 | Raw CSV | 911 | 8,364 message rows |
 | Remove ShareChat-excluded | 911 | 19 excluded URLs not present in CSV |
-| ≥50% English word-content | **716** | **7,028** message rows |
+| ≥50% English word-content (user turns AND llm turns each ≥50%) | **703** | **6,956** message rows |
 
-**Annotation input:** 716 conversations, 7,028 message rows
+**Annotation input:** 703 conversations, 6,956 message rows
 
 **Dialogue block structure in Label Studio** (expanded from raw CSV columns by `prepare_data.py`):
 
@@ -24,11 +24,11 @@ The raw CSV stores `thinking`, `code`, and `analysis` as embedded columns inside
 
 | Block type | Source in raw CSV | Conversations with this block | Coverage |
 |-----------|------------------|-------------------------------|----------|
-| `human` | `role=user`, `plain_text` | 716 | 100% |
-| `ai` | `role=llm`, `plain_text` | 716 | 100% |
-| `reasoning` | `role=llm`, `thinking` column | 272 | 38% — Claude Extended Thinking (not always on) |
-| `analysis` | `role=llm`, `analysis` column | 146 | 20% — tool use output (web search results) |
-| `code` | `role=llm`, `code` column | 112 | 16% — code artifacts, one block per artifact |
+| `human` | `role=user`, `plain_text` | 703 | 100% |
+| `ai` | `role=llm`, `plain_text` | 703 | 100% |
+| `reasoning` | `role=llm`, `thinking` column | 267 | 38% — Claude Extended Thinking (not always on) |
+| `analysis` | `role=llm`, `analysis` column | 144 | 20% — tool use output (web search results) |
+| `code` | `role=llm`, `code` column | 111 | 16% — code artifacts, one block per artifact |
 
 Paragraphs per conversation: min=2, median=5, mean=12, max=294.
 
@@ -311,3 +311,284 @@ Concern with Option B: reading the same conversations twice risks confirmation b
 For Step 1 (rubric development), the goal is to discover how signals manifest across contexts — not to count them. Labeling only the first occurrence of each signal per conversation would miss how the same signal appears differently mid-conversation versus at turn-end, or how it interacts with user repair behavior.
 
 Tentative position: label all occurrences in Step 1. Restrict to first occurrence only in Step 2 (systematic pass) once the rubric is stable, if annotation burden requires it.
+
+---
+
+## Update — 2026-07-07
+
+### Annotation progress
+
+| Milestone | Target | Completed | Remaining |
+|---|---|---|---|
+| Human-annotated conversations | 148 | 82 | 66 |
+| Full corpus (human + AI) | 703 | 82 | 621 |
+
+Tasks 1–82 annotated (Task 12 skipped — singleton greentext format, logged in `signal-decisions.md`).
+81 usable annotations. Tasks 67–82 completed this week; Tasks 67–82 are finalized and pending
+entry into Label Studio. Tasks 1–46 are in Label Studio (with 5 manual corrections outstanding
+for Task 67). Task 47 is flagged for deletion (Japanese DeepSeek conversation that passed the
+old English filter but not the new one).
+
+**Corpus update:** English filter tightened from "combined plain_text ≥50%" to "user turns ≥50%
+AND LLM turns ≥50% independently." Corpus reduced from 716 → **703 conversations** (13 removed).
+Power analysis target updated: n=148 (w=0.5, power=0.90, df=49) — essentially unchanged.
+
+---
+
+### Methodology revision: MAST-aligned taxonomy development plan
+
+A comprehensive review of the annotation process against MAST (Cemri et al., 2025, §3.2)
+identified 10 gaps and produced a 14-step methodology document.
+
+**Full document:** `docs/methodology/annotation-plan-mast-aligned.md`
+
+The table below maps each step to MAST's process. **Bold text marks additions or adaptations
+beyond what MAST did.**
+
+Steps marked **(original plan)** were already in our prior annotation strategy. Steps marked **(added)** are new requirements identified from the MAST comparison.
+
+| Step | MAST | Our Plan |
+|---|---|---|
+| 1. Taxonomy derivation + operationalization *(original plan)* | Open coding from traces: observe → name → group → write definitions; refinement happens reactively during IAR rounds | Label development-phase conversations with predecessor signals → signals cluster into Layer 1 (H→AI/AI→H) and Layer 2 (8 operations) → structure read off from data; **decision steps + block-placement rules + κ pre-screening (κ<0.4 excluded)** produced during this pass; **signal-decisions logged as auditable evidence trail; 3 "data changed taxonomy" moments banked** |
+| 2. Rubric freeze *(original plan)* | None — MAST refines reactively during IAR | **Freeze rubric before handing to other annotators; produce calibration set (gold-labeled conversations with per-sentence rationales) for training Annotators B and C.** Why added: without a frozen rubric, labels produced by different annotators are based on different definitions — κ becomes uninterpretable |
+| 3. Round 1 IAR *(added)* | 5 traces, 3 annotators independently, κ=0.24 | All 3 annotators independently label the **same** batch of unseen conversations; compute all pairwise κ per signal. **Sample size resolved (Xuan, 7/7): 5–10 conversations, "picked specifically so that all the failure cases are included"** — implemented as coverage-driven set-cover selection over pre-screened unseen conversations (procedure in annotation-plan-mast-aligned.md Step 8) |
+| 4. Round 1 refinement *(added)* | Iterate until consensus on each and every annotation in all Round 1 traces | Same + **all 3 re-annotate Round 1 traces after each rubric revision to verify consensus is actually reached, not just discussed** |
+| 5. Round 2 IAR *(added)* | 5 new traces (different MAS), κ=0.92 on first try | All 3 annotators independently label a **new** batch of unseen conversations (none from Round 1); target κ ≥ 0.6 avg; **report all 3 pairwise κ + minimum per signal** |
+| 6. Round 3 *(added)* | 5 new traces, κ=0.84 (stability check) | All 3 independently label another new batch; **conditional — run only if Round 2 required rubric changes** |
+| 7. Main annotation — 148 total *(original plan)* | Implied broader annotation | 3 annotators reach 148 conversations total; **IAR batch conversations count toward this total** (double duty: validation + coverage); **B and C complete the shared IAR batch before receiving independent assignments** (ordering constraint — prevents their independent-set experience from contaminating IAR labels) |
+| 8. LLM annotator — remaining 703−148 *(original plan)* | Automated pipeline validated against human gold | Claude annotates remaining conversations using frozen rubric; validated against human gold labels from the shared batch; **κ ≥ 0.6 per signal = usable for automation; self-reference bias (does Claude under-label its own failures?) reported as a finding, not just a limitation** |
+
+---
+
+### Rubric status
+
+`sharechat_rubric.json` **v0.3** (version numbering now follows the rubric file's own
+`version` field; the freeze tag will be **v1.0**, superseding the "v1.x / v2.0" numbering
+used earlier in this document).
+
+The June-28 stability streak ended on 7/7: the agentic-block screening and its task-by-task
+adjudication review produced Decisions 9–15 (boundary rulings R1–R19 in
+`annotation/review_rulings_log.md`; new rubric entries for `ai_cites_source`, `intent_missed`,
+`user_misled`; 75 label adds + 9 removals applied to the Label Studio DB). The freeze clock
+restarts under v0.3: **10 consecutive tasks (83→~100) with no new signal decision → freeze.**
+
+All four open items are now **resolved** (Decision 15, 2026-07-07 — full record in
+`signal-decisions.md`):
+
+- `ai_asks_followup` — **kept, boundary sharpened** (15a). All 21 instances reviewed:
+  turn-ending yes/no checks on the AI's *own delivered output* (alignment / satisfaction /
+  comprehension) fire; questions about the user's own independent experience →
+  `ai_asked_probing_question`. Now 17 instances; stays Grey pending IAR κ.
+- `ai_asks_confirmation` — **dropped** (15b). Zero instances; its would-be members are
+  absorbed by the yes/no-output-check rule above.
+- `ai_missing_retrieval` — **kept as Grey/exploratory** (15d). 4 validated instances
+  (2 ai, 2 code); promote or drop decided by IAR κ, not before.
+- 5 pending `ai_asks_followup` reclassifications — **applied to the DB** (15a):
+  3 → `ai_asked_probing_question`, 1 → `ai_offers_to_elaborate`,
+  1 → `ai_asked_clarifying_question`; 2 further instances reviewed and kept as followup.
+
+Also closed in the same pass: the `CANDIDATE_SIGNAL` placeholder is retired (15c) — its 3
+uses resolved, zero remain; the label is stripped from the Label Studio config at the freeze.
+
+---
+
+### Label statistics — 79 submitted conversations
+
+Post-adjudication DB state (`signal_stats.py`, 2026-07-07). Submitted = Tasks 1–81 minus
+Task 12 (skipped, singleton greentext) and Task 47 (excluded, non-English); Task 82 is
+annotated but not yet submitted in Label Studio. **886 signal placements** over the
+51-signal set; 62 of 73 defined (signal × block) cells have fired at least once.
+
+| Block | Blocks in annotated tasks | Placements |
+|---|---|---|
+| `human` | 276 | 111 |
+| `reasoning` | 103 | 43 |
+| `analysis` | 32 | 8 |
+| `code` | 32 | 15 |
+| `ai` | 276 | 709 |
+
+Per-(signal × block) counts (fires = placements; tasks = distinct conversations):
+
+| Block | Signal | Fires | Tasks |
+|---|---|---|---|
+| human | user_corrects_ai | 24 | 11 |
+| human | user_positive_feedback | 22 | 9 |
+| human | user_implicit_correction | 15 | 12 |
+| human | user_asks_clarification | 14 | 9 |
+| human | user_ambiguous_request | 12 | 6 |
+| human | user_expresses_frustration | 8 | 2 |
+| human | user_validation_seeking | 4 | 3 |
+| human | user_expresses_dissatisfaction | 4 | 4 |
+| human | user_multi_request | 3 | 3 |
+| human | user_repeats_request | 3 | 2 |
+| human | ethical_tension | 1 | 1 |
+| human | user_provides_invalid_input | 1 | 1 |
+| reasoning | ethical_tension | 12 | 2 |
+| reasoning | error_recovery | 7 | 3 |
+| reasoning | problem_ignored | 7 | 3 |
+| reasoning | ai_hedges_uncertainty | 5 | 2 |
+| reasoning | adaptation | 5 | 5 |
+| reasoning | ai_acknowledges_correction | 4 | 3 |
+| reasoning | false_confidence | 2 | 2 |
+| reasoning | ai_asserts_knowledge_limit | 1 | 1 |
+| analysis | ai_malfunction | 5 | 2 |
+| analysis | factual_error | 1 | 1 |
+| analysis | ai_cites_source | 1 | 1 |
+| analysis | false_confidence | 1 | 1 |
+| code | factual_error | 6 | 2 |
+| code | under_delivered | 4 | 3 |
+| code | ai_malfunction | 3 | 2 |
+| code | ai_missing_retrieval | 2 | 1 |
+| ai | conversation_advanced | 219 | 73 |
+| ai | ai_hedges_uncertainty | 42 | 18 |
+| ai | ai_validates_user | 33 | 12 |
+| ai | ai_structured_response | 32 | 19 |
+| ai | ai_asked_probing_question | 32 | 18 |
+| ai | ai_acknowledges_correction | 31 | 15 |
+| ai | false_confidence | 31 | 17 |
+| ai | ai_provides_caveats | 26 | 20 |
+| ai | error_recovery | 24 | 8 |
+| ai | conversation_stalled | 22 | 9 |
+| ai | adaptation | 21 | 13 |
+| ai | ai_cites_source | 17 | 9 |
+| ai | ai_asks_followup | 17 | 9 |
+| ai | ai_offers_to_elaborate | 15 | 11 |
+| ai | ai_references_prior_turn | 14 | 10 |
+| ai | ai_asked_clarifying_question | 14 | 9 |
+| ai | ai_offered_options | 13 | 7 |
+| ai | ai_asserts_knowledge_limit | 13 | 10 |
+| ai | ai_provides_example | 11 | 8 |
+| ai | ai_flags_complexity | 11 | 7 |
+| ai | ai_provides_step_by_step | 10 | 8 |
+| ai | ethical_tension | 10 | 5 |
+| ai | factual_error | 10 | 7 |
+| ai | ai_warns_user | 10 | 4 |
+| ai | problem_ignored | 9 | 8 |
+| ai | user_misled | 9 | 8 |
+| ai | ai_refuses_or_declines | 2 | 2 |
+| ai | off_topic_drift | 2 | 1 |
+| ai | ai_missing_retrieval | 2 | 2 |
+| ai | ai_provides_alternatives | 2 | 2 |
+| ai | ai_malfunction | 2 | 2 |
+| ai | under_delivered | 1 | 1 |
+| ai | intent_missed | 1 | 1 |
+| ai | repetition | 1 | 1 |
+
+Zero-fire defined cells (11 of 73): `user_abandons_thread`·human; `intent_missed`·reasoning;
+`problem_ignored`·analysis; `adaptation`/`intent_missed`/`problem_ignored`/`repetition`·code;
+`ai_normalizes_difficulty`/`appropriate_confidence`/`performative_hedge`/`user_empowered`·ai.
+23 cells have fired fewer than 5 times. Both lists feed the coverage-driven IAR batch
+selection (rare-cell coverage is a selection criterion).
+
+---
+
+### Next milestones
+
+| Action | Target | Who | Status |
+|---|---|---|---|
+| Enter Tasks 67–82 into Label Studio | This week | Jun | Done through Task 81; Task 82 pending submission |
+| Complete 5 manual fixes in Task 67 | This week | Jun | Verified already applied (7/7) |
+| Delete 13 excluded tasks from Label Studio (`delete_excluded_tasks.py`) | Before B/C access | Jun | Pending |
+| Annotate Tasks 83–100 (rubric freeze phase; freeze = 10 consecutive decision-free tasks) | Next 2 weeks | Jun + Claude | Next |
+| Declare rubric **v1.0** frozen; strip `CANDIDATE_SIGNAL` from config; calibration set = adjudicated review sheet (`label_review_context.md`) + gold tasks | At freeze | Jun | — |
+| Recruit Annotators B and C | Before Round 1 IAR | Jun | — |
+| Begin Round 1 IAR — coverage-driven set-cover batch of 8–10 unseen conversations (procedure: `annotation-plan-mast-aligned.md` Step 8) | After rubric freeze | Jun + B + C | — |
+
+---
+
+## Update — 2026-07-10: Midpoint dry-run (taxonomy projection at n=79)
+
+At the halfway point (79 of 148 submitted), we ran the **endpoint analysis on the current
+data as if annotation were finished** — a direct test of the bottom-up chain
+*observation → signal → taxonomy*. Script: `annotation/taxonomy_projection.py`
+(re-runnable at any milestone; at n=148 it is the endpoint analysis).
+
+### Chain integrity — intact
+
+- **Mapping audit:** all 50 live signals have a row in `docs/criteria/control_mapping.csv`
+  — every observation flows through a signal into a taxonomy role; zero orphans.
+  (16 stale rows remain for κ-excluded signals; harmless but should be flagged `excluded`.)
+- **Role decomposition of the 886 placements:** coupling core 443 (50%), outcomes 250 (28%),
+  support features 150 (17%), context 23 (3%), triggers 20 (2%) — the claim structure of the
+  paper (coupling errors + outcome variables + covariates) is materializing in the data.
+- **Signal saturation:** 34 distinct signals fired by task 10, 45 by task 81 — only 3 new
+  signals in the last 40 tasks. Discovery has saturated; supports the freeze.
+
+### The 16-cell coupling core at n=79
+
+| operation | direction | failure | positive | human | escal. | tasks |
+|---|---|---|---|---|---|---|
+| ask_clarify | H→AI | 0 | 14 | 0 | 0 | 9 |
+| ask_clarify | AI→H | 0 | 13 | 14 | 0 | 15 |
+| report_state | H→AI | — | — | — | — | **EMPTY** |
+| report_state | AI→H | 67 | 126 | 0 | 0 | 54 |
+| seek_inspect | H→AI | — | — | — | — | **EMPTY** |
+| seek_inspect | AI→H | 4 | 0 | 0 | 0 | 3 |
+| confirm_authorize | H→AI | 0 | 0 | 22 | 0 | 9 |
+| confirm_authorize | AI→H | — | — | — | — | **EMPTY** |
+| act_execute | H→AI | 8 | 0 | 0 | 0 | 6 |
+| act_execute | AI→H | — | — | — | — | **EMPTY** |
+| maintain_state | H→AI | 0 | 14 | 0 | 0 | 10 |
+| maintain_state | AI→H | — | — | — | — | **EMPTY** |
+| recover_repair | H→AI | 1 | 61 | 42 | 12 | 22 |
+| recover_repair | AI→H | 0 | 33 | 0 | 0 | 11 |
+| stop_defer | H→AI | — | — | — | — | **EMPTY** |
+| stop_defer | AI→H | 0 | 2 | 0 | 0 | 2 |
+
+(`ai_malfunction`, 10 fires, is direct-coupling with no single op.) 10 of 16 cells occupied,
+with sensible mass: `report_state`·AI→H dominates; `recover_repair` rich both directions;
+`stop_defer` / `seek_inspect` real but rare. More data sharpens frequencies; it does not
+change this shape.
+
+### Finding 1 — the 6 empty cells cannot be filled by more annotation
+
+Every empty cell is empty for the same mechanical reason: **no live signal maps to it.**
+Cross-referencing the hole-verdict analysis (`docs/criteria/signal-pairing.md`) gives a
+per-cell verdict on *add a signal vs. systematically nonexistent*:
+
+| Empty cell | Cause | Verdict | Action |
+|---|---|---|---|
+| `confirm_authorize`·AI→H | structural_zero (authority flows only human→agent; the AI-asks-permission move decomposes into report_state·AI→H + confirm_authorize·H→AI) | Does not exist | Claim as finding; leave empty |
+| `act_execute`·AI→H | structural_zero (execution realizes user intent = inherently H→AI; the AI→H side *is* report_state) | Does not exist | Claim; leave empty |
+| `stop_defer`·H→AI | structural_zero (stop/defer is an AI act; a human-initiated stop is a trigger/correction) | Does not exist | Claim; leave empty |
+| `seek_inspect`·H→AI | **mapping discrepancy** — see below | Exists; we already have the signal | Fix `ai_missing_retrieval` direction in `control_mapping.csv` |
+| `report_state`·H→AI | **instrument gap** — its only two signals (`silent_assumption` κ=0.20, `ai_stated_interpretation` κ=0.22) were κ-excluded; phenomenon is real and chat-codeable | Exists, unmeasurable with current instrument | Decision: add ONE sharper Grey signal pre-freeze (κ measured in IAR), or report as reliability limitation |
+| `maintain_state`·AI→H | κ-exclusion (`ai_self_contradiction` κ=0.10) + already verdicted **set_aside** (positive pole thin, overlaps report_state) | Exists but thin; not a target | Report as set_aside; do not add |
+
+**The `seek_inspect` discrepancy (caught by the dry-run).** `signal-pairing.md` predicts:
+agentic data should light up `seek_inspect`·H→AI (read-before-act, a benchmark_gap cell)
+and leave `seek_inspect`·AI→H empty (structural zero — reporting what was inspected *is*
+report_state). Our data has exactly one seek_inspect signal, `ai_missing_retrieval`
+(AI asserts factual/numerical claims without retrieving — a failed read-before-act), with
+4 fires — but `control_mapping.csv` codes it **AI→H**, filling the structural-zero cell and
+leaving the predicted cell empty. Recoding it H→AI (consistent with the cell semantics)
+simultaneously (a) fills `seek_inspect`·H→AI — **fulfilling the benchmark-gap prediction
+on agentic data**, and (b) restores the structural zero. Pending Jun's confirmation.
+
+Also still unlit at n=79: the *failure* poles of the other benchmark_gap cells
+(`stop_defer`·AI→H halt-failure; `recover_repair`·AI→H opaque recovery). These need
+tool-error episodes and/or an outcome oracle, not new chat signals — consistent with the
+`needs_ground_truth` convergence result.
+
+### Finding 2 — within-annotator drift across tasks 1–40 vs 41–81
+
+Split-half stability of per-signal task frequencies is weak (Spearman ρ=0.50 over 45
+signals, *lower* when restricted to common signals), and the shifts are directional, not
+random: `ai_references_prior_turn` fell 10 tasks → **0**, `ai_structured_response` 15 → 4
+(ubiquitous positive signals, progressively under-labeled), while `false_confidence`
+(7→11), `user_misled` (2→6), `ai_asked_clarifying_question` (2→7) rose as the rubric
+matured. Some of this is genre mix; 10→0 on prior-turn references is drift.
+
+Why it matters: Tasks 1–148 become the gold standard for the LLM-annotator κ; inconsistent
+gold caps that κ. **Mitigation (bounded):** after the freeze, one consistency sweep over
+the top-drift signals — screen tasks 41–81 for missed `ai_references_prior_turn` /
+`ai_structured_response`, and tasks 1–40 for signals whose definitions matured after
+Decision 8 (`user_misled`, `false_confidence` under the R12/R19 three-way rule).
+
+### Decisions this adds to the pre-B/C list
+
+1. `ai_missing_retrieval` direction fix in `control_mapping.csv` (AI→H → H→AI).
+2. `report_state`·H→AI: add one sharper Grey signal pre-freeze, or accept as reliability
+   limitation (last window — no signal additions after freeze).
+3. Post-freeze consistency sweep over top-drift signals (scope above).
+4. Housekeeping: flag the 16 κ-excluded rows in `control_mapping.csv` as `excluded`.

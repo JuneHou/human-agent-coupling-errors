@@ -130,6 +130,9 @@ Original 65-signal definitions: `https://github.com/bigspinai/bigspin-invisible-
 ### One signal per sentence
 Choose the most salient signal when multiple apply to the same sentence.
 
+### One label per evidence episode
+Within a block, consecutive sentences evidencing the **same** signal are one episode — place **one** label whose span covers the run. Non-adjacent recurrences of the signal in the same block are separate episodes and get separate labels. This keeps signal counts from inflating with response length.
+
 ### Block placement
 
 | Block | Signals that apply |
@@ -190,43 +193,27 @@ Does not fire when the user explicitly requested critique/limitations. Label `co
 ## Prompt
   ---
 
-  You are annotating human-AI conversations from the ShareChat Claude corpus for coupling error
-  signals.
-  ## Files to read before annotating
-  - Rubric (decision rules):
-  /data/wang/junh/githubs/human-agent-coupling-errors/annotation/sharechat_rubric.json
-  - Signal list and block rules:
-  /data/wang/junh/githubs/human-agent-coupling-errors/annotation/ANNOTATION_GUIDE.md
-  - Fallback definitions (if signal absent from rubric):
-  https://github.com/bigspinai/bigspin-invisible-failure-archetypes →
-  taxonomy-tagging-code/taxonomy.json
-  
-  ## Annotation discipline
-  For every signal you consider:
-  1. Open the rubric entry for that signal
-  2. Follow the `decision_steps` array in order
-  3. When a step says NO or "lean NO" — that is your answer. Stop. Do not override it with
-  independent reasoning.
-  4. Only label 1 if you reach a step that says to fire the signal
+  You are annotating one ShareChat Claude conversation for coupling-error signals.
 
-  The most common mistake: reading the rubric but then substituting your own judgment when a step
-  produces a clear NO branch. The rubric branch always wins.
-  
-  ## Hard rules
-  - One signal per sentence — pick the most salient when multiple apply
-  - Signals with κ < 0.4 are excluded — do not label them (see ANNOTATION_GUIDE Excluded list)
-  - Purple signals (user behavior) → `human` block only
-  - Outcome signals (`conversation_advanced`, `conversation_stalled`) → `ai` block only
-  - If the fact being checked involves a calculation or count, verify it independently before
-  labeling `factual_error` or `false_confidence`
+  Read before labeling:
+  1. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/sharechat_rubric.json
+     — decision rules + placement rules (authoritative)
+  2. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/ANNOTATION_GUIDE.md
+     — signal list, block rules, episode/span rules
+  3. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/label_studio_config.xml
+     — the complete allow-list; label nothing absent from it
 
-  ## Output format per block
-  Signal: [name] | Label: [0/1] | Span: "[quoted sentence or phrase]" | Step fired: [which decision
-  step produced the label]
-  
-  ## When unsure
-  Label 0, write a note explaining what is unclear, and mark it for Jun to review. Do not guess.
+  Method: for each candidate signal, follow its rubric `decision_steps` in order and stop
+  at the first step that resolves it. That step's answer is final — never override a NO
+  branch with your own reasoning. If a signal has no rubric entry, apply the fallback
+  definition conservatively (https://github.com/bigspinai/bigspin-invisible-failure-archetypes
+  → taxonomy-tagging-code/taxonomy.json). Verify any count or calculation yourself before
+  labeling `factual_error` or `false_confidence`.
 
-  Now I will give you the task JSON.
+  Output — fired signals only (label:1), one row per evidence episode:
+  Signal | Block | Span: "..." | Step fired
+  When unsure: label 0, leave a note for Jun. Do not guess.
+
+  The task JSON follows.
 
   ---

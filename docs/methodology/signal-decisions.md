@@ -387,3 +387,111 @@ Task 12 (conv_id: 039573db-..., topic: asking_about_the_model) is the **only con
 **Decision:** Skip Task 12 for annotation. It is a singleton format in this dataset; including it would require special-casing that is not worth codifying for one conversation. The conversation is also likely a jailbreak/persona-probing attempt, which is already covered by the `ethical_tension` signal class.
 
 **If revisiting:** treat each AI block as a unit; focus on block-level signals only (`adaptation`, `false_confidence`, `appropriate_confidence`, `conversation_advanced`); ignore all image placeholder tokens.
+
+---
+
+## Decision 9 — Internal blocks carry an applicable subset of signals; `error_recovery·reasoning` and `ethical_tension·reasoning/ai` opened; conversation-level signals stay out
+
+**Date:** 2026-07-07 (Jun's dispositions, agentic block coverage audit)
+
+**Background:** A three-agent screening pass over all internal blocks (103 reasoning / 32 analysis / 32 code, 79 submitted annotations) showed the internal blocks are systematically under-labeled: only 12/103, 4/32, 9/32 blocks carried any signal, while signals whose behavior occurred there were absorbed into the downstream ai block. Framework decision: the **(signal × block) pair is the taxonomy unit** — same signal name, same behavior boundary across blocks (only the evidence location differs; a boundary that would need stretching means a different behavior); each cell can map to a different Layer-2 operation, so widening a signal's block scope creates no redundancy.
+
+**9a — `error_recovery` applies to the reasoning block.** The former `reasoning_excluded` note ("internal corrections do not affect coupling") is contradicted by 11 clean instances across 5 tasks where the AI recognizes and corrects its own error within the reasoning chain (e.g., task 57: "Hold on, I am confused with my own approach. Let me re-think the solution from the start."). Internal self-correction is exactly the agentic behavior the internal blocks were included to capture. The 2 existing labels on task 2/4 become valid.
+
+**9b — `ethical_tension` widened from human-only to human + reasoning + ai.** 11 reasoning-block instances (task 41: repeated "do not use end_conversation, possible self-harm crisis" deliberations; task 44: injection/persona conflicts) plus 10 already-fired ai-block instances across 5 tasks. Rubric entry created (the signal previously had none).
+
+**9c — Conversation-level signals (`conversation_advanced`, `conversation_stalled`) do NOT apply to internal blocks.** Principle: internal blocks (reasoning, analysis) are not part of the conversation with the human. The 28 analysis blocks where `conversation_advanced` would otherwise fire are recorded in the screening report as audit trail only. User-visible code artifacts remain eligible (existing priority rule unchanged).
+
+**How to reverse:** restore the `reasoning_excluded` note in `sharechat_rubric.json`, set `ethical_tension.blocks` back to ["human"], and drop the conversation-level principle from `global_placement_rules`.
+
+---
+
+## Decision 10 — Cross-block evidence rule instead of a new `reasoning_output_divergence` signal
+
+**Date:** 2026-07-07
+
+**Pattern found (8 instances):** the reasoning block hedges or identifies a gap; the paired ai block presents the conclusion without flagging it (e.g., task 58 reasoning: "I'm not sure what my actual knowledge cutoff is… I *think* there were major wildfires" → ai: "Yes - the major wildfires that devastated… in January 2025.").
+
+**Decision (Jun):** no new signal. The behavior is on the **ai block**; the internal block is admissible **evidence**. Mapping: 5 instances → `false_confidence·ai` (reasoning proves the claim is unverified), 2 → `problem_ignored·ai` (reasoning proves the problem was known), 1 → no-fire (task 41/28 — internal caution + gracious response is appropriate behavior, not a coupling error). Boundaries unchanged. Notably, 3 instances were first mis-proposed as `false_confidence·reasoning` and rejected at its Step 2 (the reasoning itself hedges) — the boundary test working as designed.
+
+**Reporting note:** these fires are only detectable in conversations that have internal blocks — an evidence-availability asymmetry to state when reporting frequencies.
+
+**How to reverse:** remove the cross-block evidence sentences from `false_confidence`/`problem_ignored` block notes and the global rule; the 7 instances become unlabelable.
+
+---
+
+## Decision 11 — `ai_malfunction` pairing rule demoted from firing gate to covariate
+
+**Date:** 2026-07-07
+
+**Old rule:** `ai_malfunction·analysis` fired only when the paired ai block carried `error_recovery` — silent tool failures got label 0 on both blocks *by design*, making a real agentic failure pattern invisible (4 instances found: tasks 22/12, 22/16, 32/30, 68/2 — e.g., task 68: ~10 repeated edit failures downplayed to the user as one "small inconsistency").
+
+**New rule (Jun):** boundary = "tool call returned a technical error"; label it regardless. Recovered vs. silent is then **read from the data**: paired `error_recovery` present = recovered/narrated; absent = silent failure. No new `silent_tool_failure` signal needed. Resolves the task 32/30 flag (that label is now valid). The 3 existing task-32 labels remain valid.
+
+**How to reverse:** restore the Step 0b gate in `ai_malfunction.decision_steps`; silent-failure instances return to label 0.
+
+---
+
+## Decision 12 — `factual_error·analysis` covers AI-authored content written via tool calls
+
+**Date:** 2026-07-07
+
+Task 32/2: the AI wrote `payload.model = 'gpt-4o'` (wrong constant for the gpt-image-1 API, later confirmed by the user's error) via write_file inside an analysis block. The old analysis note covered only wrong tool *output*. **Decision (Jun):** AI-authored content inside tool calls counts as the AI's own assertion; the existing `factual_error·analysis` cell fires. Rubric note added.
+
+**How to reverse:** restore the analysis block note to tool-output-only.
+
+---
+
+## Decision 13 — `ai_missing_retrieval` (Grey candidate) widened to code/document artifacts
+
+**Date:** 2026-07-07
+
+Task 81: fabricated game-balance percentages ("Crit cap 350%→300%", "Violent proc rate 22%→15%") presented as real dev-patch data inside code/document artifacts, with no retrieval anywhere in the conversation — the candidate's exact pattern, outside its ai-only scope. **Decision (Jun):** widen `blocks` to ["ai", "code"]. Evidence base for the freeze decision on this candidate doubles to 4 instances. Stays Grey/exploratory.
+
+**How to reverse:** set blocks back to ["ai"].
+
+---
+
+## Decision 14 — Task-by-task adjudication review: boundary rulings R1–R19; rubric v0.3
+
+**Date:** 2026-07-07
+
+**Process:** all 100+ proposals from the agentic block screening (Decisions 9–13) were adversarially adjudicated by verification agents, then reviewed by Jun **one task at a time** with previous/labeled/next block context and bolded evidence spans (`annotation/label_review_context.md`). Every ruling was logged as it was made in `annotation/review_rulings_log.md` (R1–R19 + per-task slates) — the authoritative record for this decision.
+
+**Outcome:** 75 label instances to ADD, 9 to REMOVE — `annotation/label_studio_change_sheet.md` (generated from the adjudicated entry list; pending Jun's manual entry into Label Studio).
+
+**Headline boundary rulings (full table in the log):**
+- R1/R2 — `error_recovery` = self-identified AND completed correction; code cell removed; recognition-only acts (user-pointed or self-check) = `ai_acknowledges_correction`, now valid on reasoning blocks.
+- R3/R4 — `ai_cites_source`: reported citation ≠ AI citation; unconsulted/speculative references don't fire; on analysis blocks only AI-prose engagement fires (raw retrieval never; existing 71/6 removed).
+- R5 — conversation-level signals fire on human/ai blocks ONLY (no code exemption; supersedes Decision 9c's wording).
+- R11 — cross-block `false_confidence` requires the SAME proposition hedged in reasoning and asserted in ai; the hedging itself gets `ai_hedges_uncertainty` on the reasoning block (new cell).
+- R12/R19 — `user_misled` bound to the original taxonomy.json gate (actionable misinformation, material, harm test); three-way rule: unverified+confident = false_confidence, provably-wrong = factual_error, provably-wrong+decision-steering = user_misled.
+- R14 — `ai_malfunction·analysis` requires visible machine-returned error text.
+- R15/R17 — `user_misled` ai-only; rubric block-scope wins over CSV on conflict.
+- New rubric entries with calibration examples: `ai_cites_source`, `intent_missed`, `user_misled`. Rubric bumped to **v0.3**.
+
+**How to reverse:** `git diff` on `annotation/sharechat_rubric.json` for this date; the change sheet lists every label to un-enter.
+
+---
+
+## Decision 15 — Pre-freeze candidate resolution: `ai_asks_followup` boundary sharpened; `ai_asks_confirmation` dropped; `CANDIDATE_SIGNAL` retired
+
+**Date:** 2026-07-07 (agent classification + Jun's item-by-item review, `annotation/batch2_review_context.md`)
+
+**15a — All 21 `ai_asks_followup` instances reviewed.** Final boundary (Jun's ruling, overruling the agent's satisfaction-check split): turn-ending **yes/no checks on the AI's own delivered output** — alignment, satisfaction, or comprehension ("does this align with your thinking?", "does this explanation satisfy you?", "does that help explain…?") — are implicit adjust-offers and **fire `ai_asks_followup`**. Questions about the user's **own independent experience/beliefs** ("resonate with how *you* experience…", "align with *your own* sense of…") → `ai_asked_probing_question`. Expanding already-delivered content → `ai_offers_to_elaborate`. Needed-to-proceed → `ai_asked_clarifying_question`. DB changes: 16/5, 49/37, 69/1 → probing; 32/3 → elaborate; 64/2 → clarifying; 35/7 and 49/18 KEPT. Signal count 21→17; stays Grey pending IAR κ.
+
+**15b — `ai_asks_confirmation` (Decision-5b candidate) DROPPED.** Zero instances; its two would-be members are absorbed by the yes/no-output-check rule.
+
+**15c — `CANDIDATE_SIGNAL` placeholder retired.** Its 3 uses resolved: 3/1 and 4/1 removed (stale duplicates of `ai_offers_to_elaborate` on the rubric's own example sentences); 3/3 relabeled `ai_asks_followup` (the rubric's canonical example sentence, previously unlabeled). Zero uses remain; the label is stripped from the Label Studio config at the freeze.
+
+**15d — `ai_missing_retrieval`** stays Grey/exploratory with 4 instances (2 ai + 2 code); promotion decided by IAR κ.
+
+**How to reverse:** backup `label_studio.sqlite3.bak-2026-07-07-prebatch2`; the 8 DB changes are listed above.
+
+---
+
+## Annotation correction — Task 41 turns 18/20 cross-selection
+
+**Date:** 2026-07-07
+
+Turn 18 (human) carries `ai_validates_user` (an AI-behavior signal) and turn 20 (ai) carries `user_expresses_frustration` (a user-behavior signal). Verified against the text: turn 20 does not quote the user; turn 18's frustration label is correct and already present. The two stray labels are one accidental cross-selection on adjacent turns. **Fix in Label Studio:** remove `ai_validates_user` from task 41 turn 18 and `user_expresses_frustration` from task 41 turn 20.

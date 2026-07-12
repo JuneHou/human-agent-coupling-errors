@@ -43,6 +43,33 @@ data/        datasets (gitignored; large files not committed)
 notebooks/   exploratory analysis
 src/         annotation / analysis code
 ```
+## Label Studio API authentication
+
+The annotation pipeline scripts (`delete_excluded_tasks.py`) interact with Label Studio via its REST API. Label Studio 1.23.0 uses JWT-based authentication — the "Personal Access Token" shown in the UI is a long-lived **refresh token**, not a direct API key. It must be exchanged for a short-lived access token before making API calls.
+
+**Getting your personal access token:**
+1. Open Label Studio in your browser (`http://localhost:8080`)
+2. Click your avatar (top-right) → **Account & Settings**
+3. Copy the token under **Personal Access Token** (a long JWT string starting with `eyJ`)
+
+**Running scripts that use the API:**
+```bash
+export LABEL_STUDIO_URL=http://localhost:8080
+export LABEL_STUDIO_TOKEN=<your-personal-access-token>
+export LABEL_STUDIO_PROJECT=<project-id>   # number in URL: /projects/1/data → use 1
+python annotation/delete_excluded_tasks.py
+```
+
+The scripts automatically call `POST /api/token/refresh/` at startup to exchange the personal access token for a Bearer access token. You do not need to do this manually.
+
+**Verifying the token works:**
+```bash
+curl -X POST http://localhost:8080/api/token/refresh/ -H "Content-Type: application/json" -d "{\"refresh\": \"$LABEL_STUDIO_TOKEN\"}"
+```
+A successful response returns `{"access": "..."}`.
+
+---
+
 # Current Task summary
   Project: Building a sentence-level signal labeling rubric for the ShareChat Claude corpus (716 English
   conversations, agentic with tool use) to support taxonomy development on human-agent coupling errors.
