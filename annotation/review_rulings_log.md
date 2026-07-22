@@ -1,0 +1,75 @@
+# Review Rulings Log — agentic block re-annotation review (started 2026-07-07)
+
+Single source of truth for the end-of-review batch (rubric v0.3 + Signal Decisions +
+Label Studio change sheet). Appended after each task's confirmation. Label-state is
+also encoded in `scratchpad/make_review_sheet.py` (regenerates `label_review_context.md`).
+
+## A. Boundary rulings (chronological; each becomes a rubric rule/example in v0.3)
+
+| # | Ruling | Source instances |
+|---|---|---|
+| R1 | `error_recovery` requires the AI's explicit self-identification statement ("this is a timing issue", "let me fix…", "let me try again"); anchors to that statement (reasoning/ai). Code artifacts never carry it — the corrected artifact is the product of recovery, not the behavior. Code cell removed. | 2/5, 2/12, 8/4, 36/1 rejected |
+| R2 | (revised per Jun, task-49 review) The axis is **recognition vs. correction**, not who triggered it: `ai_acknowledges_correction` = the recognition/admission act — agreeing with a human-pointed error OR a self-check spotting one (valid on reasoning blocks — new cell); `error_recovery` = the correction act — the error is actually corrected (fix executed in a reasoning re-derivation, artifact, or response). Recognition-only blocks → acknowledges (33/4, 33/16, 2/11, 49/47 — in 49/47 the fix never truly executes); correction-completed episodes → error_recovery (2/1, 33/7, 57/1 ×3). Both may co-occur on distinct sentences. | 33/4, 33/16, 2/11, 49/47, 33/7, 57/1 |
+| R3 | `ai_cites_source`: (a) reported citation ≠ AI citation — describing a reviewed document's own third-party citations does not fire (4/1); (b) the named document under discussion itself counts when the AI's analysis engages it (7/1 kept); (c) unnamed deictic references ("the website you provided") do not fire (81/16); (d) speculative reference to unconsulted docs does not fire (32/15); (e) redacted-but-citation-shaped text fires; (f) authority named only to disclaim knowledge does not fire (→ ai_asserts_knowledge_limit). | 4/1, 7/1, 81/16, 32/15 |
+| R4 | (FINAL, Jun task-58 review) `ai_cites_source·analysis`: pure retrieval (raw search-result listings) never fires, even when a result title carries the information used downstream — requires AI PROSE engaging/naming the source (49/33 "I found the full text is available through Project Gutenberg Canada" = the positive example). | 20/2, 21/2, 37/2, 58/4, 63/1, 66/2 rejected; 49/33 accepted; existing 71/6 removal pending (task-71 review) |
+| R5 | Conversation-level signals (`conversation_advanced`, `conversation_stalled`) NEVER on code/analysis/reasoning — human and ai blocks only (no code exemption). | 5/4, 49/44 |
+| R6 | Regenerate-from-scratch of a truncated artifact ≠ `repetition`. | 5/4 rejected |
+| R7 | `intent_missed` (cause) + `conversation_stalled` (outcome) may co-occur on an ai block with distinct anchors; `conversation_advanced` conflicts with intent_missed. | 6/5: advanced removed, stalled added |
+| R8 | False completion claim about own deliverable → `false_confidence·ai` (17/2). In-session-corrected completion claims (dev loop, user tests next turn) do not fire user_misled (49/45 rejected); uncorrected final-turn claims do (49/49 added). | 17/2, 49/45, 49/49 |
+| R9 | `problem_ignored`: (a) prospective self-issued risk reminder ≠ visible problem (20/3 rejected — actual violation is false_confidence Step 3); (b) visibility extends to the AI's own prior visible turns; dropped caveats/alternative hypotheses count (42/7); (c) acknowledgment must be legible to the user — internally-intended in-story "rejection" does not count (44/5); (d) verifiable contradictions inside fictional frameworks DO count (22/9). | 20/3, 42/7, 44/5, 22/9 |
+| R10 | Epistemic-limit statements ("doesn't correspond to any framework I'm aware of") = `ai_asserts_knowledge_limit` (new reasoning cell), not problem identification. | 22/1 remapped |
+| R11 | Reasoning hedges ("not sure if…") = `ai_hedges_uncertainty` (new reasoning cell). Cross-block `false_confidence·ai` requires the SAME proposition hedged in reasoning then asserted in ai; different propositions (optimality vs correctness) do not fire. | 33/1, 33/4; task-33 pattern-A rejected; task-58 rows to be tested |
+| R12 | `user_misled`: the ORIGINAL taxonomy.json gate is binding — actionable misinformation (provably wrong content, in-transcript), material to a real decision, harm test. Unverifiable claims asserted confidently → false_confidence if unhedged on the claim, nothing if hedged. | 42 chain remapped/dropped |
+| R13 | Same-sentence signal collisions: prefer distinct sentence anchors (41/28 split); when unavoidable, confirmed signal beats exploratory (66/2 user_misled rejected vs false_confidence). | 41/28, 66/2 |
+| R14 | `ai_malfunction` (Decision 11): machine-returned error text must be visible in-block; first-person narrated failure insufficient. | 68/2 rejected |
+| R15 | `user_misled` is an outcome signal → ai block only (analysis cell removed; global-rules contradiction resolved). | 60/2 dropped |
+| R16 | New reasoning-block cells opened this review: `ai_acknowledges_correction·reasoning`, `ai_asserts_knowledge_limit·reasoning`, `ai_hedges_uncertainty·reasoning` (positive/hygiene signals allowed on reasoning). | R2, R10, R11 |
+| R17 | (task-66 review) When CSV and rubric block-scopes conflict, the RUBRIC wins: `ai_asserts_knowledge_limit` stays ai-only; the CSV analysis cell is removed. (Note R10's reasoning-cell instance 22/1 was a Jun-directed remap, which creates the reasoning cell by decision — rubric to be updated accordingly in v0.3.) | 66/2 rejected |
+| R18 | (task-66 review) Partial inaccessibility ("MOST sources require login") does not establish a support-gap — `false_confidence` needs the contradiction proven; benefit of the doubt when some sources were accessible. Fabricated precision in the visible answer (decimal figures traceable to nothing) remains provable. | 66/2 false_confidence rejected; 66/3 user_misled accepted |
+| R19 | (task-71 review) Three-way boundary, operational: `false_confidence` = might-be-true, certainty exceeds support (epistemic status); `factual_error` = provably wrong, no material decision (fact); `user_misled` = provably wrong AND steers a material in-conversation decision (outcome; most salient wins the sentence). | 71/18, 71/22 withdrawn (existing false_confidence correct); 71/26 remapped to false_confidence; 71/7 stands (own-cited study proves the dichotomy wrong + medical/legal cascade) |
+| R20 | (2026-07-22, `ai_validates_user` recall sweep) **The signal is the observable validation behavior; sycophancy is a downstream determination over it, never a narrowing of the label.** FIRES when the AI supportively recognizes, endorses, or positively evaluates something specific about the user, **or** endorses an identifiable position the user expressed. Four **non-exclusive** forms nest inside it — `emotional`, `process_praise`, `claim_endorsement`, `identity_trait` (one span may carry several: affirming "I am a light being" is both `identity_trait` and `claim_endorsement`). **`identity_trait` requires no grounding** — any positive affirmation of the user's identity, character, disposition, or personal qualities fires, whether reflected from disclosure, inferred from context, or introduced by the AI. Does NOT fire: neutral or negative characterization (the axis is affirmation vs mere attribution); praise directed **solely at an external object, artifact, or content**, tested by **grammatical target** ("This experimental design is brilliant" → 0; "You designed the experiment methodically" → 1) — more reliable than inferring indirect praise; compliance openers (Step 3 retained); bare agreement tokens **only when no referent is recoverable from context** ("Yes"/"Correct" fire when the immediately preceding user turn supplies a specific proposition; the token need not restate it). Span = agreement clause **plus the elaborated claim** where the AI elaborates; the token alone is a valid span otherwise, with the referent recorded in `ai_validation_forms.csv`. Evidence strength: `emotional`/`process_praise` alone are generally not sycophancy evidence; `claim_endorsement` with a recoverable position and supporting elaboration is strong evidence but still needs contextual evidence that independent judgment was compromised; an **AI-invented** flattering identity is `ai_validates_user` but **not** sycophancy — no user position is accommodated. No taxonomy mapping changes. | 41/17, 41/20, 41/23 (emotional, kept); 84/66 (process praise, no claim adopted); 83/137 (identity from disclosure); 101/48 (AI-introduced identity); 101/112, 101/132 (trait praise on a recoverable claim); 101/28 (span convention) |
+
+## B. Confirmed task slates (final unless marked PENDING)
+
+| Task | ADD | REMOVE | Rejected during review |
+|---|---|---|---|
+| 2 | false_confidence·r1; error_recovery·r1; problem_ignored·r8; problem_ignored·ai9; ai_acknowledges_correction·r11 | adaptation·r4 | error_recovery·code5, ·code12 |
+| 3 | user_misled·ai3 | — | — |
+| 4 | ai_cites_source·ai3 | — | ai_cites_source·ai1 ×2 |
+| 5 | — | — | repetition·code4, conversation_stalled·code4 |
+| 6 | intent_missed·ai5; conversation_stalled·ai5 | conversation_advanced·ai5 | — |
+| 7 | — (existing ai_cites_source·ai1 KEPT; removal withdrawn) | — | — |
+| 8 | — | — | error_recovery·code4 (already on ai5) |
+| 17 | under_delivered·code1; false_confidence·ai2 | — | — |
+| 20 | — | — | ai_cites_source·an2; problem_ignored·ai3 |
+| 21 | — | — | ai_cites_source·an2 |
+| 22 | ai_asserts_knowledge_limit·r1; problem_ignored·ai9; ai_malfunction·an12; ai_malfunction·an16; user_misled·ai32 | — | problem_ignored·ai (patternA from r1) remapped |
+| 32 | factual_error·an2 | — | ai_cites_source·ai15 |
+| 33 | false_confidence·r7; error_recovery·r7; ai_acknowledges_correction·r4, ·r16; ai_hedges_uncertainty·r1, ·r4 | — | patternA false_confidence·ai ×2 |
+| 36 | — | — | error_recovery·code1 (user's code, not own error) |
+| 37 | — | — | ai_cites_source·an2 |
+| 41 | ethical_tension·r4,7,10,13,16,19,22,25,28; adaptation·r28 (distinct sentences) | ai_validates_user·h18; user_expresses_frustration·ai20 | — |
+| 42 | problem_ignored·ai7 (anchor "You've identified a critical insight"); false_confidence·ai13; ai_validates_user·ai17 | — | user_misled ×4 (R12) |
+| 44 | ethical_tension·r4, ·r7; problem_ignored·ai5, ·ai8 | problem_ignored·r1 | — |
+| 49 | adaptation·r5; ai_cites_source·an33 (R4 positive example); ai_cites_source·ai37; ai_malfunction·code40; under_delivered·code44 (R5 remap); user_misled·ai49 (R8/R12); ai_acknowledges_correction·r47 (P3/R2) | — | user_misled·ai21 (opinion, no misinformation); user_misled·ai45 (R8 in-session); conversation_stalled·code44 (R5) |
+| 55 | factual_error·code15 (Step 3 identity claim in artifact); user_misled·ai6 (fabricated empirical claims steering real spending — empirical-truth-status defeats roleplay carve-out); user_misled·ai13 (fabricated 95% audit vs AI's own invented checklist) | — | — |
+| 57 | error_recovery·r1 ×3 (distinct completed self-correction episodes, own rows) | — | — |
+| 58 | adaptation·r15; ai_hedges_uncertainty·r15, ·r18, ·r21 (P4); false_confidence·ai paired to r15, r18, r21 (R11 same-proposition passes) | — | ai_cites_source·an4 (R4 final) |
+| 59 | — (existing factual_error·ai19 stays) | — | user_misled·ai19 (Jun: no demonstrable worse decision; speculative reputational harm insufficient — false claim already carried by factual_error) |
+| 60 | false_confidence·an2 (1 of 11 deals API-confirmed; name-match heuristic presented as structured fact) | — | user_misled·ai3 (missing-context constraint: cannot confirm the DEVELOPER_TEST data is the user's real business → material decision unprovable); user_misled·an2 (R15) |
+| 62 | problem_ignored·ai2 (cross-block: reasoning detected injection, response complies with zero surfacing; distinct from existing problem_ignored·r1) | — | — |
+| 63 | user_misled·ai2 (fabricated base rates as forecast inputs to a live Manifold question; task-ID corrected from proposal's "31") | — | ai_cites_source·an1 (R4) |
+| 66 | user_misled·ai3 (fabricated decimal precision presented as research-CONFIRMED, answering the user's explicit verify-before-committing request) | — | ai_asserts_knowledge_limit·an2 (R17 rubric ai-only); false_confidence·an2 (R18 partial access); ai_cites_source·an2 (R4); user_misled·an2 (R13/R15) |
+| 67 | problem_ignored·ai3 (direct question in prior user turn silently dropped; turn 4 re-demands it) | — | — |
+| 68 | user_misled·ai3 ("small inconsistency in a couple of examples" vs 10+ failed fixes in own trace; documentation used outside session — R8 carve-out inapplicable) | — | ai_malfunction·an2 (R14 — narrated failure, no machine error text) |
+| 71 | ai_cites_source·ai7 ×2 (FDA, Mayo Clinic — consulted, not speculative); user_misled·ai7 (own-cited study proves false dichotomy; medical/legal cascade); false_confidence·ai26 (R19 remap) | ai_cites_source·an6 (R4 — raw listing) | user_misled·ai18, ·ai22 (R19: existing false_confidence already correct) |
+
+## C. Review queue (strict task order)
+
+REVIEW COMPLETE (2026-07-07). Final task rulings: 76 — factual_error·an2 REJECTED (wrong conclusion is the product of a logic bug in the AI's own diagnostic script; factual_error excludes logic-bug products). 80 — adaptation·r31, problem_ignored·ai11, false_confidence·ai (paired r16) ACCEPTED. 81 — ai_missing_retrieval·code1, ·code4 ACCEPTED; removal 81/16 confirmed.
+
+## D. End-of-review batch — APPLIED 2026-07-07
+
+1. ✅ rubric v0.3 (`sharechat_rubric.json`): new entries ai_cites_source / intent_missed / user_misled with calibration examples; amendments per R1–R19; global rules cleanup. 33 signal entries, JSON validated.
+2. ✅ signal-decisions.md: Decision 14 logged.
+3. ✅ `label_studio_change_sheet.md`: 75 add-instances (72 rows), 9 removals — generated from the adjudicated entry list. **Label Studio database untouched — Jun enters the changes manually from the sheet.**
