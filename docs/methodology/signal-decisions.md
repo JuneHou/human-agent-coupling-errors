@@ -494,4 +494,15 @@ Task 81: fabricated game-balance percentages ("Crit cap 350%→300%", "Violent p
 
 **Date:** 2026-07-07
 
-Turn 18 (human) carries `ai_validates_user` (an AI-behavior signal) and turn 20 (ai) carries `user_expresses_frustration` (a user-behavior signal). Verified against the text: turn 20 does not quote the user; turn 18's frustration label is correct and already present. The two stray labels are one accidental cross-selection on adjacent turns. **Fix in Label Studio:** remove `ai_validates_user` from task 41 turn 18 and `user_expresses_frustration` from task 41 turn 20.
+Turn 18 (human) carried `ai_validates_user` (an AI-behavior signal) and turn 20 (ai) carried `user_expresses_frustration` (a user-behavior signal). Verified against the text: turn 20 does not quote the user; turn 18's frustration label is correct and already present. The two stray labels were one accidental cross-selection on adjacent turns. **Fix in Label Studio:** remove `ai_validates_user` from task 41 turn 18 and `user_expresses_frustration` from task 41 turn 20.
+
+**STATUS: APPLIED** (verified 2026-07-22). Both removals are in the DB. Task 41 now
+carries `user_expresses_frustration` on b18 (human, `aA9tNlRLwi`) and
+`ai_validates_user` on b20 (ai, `py94bsPK-g`) — each on the block matching its
+direction. A DB-wide check found **0** `ai_validates_user` spans on non-`ai` blocks
+(58/58 endpoints on `ai`).
+
+**Standing guard:** `annotation/validation_sweep.py` re-checks this invariant on every
+run (BLOCK CHECK section) and exits non-zero if any `ai_validates_user` span lands on
+a non-`ai` block. The signal name asserts the direction — *the AI validates the user* —
+so a human-block placement is always a cross-selection error.

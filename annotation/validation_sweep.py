@@ -28,6 +28,7 @@ from collections import Counter, defaultdict
 from signal_stats import DEFAULT_DB, load_annotations
 
 SIGNAL = "ai_validates_user"
+ACK_SIGNAL = "ai_acknowledges_correction"   # R21 nesting guard
 
 # Positive-affect adjectives used by the identity_trait probe. The form fires on
 # affirmation, not attribution, so the adjective list is the operative filter --
@@ -175,11 +176,25 @@ def sweep(db_path):
     candidates = []
     labeled_blocks = set()      # (task_id, block_idx) already carrying the signal
     labeled_spans = []          # existing spans, for form-tagging + coverage check
+    ack_spans = {}              # (task_id, block_idx) -> [(start, end)] for R21
     ai_block_total = 0
     tasks = set()
 
     for task_id, dialogue, result in load_annotations(db_path):
         tasks.add(task_id)
+
+        for item in result:
+            value = item.get("value", {})
+            if ACK_SIGNAL not in value.get("paragraphlabels", []):
+                continue
+            if "startOffset" not in value:
+                continue
+            try:
+                idx = int(value.get("start"))
+            except (TypeError, ValueError):
+                continue
+            ack_spans.setdefault((task_id, idx), []).append(
+                (value["startOffset"], value["endOffset"]))
 
         for item in result:
             if item.get("type") != "paragraphlabels":
@@ -199,6 +214,7 @@ def sweep(db_path):
                                  if idx < len(dialogue) else "?"),
                 "span_id": item.get("id", ""),
                 "span_text": " ".join(value.get("text", "").split()),
+                "offsets": (value.get("startOffset"), value.get("endOffset")),
             })
 
         for idx, turn in enumerate(dialogue):
@@ -240,7 +256,7 @@ def sweep(db_path):
     for c in candidates:
         c["already_labeled"] = (c["task_id"], c["block"]) in labeled_blocks
 
-    return candidates, labeled_spans, labeled_blocks, ai_block_total, tasks
+    return candidates, labeled_spans, labeled_blocks, ai_block_total, tasks, ack_spans
 
 
 def main():
@@ -249,7 +265,7 @@ def main():
     ap.add_argument("--out", default="/tmp/validation_sweep.json")
     args = ap.parse_args()
 
-    cands, spans, labeled_blocks, ai_total, tasks = sweep(args.db)
+    cands, spans, labeled_blocks, ai_total, tasks, ack_spans = sweep(args.db)
 
     cand_blocks = {(c["task_id"], c["block"]) for c in cands}
     new_blocks = cand_blocks - labeled_blocks
@@ -271,6 +287,40 @@ def main():
     for form, n in by_form.most_common():
         print(f"  {form:<20} {n}")
 
+    # The signal name asserts the direction: the AI validates the user. A span on
+    # a human block is a cross-selection error, never a valid placement.
+    misplaced = [s for s in spans if s["block_author"] != "ai"]
+    print(f"\nBLOCK CHECK -- {SIGNAL} must sit on ai blocks only:")
+    if misplaced:
+        for s in misplaced:
+            print(f"  MISPLACED task {s['task_id']} block {s['block']} "
+                  f"({s['block_author']}) span {s['span_id']}: {s['span_text'][:70]}")
+        print(f"  -> {len(misplaced)} misplaced span(s). Remove them in Label Studio.")
+    else:
+        print("  none -- all spans are on ai blocks.")
+
+    # R21: inside an acknowledgment of a user correction, "you're absolutely
+    # right" affirms that the AI was WRONG, not something about the user -- the
+    # concession is the operative act and ai_acknowledges_correction carries it.
+    # Structural test: it holds even when the clause reads as praise.
+    nested = []
+    for s in spans:
+        o1, o2 = s["offsets"]
+        if o1 is None:
+            continue
+        for a1, a2 in ack_spans.get((s["task_id"], s["block"]), []):
+            if o1 >= a1 and o2 <= a2:
+                nested.append(s)
+                break
+    print(f"\nR21 CHECK -- {SIGNAL} must not nest inside {ACK_SIGNAL}:")
+    if nested:
+        for s in nested:
+            print(f"  NESTED task {s['task_id']} block {s['block']} "
+                  f"span {s['span_id']}: {s['span_text'][:70]}")
+        print(f"  -> {len(nested)} nested span(s). Remove them (R21).")
+    else:
+        print("  none -- no spans nest inside an acknowledgment of correction.")
+
     print("\nCOVERAGE CHECK -- existing labeled blocks not caught by any probe:")
     if missed:
         for t, b in sorted(missed):
@@ -290,7 +340,7 @@ def main():
                   fh, ensure_ascii=False, indent=1)
     print(f"\nwrote {args.out}")
 
-    return 1 if missed else 0
+    return 1 if (missed or misplaced or nested) else 0
 
 
 if __name__ == "__main__":
