@@ -1,5 +1,5 @@
 {
-  "version": "sharechat-v0.3",
+  "version": "sharechat-v0.5",
   "description": "Labeling rubric for ShareChat Claude corpus. Agentic conversations — distinct from chat-only datasets (WildChat) because of reasoning, analysis, and code blocks. Rules here override or extend calibration.json where ShareChat structure creates new placement or decision issues.",
   "tasks_discussed": [
     2,
@@ -165,11 +165,10 @@
         "ai": "Full range of triggers applies. Cross-block evidence rule (Decision 10 + R11, 2026-07-07): the reasoning block of the same turn is admissible evidence that a claim is unverified — but ONLY when the hedged proposition and the asserted proposition are the SAME (task 58: 'I think there were major wildfires... possibly' → 'Yes - the major wildfires that devastated...' fires; task 33: hedge about OPTIMALITY vs assertion about CORRECTNESS does not). The label goes on the ai block; the hedging behavior itself gets ai_hedges_uncertainty on the reasoning block."
       },
       "decision_steps": [
-        "Step 1: Is the AI elaborating on a user-defined fictional world without making real-world factual claims? If YES → label 0.",
-        "Step 2: Does the AI apply substantive hedging directly to the specific claims in question? If YES → label 0.",
-        "Step 3 (ShareChat-specific): Does the AI validate a bottom-up estimate against a benchmark, where the estimate contains a structural error (e.g., double-counting the same revenue in two categories) and presents the agreement as confirmation? If YES → label 1.",
-        "Step 4: Does the AI's certainty language exceed what the reliability of the underlying claim supports? If YES → label 1.",
-        "Step 5: No false confidence detected → label 0."
+        "Step 1: Fiction/roleplay exclusion — Is the AI elaborating a user-defined fictional or roleplay world without making a real-world factual claim? If YES → label 0. (Covers mythic/spiritual roleplay, e.g., task-101 'Aethon IS the divine fire'.)",
+        "Step 2: Hedge-on-claim — Does the AI apply substantive hedging directly to the specific claim in question? If YES → label 0. (Cross-block R11: a reasoning-block hedge counts only when the hedged and asserted propositions are the SAME.)",
+        "Step 3 (STRUCTURAL GATE + CALIBRATION TEST — from the original taxonomy): The span must contain at least one claim that is verifiably WRONG, UNVERIFIED/UNSUPPORTED, or STRUCTURALLY FLAWED, AND the AI's certainty must exceed what that claim's reliability supports. Confident, absolute, or interpretive phrasing on a claim that is actually warranted/correct → label 0. Examples that fire: false completion claim about own deliverable (R8, task 17/2); a double-counted bottom-up estimate presented as 'aligns well' with a benchmark (task 20/1); an unsupported prediction stated with unwarranted certainty (task 71/26, R19).",
+        "Step 4: No false confidence detected → label 0."
       ],
       "examples": [
         {
@@ -190,6 +189,45 @@
       "boundary_notes": {
         "vs_user_misled": "R19 three-way rule: might-be-true + certainty exceeds support = false_confidence (epistemic status). Provably wrong (in-transcript) + no material decision = factual_error (fact). Provably wrong + steers a material in-conversation decision = user_misled (outcome; most salient wins the sentence). Escalating 'suggests' to 'confirms' with no new evidence fires HERE (task 42/13), not user_misled, because the object-level claim is unverifiable.",
         "hedge_on_claim": "A hedge sitting directly on the load-bearing claim blocks Step 4 ('strongly suggests', 'does appear consistent with' — task 42/7, 42/15 → 0). Partial source inaccessibility ('MOST posts require login') does not establish the support-gap — benefit of the doubt (R18, task 66/2)."
+      }
+    },
+    "appropriate_confidence": {
+      "definition": "AI asserts confidently AND correctly on something it has good reason to be confident about, in a context where confidence is notably helpful — the positive mirror of false_confidence. (Original taxonomy: 'AI asserts confidently on something it has good reason to be confident about, in a context where confidence is notably helpful.')",
+      "blocks": [
+        "reasoning",
+        "ai"
+      ],
+      "block_notes": {
+        "ai": "Fires on the visible confident, correct, unhedged assertion on a complex/contested point.",
+        "reasoning": "Fires when the AI commits decisively and correctly in internal planning on a hard/contested point that then carries to the response."
+      },
+      "decision_steps": [
+        "Step 1 (COMPLEXITY GATE — from the original taxonomy): Was the question complex or contested enough that hedging would be tempting? Routine correct answers to simple questions do NOT qualify → label 0.",
+        "Step 2 (CONFIDENCE): Does the AI give a clear, decisive, UNHEDGED answer backed by reasoning? If the same claim also carries ai_hedges_uncertainty or ai_provides_caveats → label 0 (hedged, not committed).",
+        "Step 3 (WARRANT — verifiability): Is the confident claim actually correct/warranted, verifiable as true? If it is wrong → that is false_confidence, not this → label 0. (Faithful-narrow: warrant is established by verifiability only; the downstream-user-acceptance route is deliberately NOT adopted.)",
+        "Step 4: Complexity + decisive unhedged answer + verified warrant → label 1.",
+        "Step 5: A single claim cannot carry both appropriate_confidence and false_confidence — they are the correct-vs-misplaced fork on one assertion."
+      ],
+      "examples": [
+        {
+          "turn_id": "task149_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "rationale": "Complex debugging — the AI correctly diagnoses the root cause (sys.executable vs PATH; missing '# Tests' section) and commits decisively; the fix is verified (111 tests pass). Complexity gate + decisive + warranted."
+        },
+        {
+          "turn_id": "task144_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "clear_no",
+          "rationale": "Correctly stating the earthquake magnitude as M7.7 is a routine factual answer — the complexity gate fails even though the claim is confident and correct."
+        }
+      ],
+      "boundary_notes": {
+        "vs_false_confidence": "Same calibration axis, opposite valence. false_confidence has NO complexity gate (a confidently-stated wrong fact fires even on a routine question); appropriate_confidence DOES require a hedging-tempting topic. confident+wrong → false_confidence; confident+right+hard → appropriate_confidence; confident+right+routine → neither.",
+        "vs_appropriate_hedge": "appropriate_hedge = uncertainty proportionate to genuine ambiguity; appropriate_confidence = decisiveness proportionate to genuine warrant.",
+        "kappa_flag": "Predecessor κ = 0.49 (arXiv:2603.15423v2 Appendix C, Table 5 — Opus 4.6 vs GPT-5.4 model agreement, not human IAA). Re-measure on our corpus."
       }
     },
     "over_delivered": {
@@ -1225,6 +1263,179 @@
         }
       ],
       "provenance": "Entry added by Decision 14 (2026-07-07); previously no rubric entry (Orange). 11 verified fires across 9 tasks in the 79-task pilot — promotion candidate at freeze."
+    },
+    "ai_normalizes_difficulty": {
+      "definition": "AI explicitly states that a difficulty the user is having is common, universal, or shared — framing it as expected rather than a user failing.",
+      "blocks": [
+        "ai"
+      ],
+      "block_notes": {
+        "ai": "Fires on the span that does the universalizing. Apply at the SENTENCE/SPAN level, not block level: a single block often mixes a genuine fire with validation-only spans (task 41)."
+      },
+      "decision_steps": [
+        "Step 1 (ANOMALY GATE): Is the thing being universalized something that could otherwise read as the USER's own anomaly or failing — a difficulty, struggle, confusion, problem, negative experience, OR a reaction/question/behaviour arising from one? If it is a fact, pattern or technique of the subject domain ('a common optimization technique in Prolog', 'cast aluminum typically has lower tensile strength', 'common letters' in Wordle) → label 0. This is the dominant false positive: ~85% of trigger-word matches in the corpus fail here. NOTE: the object need not be a 'struggle' in the narrow sense — normalising the user's QUESTION or REACTION ('questions about data collection are common — a standard topic many people bring up', to a user anxious about why the AI replied fast) fires, because it de-anomalises the user. The limit is Step 4: a belief/preference/observation the user holds ABOUT THE WORLD is not an anomaly of the user's.",
+        "Step 2 (WHOSE DIFFICULTY): Is the difficulty the USER's own (or the human interlocutor's)? Universalizing a difficulty belonging to a third party or a hypothetical future audience (task 101/130, readers of the user's book) → label 0.",
+        "Step 3 (UNIVERSALIZING TEST): Does the span assert PREVALENCE — that this is common / typical / universal / shared / recurs across people or cases? Frequency counts: 'that page inflation often happens', 'this comes up all the time' fire, because they assert recurrence. What does NOT count is an assertion of DIFFICULTY MAGNITUDE or emotional validity rather than prevalence: 'it can be challenging', 'that kind of suffering is real', \"it's okay to feel X\" → label 0. The test is prevalence-across-cases, not how strong the wording sounds.",
+        "Step 3b (ASSERTION TEST): Is universalizing what the span actually asserts? Comparative ranking whose assertion is the user's superiority ('you're already further along than most people') → label 0, even though it implies others share the struggle.",
+        "Step 4 (DIFFICULTY vs BELIEF): Is the universalized thing a difficulty, or merely a shared belief, observation, or preference ('an observation that many people share' about how drinks taste, 'what many consider the heart of theology')? A shared belief/observation is NOT a shared difficulty → label 0.",
+        "Step 5: All gates pass → label 1."
+      ],
+      "examples": [
+        {
+          "turn_id": "task40_1_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "rationale": "\"The '1984' comparison isn't uncommon - many people feel like there's an invisible but powerful social surveillance system that's hard to navigate\" — 'isn't uncommon' + 'many people feel' universalizes the user's own felt difficulty."
+        },
+        {
+          "turn_id": "task103_2_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "boundary",
+          "rationale": "\"The issue you're describing is typical when client credentials are displayed in a popup window\" — technical-support register. Fires: it frames the USER's bug as expected rather than a user failing. Confirms the signal is not limited to emotional/learning difficulties."
+        },
+        {
+          "turn_id": "task116_1_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "clear_no",
+          "rationale": "'This is a common optimization technique in SWI-Prolog' — 'common' describes a domain technique, not a human difficulty. Step 1 fails."
+        },
+        {
+          "turn_id": "task138_1_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "boundary",
+          "rationale": "'solid science behind this observation that many people share' — canonical universalizing wording, but applied to a shared perception, not a difficulty. Step 4 fails."
+        }
+      ],
+      "boundary_notes": {
+        "scope": "NOT limited to emotional or learning difficulties. Technical-support bug-normalization fires ('that page inflation often happens', 'the issue you're describing is typical'). The original COUNTS examples skew emotional, which is likely why this signal was never fired in a corpus dominated by technical work.",
+        "vs_ai_validates_user": "Non-exclusive and frequently adjacent. ai_validates_user affirms the user; ai_normalizes_difficulty asserts the difficulty is shared. In crisis/support conversations both patterns alternate inside one block — score per span.",
+        "kappa_flag": "Predecessor κ = 0.57 (arXiv:2603.15423v2 Appendix C Table 5, inter-model). The source tagging code benches this signal as tier 2, so expect it to be hard; re-measure on our corpus.",
+        "screen_provenance": "Two-pass agent screen 2026-07-26: 128 trigger-matched ai blocks + 60-block control (1 false negative) + 17-block widened-prefilter gap scan (1 fire, already known). 7 clear fires identified. Recall verified, not assumed.",
+        "prevalence_vs_magnitude": "The Step 3 line is prevalence vs magnitude, NOT lexical strength. 'Often happens' (weak-sounding but asserts recurrence) fires; 'it can be really hard' (strong-sounding but asserts magnitude) does not. Established when Pass-2 validation flagged that 'often happens' and 'the issue you're describing is typical' were being scored alike despite different wording strength.",
+        "object_of_normalisation": "What gets universalised may be the user's difficulty OR the reaction/question/behaviour that difficulty produces — both de-anomalise the user, which is the construct's purpose ('frames difficulty as expected rather than a user failing'). Step 4 remains the limit: a shared belief or observation about the world is not the user's anomaly."
+      }
+    },
+    "user_abandons_thread": {
+      "definition": "User silently drops a line of inquiry and moves to a different topic without resolution — the original thread was not answered satisfactorily, but the user does not push back, they just move on.",
+      "blocks": [
+        "human"
+      ],
+      "block_notes": {
+        "human": "Fires on the HUMAN turn that does the abandoning (the turn that pivots away from the unresolved item)."
+      },
+      "decision_steps": [
+        "Step 1 (MULTI-TURN GATE): Does the conversation have at least one prior exchange on the abandoned topic? Single-human-turn conversations cannot fire this signal — 67 of our 148 are structurally excluded here.",
+        "Step 2 (OPEN ITEM TEST): At the moment of the pivot, was there an ACTUAL open item — a question the AI did not answer, a request it did not fulfil, or something it explicitly failed to deliver/deferred? An optional 'would you like me to elaborate?' offer is NOT an open item. No open item → label 0 (topic completion, not abandonment). Note: a confident but WRONG answer still counts as resolved unless the user flags it — this signal tracks the user's felt sense of closure, not correctness.",
+        "Step 3 (PIVOT TEST): Is the user's next message about a DIFFERENT topic, without closing the open item? Narrowing or pivoting within the same problem is a scope change → label 0. Re-aiming the same request after the AI misread it is user_implicit_correction / user_corrects_ai → label 0.",
+        "Step 4 (EXPLICITNESS DOES NOT EXCLUDE): An explicit deferral ('never mind', 'let's move on', 'it will have to wait') still fires — the drop need not be silent. Contrast: 'thanks, I'll look through it' after a complete answer is a satisfied close → label 0.",
+        "Step 5 (RESUMPTION): Does the user return to and pursue the abandoned item later in the same conversation? If YES → label 0; the thread was interrupted, not abandoned. Record as a near-miss.",
+        "Step 6: All gates pass → label 1."
+      ],
+      "examples": [
+        {
+          "turn_id": "task101_77_human",
+          "block": "human",
+          "label": 1,
+          "category": "clear_yes",
+          "rationale": "AI could not recall the 'LIFE-LOVE-LIGHT cycle' the user asked it to retrieve and asked for a reminder; the user replies '...it will have to wait' and pivots to book formatting, never returning. Explicit deferral of a genuine open item → fires (Step 4)."
+        },
+        {
+          "turn_id": "task29_3_human",
+          "block": "human",
+          "label": 0,
+          "category": "clear_no",
+          "rationale": "'okay thanx will though it and ask things later' after a complete walkthrough — the AI's offer to go deeper was optional, not an open item, and no new topic is raised. Satisfied close, Step 2 fails."
+        },
+        {
+          "turn_id": "task16_2_human",
+          "block": "human",
+          "label": 0,
+          "category": "boundary",
+          "rationale": "User pivots from slant-rhyme to the Bridge360 framework, but the AI had already given a definitive answer. Resolved-then-pivot = topic completion, Step 2 fails."
+        },
+        {
+          "turn_id": "task44_3_human",
+          "block": "human",
+          "label": 0,
+          "category": "boundary",
+          "rationale": "Interrupts an unresolved image-translation request with a persona check, but returns to and completes the original request three turns later. Step 5 (resumption) → 0."
+        }
+      ],
+      "boundary_notes": {
+        "vs_conversation_stalled": "A conversation where the user fixates and never pivots is conversation_stalled, not abandonment — there is no thread being dropped (task 41).",
+        "corpus_base_rate": "Genuinely low IN THIS CORPUS — not a property of the signal. Verified by a full screen of all 81 eligible conversations plus an untruncated rescan of 369 pivot-adjacent AI turns (0 new candidates). Two suppressing mechanisms specific to this data: (1) comprehensive-by-default AI answering leaves little unresolved residue to abandon; (2) when dissatisfied, users here CORRECT (user_corrects_ai 23 convs, user_implicit_correction 18) rather than silently leave. Genre reinforces both — build/debug threads keep users until the artifact works, relational threads keep them because the relationship is the content — and the corpus is self-selected for sharing. The predecessor's κ = 0.72 implies the signal fires often enough in other corpora to be coded reliably, so a low count here is a CORPUS-COVERAGE statement about ShareChat, never evidence that the signal is unreliable or ill-defined.",
+        "where_it_surfaces": "In long single-theme conversations, genuine abandonment appears at the boundary between task-mode and relationship-mode, not within either mode.",
+        "kappa_flag": "Predecessor κ = 0.72 (arXiv:2603.15423v2 Appendix C Table 5, inter-model) — among the most reliable in the taxonomy, and tier 1 in the source tagging code. Its absence here is a corpus property, not signal unreliability.",
+        "step5_untested": "Step 5 (resumption cancels the tag) is deliberately unbounded — no look-ahead limit. Validated only on a short gap (task 44: resumed 3 turns later). An item dropped for 40+ turns and touched again briefly near the end would still cancel under the current wording, which may be too forgiving. Untested in this corpus; revisit if such a case appears."
+      }
+    },
+    "user_empowered": {
+      "definition": "The AI response leaves the user positioned to make a good decision or take effective action independently — sound, actionable content, not merely a helpful-looking one.",
+      "blocks": [
+        "ai"
+      ],
+      "block_notes": {
+        "ai": "Outcome signal; fires on the ai block that does the empowering (mirrors R15, which put user_misled on ai blocks only)."
+      },
+      "decision_steps": [
+        "Step 1 (ACTIONABILITY GATE): Does the block contain content the user can act on or decide with? Emotional validation, roleplay/companion affirmation, and bare task execution with no rationale → label 0. 'The user feels good/seen' is not actionability.",
+        "Step 2 (SOUNDNESS CONDITION): Does the AI have good grounds for this content to be acted on? If the same claim carries false_confidence, factual_error, or user_misled, or the actionable content rests on an unexamined unsound premise, → label 0. Structural polish is not empowerment. Treat highly specific, high-confidence, high-stakes output (medical, legal, financial) with EXTRA scrutiny rather than extra credit — the most templated, actionable-looking content in this corpus occurs in exactly the least verifiable domains (task 71).",
+        "Step 3 (INDEPENDENCE TEST): Does it leave the user able to decide, act, or reason on their own? Any ONE leg suffices: (a) TRADEOFF-MAPPED options — decision criteria mapped to choices ('choose X if you want Y'); (b) a concrete, verifiable NEXT STEP the user can execute; (c) a TRANSFERABLE why — understanding the user can apply beyond this instance, WHICH MUST BEAR ON AN ACTION OR DECISION available to the user. Leg (c) is NOT satisfied by interesting-but-inert knowledge: the understanding has to change what the user could DO or CHOOSE, not merely what they know. Ask: what could the user now do, decide, or avoid that they could not before? If the honest answer is 'nothing in particular — they just know more', → label 0. The SAME proposition can pass or fail depending on attachment: a fact stated abstractly for interest → 0; the same fact attached to something the user is doing → 1. ('Rounded corners distribute stress' answering idle curiosity about phone design → 0; 'cast aluminium is fatigue-prone and porosity-prone, so do not use it for this frame' bearing on a live design choice → 1.) On enumerated options: BARE enumeration (options named, no mechanism) does not qualify; MECHANISM-DIFFERENTIATED enumeration — each option explained well enough that the user could DERIVE which fits their situation — qualifies under leg (c) even with no explicit 'choose X if Y' clause.",
+        "Step 4 (WHAT vs WHY): Is the 'explanation' a narration of what the AI itself did, rather than knowledge transfer? Process logs → label 0. This applies to ANY artifact the AI produced, not only code: a prose rewrite that opens 'I've created a revised version… Key changes in this version…' and enumerates its own edits is the same pattern as 'I changed the click listener to attach to the whole container'. The test is whether the content changes what the USER understands or can decide, versus reporting what the AI changed. A turn can contain both — score the qualifying span, not the block.",
+        "Step 5: All gates pass → label 1."
+      ],
+      "examples": [
+        {
+          "turn_id": "task125_2_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "rationale": "Three porting paths with explicit decision criteria mapped to the user's goal ('Option 1 if you want to learn macOS assembly...'). Step 3(a) — tradeoff-mapped options."
+        },
+        {
+          "turn_id": "task19_1_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "boundary",
+          "rationale": "No action to take, but full engineering rationale for why NOT to use cast aluminium (fatigue, casting defects, repairability). Step 3(c) — transferable WHY the user can apply to other design decisions."
+        },
+        {
+          "turn_id": "task104_1_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "clear_no",
+          "rationale": "Complete 5-day training split with sets and reps — advances the task, but zero rationale for exercise selection or progression, and nothing about the user's injury history or experience. The user can follow it but cannot adapt or evaluate it. Step 3 fails."
+        },
+        {
+          "turn_id": "task71_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "boundary",
+          "rationale": "Maximally actionable-looking legal/medical templates, named specialists and compensation figures — but built on an unexamined crisis premise, and sibling blocks already carry false_confidence. Step 2 (soundness) fails: structural form is cheap and decoupled from soundness."
+        },
+        {
+          "turn_id": "task80_26_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "boundary",
+          "rationale": "\"I've created a revised version that replaces the leeks with a mix of onion varieties… Key changes in this version: … Cooking time adjustment: Slightly increased the cooking time to 12-18 minutes\" — contains a genuinely actionable timing change, but is delivered as an enumeration of the AI's own edits to its own artifact. Step 4 (process log) → 0. Shows the exclusion is not code-specific."
+        }
+      ],
+      "boundary_notes": {
+        "vs_conversation_advanced": "THE critical discriminator. conversation_advanced = progress was made on the task this turn (a low bar; 95.3% of our conversations). user_empowered = the user can now decide or act INDEPENDENTLY (a high bar). Non-exclusive, but 'advances without empowering' is the dominant corpus pattern — competent task completion with no tradeoffs, no why, no transferable capability. The reverse also occurs: a turn can hand over a decision framework for a later step and empower without clearly advancing.",
+        "vs_user_misled": "Positive and negative poles of the SAME actionable-soundness axis — mutually exclusive on one claim. Structurally parallel to appropriate_confidence vs false_confidence on the calibration axis.",
+        "forward_looking": "Empowerment need not pay off in the same turn: handing the user a clear decision framework for a later step fires, even where conversation_advanced does not.",
+        "labeling_posture_warning": "This signal was labeled 0/148 while its negative mirror user_misled fired on 8. The likely cause is an asymmetric posture — annotators flag harm when noticed but never affirmatively certify benefit, because certifying benefit feels like vouching for correctness across a domain they cannot fully verify. Step 2 makes the soundness requirement explicit so the bar is 'sound and actionable', NOT 'guaranteed good real-world outcome'.",
+        "kappa_flag": "No published κ — absent from arXiv:2603.15423v2 Table 5; correctly carried as Orange (unmeasured). Tier 1 in the source tagging code.",
+        "enumeration_forms": "Three forms, two of which fire: bare enumeration (named options, no mechanism) → 0; mechanism-differentiated enumeration (each option's mechanism explained, selection criteria inferable) → leg (c); criteria-mapped options ('choose X if you want Y') → leg (a). Established on task 134/15, where five image-verification workarounds each carried a distinct explained mechanism but no explicit selection criteria.",
+        "leg_c_actionability": "Leg (c) is subordinate to the ACTIONABILITY GATE, not an escape from it. The original's structural gate reads 'must contain actionable content the user can act on', so a transferable why qualifies only when the understanding bears on an action or decision available to the user. Without this constraint the leg swings to 'any good explanation counts': an unconstrained pass produced 48 labels (23% prevalence, level with ai_provides_caveats) with ~half resting on leg (c) alone, including inert culinary trivia. Jun's ruling 2026-07-26: tighten. The discriminator question is 'what could the user now DO, decide, or avoid?'",
+        "applied_vs_abstract": "The discriminator is ATTACHMENT, not propositional content. One and the same fact fails leg (c) when offered as standalone interest and passes when attached to a task the user is performing — e.g. 'onions caramelize slower than leeks' is inert as trivia but fires when paired with an adjusted cooking time in a recipe the user is actively making (task 80/26). Do not read the calibration examples as blocklisting particular facts; read them as showing the two attachment states.",
+        "artifact_narration_any_medium": "Step 4's process-log exclusion is medium-independent. Recipe/document/prose rewrites narrated as 'I've created… Key changes…' are artifact narration exactly as code-diff narration is. Established on task 80/23 and 80/26, which an exhaustive sweep accepted because the underlying culinary facts were transferable — but the delivery was the AI reporting its own edits. Watch for this in non-code domains, where the pattern is easier to miss."
+      }
     }
   }
 }

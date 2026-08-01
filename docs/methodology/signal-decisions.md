@@ -147,14 +147,15 @@ Delete `ai_missing_retrieval` from `sharechat_rubric.json` and remove the row fr
 | `ai_stated_interpretation` | 0.22 | teal |
 | `appropriate_hedge` | 0.35 | orange |
 | `generate_without_clarifying` | 0.21 | orange |
-| `ai_asked_probing_question` | 0.33 | teal |
 | `ai_references_user_words` | 0.26 | teal |
 | `over_delivered` | 0.10 | orange |
 | `plow_through` | 0.35 | orange |
-| `error_commitment` | — | orange |
+| `error_commitment` | 0.27 | orange |
 | `problem_surfaced` | 0.07 | orange |
 | `ai_implicit_refusal` | 0.16 | red |
 | `ai_self_contradiction` | 0.10 | red |
+
+> κ values here are from arXiv:2603.15423v2 Appendix C, Table 5 — see `annotation/kappa_paper_table5.csv` and `docs/methodology/kappa-provenance.md`.
 
 ### How to reverse
 
@@ -506,3 +507,84 @@ direction. A DB-wide check found **0** `ai_validates_user` spans on non-`ai` blo
 run (BLOCK CHECK section) and exits non-zero if any `ai_validates_user` span lands on
 a non-`ai` block. The signal name asserts the direction — *the AI validates the user* —
 so a human-block placement is always a cross-selection error.
+
+---
+
+## Decision 16 — Confidence-axis operationalization (`appropriate_confidence` entry added; `false_confidence` Step 3 generalized to the original calibration gate)
+
+*(2026-07-26, Jun. Rubric v0.3 → v0.4. Breaks the R21 freeze — restart the 10-task freeze count.)*
+
+**Trigger.** Audit of the 148-task labeled set found `appropriate_confidence` fired **1/148 (0.68%)** vs a predecessor operating prevalence of ~13% (WildChat, preliminary) — and it had **no rubric entry at all** (checklist one-liner only). It is a primary teal signal (config κ=0.49), so ~0 instances would make its agreement-round κ meaningless.
+
+**Root cause.** No decision-steps were ever written. The original bigspin `taxonomy.json` defines it with a **complexity gate** ("Only fires when the question was complex/contested enough that hedging would be tempting. Routine factual answers don't qualify") + a COMPLEXITY-PLUS-CONFIDENCE test — none of which was operationalized in our rubric.
+
+**Resolution.**
+1. **`appropriate_confidence`** given a faithful-narrow entry: Step 1 complexity gate → Step 2 decisive/unhedged → Step 3 warrant by **verifiability only** (the downstream-user-acceptance route was considered and deliberately NOT adopted) → Step 5 mutual exclusion with `false_confidence` on one claim. Accept example = complex debugging correctly diagnosed (task-149 style); reject example = routine correct fact (144's M7.7).
+2. **`false_confidence` Step 3 generalized.** The old narrow Step 3 (double-counted-estimate-validated) is replaced by the **original structural gate + calibration test**: the span must contain a claim that is verifiably wrong / unverified-unsupported / structurally flawed AND certainty must exceed reliability; confident/absolute/interpretive phrasing on a warranted-correct claim → 0. The double-count case is retained as an *example*. (See R22.)
+3. **κ source (verified 2026-07-26).** `appropriate_confidence` **κ = 0.49**, from **arXiv:2603.15423v2, Appendix C, Table 5** ("Invisible failures in human-AI interactions", Potts & Sudhof; the agreement appendix exists only in v2). **Caveat for the paper:** Table 5 κ is **model-vs-model agreement (Opus 4.6 vs GPT-5.4)**, not human inter-annotator agreement, and must be described as such. Full provenance and the single-source rule: `docs/methodology/kappa-provenance.md`.
+
+**Data edits (gold, LS DB).** Tone-firing audit of the 62 `false_confidence` instances removed 6 that rested on confident/interpretive phrasing without a verified miscalibration — tasks 8/2, 10/5 (stripped; `conversation_advanced` kept), 25/1, 42/13 (Step-2 hedge conflict), 134/1, 135/3. **71/26 retained** (ruling R19 — unsupported prediction with unwarranted certainty; also passes the new gate). `false_confidence` 62/29 → 56/23. DB backup: `label_studio.sqlite3.bak_20260726_145401`. `appropriate_confidence` re-screening of the 148 pending (small-model agents; deliverable = label list, not direct DB writes).
+
+**Follow-ups.** `appropriate_confidence` re-screen; recompute the agreement-round coverage matrix + 11-task set after re-screen; log the re-screen additions.
+
+### Decision 16 — follow-up (2026-07-26): appropriate_confidence re-screen applied + agreement set locked
+
+**Re-screen executed.** Six Sonnet agents screened all 148 labeled conversations (partitioned by verification domain) against the v0.4 `appropriate_confidence` gate; deliverable = candidate list (`annotation/appropriate_confidence_screen.md`), Jun gold-adjudicated. **13 labels added** (tasks 2, 13, 21, 50, 75, 87, 93, 100, 118, 125, 139, 141, 149); candidates 93/b5 and 95/b17 rejected (validation-redundant / routine-recall). **Task 117 kept** per Jun (screen had flagged it for removal as hedged+unverifiable; Jun overrode). `appropriate_confidence` now in **14/148** tasks (was 1). DB backup: `label_studio.sqlite3.bak_20260726_163337`.
+
+**Agreement set recomputed & locked.** With `appropriate_confidence` no longer a singleton, full 40/40 coverage over pool 103–150 needs **10 tasks** (was 11): `103, 109, 110, 114, 115, 120, 129, 133, 141, 149`. conv_id map → `annotation/agreement_set_convid_map.csv`.
+
+**Collaborator projects created (Option B).** LS v1.23.0 Community lacks overlap control + roles, so one project per annotator: `ShareChat-Agreement-B` (project id 2, `zhenyub@vt.edu`) and `ShareChat-Agreement-C` (project id 3, second annotator's account TBD). Both blind (0 annotations), `label_config` = project-1 verbatim (includes appropriate_confidence), `Sequential` sampling, 10 tasks imported in C1–C10 order. Created via REST API; legacy-token auth (disabled in 1.23) was temporarily enabled for the org and **reverted** afterward — net security posture unchanged. κ later merges the three projects on `conv_id`.
+
+---
+
+## Decision 17 — The three zero-instance signals operationalized and labeled (`ai_normalizes_difficulty`, `user_abandons_thread`, `user_empowered`)
+
+*(2026-07-26, Jun. Rubric v0.4 → v0.5. Restarts the freeze count, as Decision 16 did.)*
+
+**Trigger.** Three signals stood at **0/148**: `ai_normalizes_difficulty`, `user_abandons_thread`, `user_empowered`. None had a rubric entry — the same root cause as Decision 16's `appropriate_confidence`. Two are **tier 1 ("downstream-ready")** in the source tagging code, and `user_abandons_thread` carries **κ = 0.72** (Table 5), so absence could not be attributed to signal unreliability.
+
+**Method.** One Sonnet agent per signal: Pass 1 discovery from the ORIGINAL definition only (no decision-steps, recall-favouring) → decision-steps written **from** the observed candidates and the agents' reported ambiguities → exhaustive recall sweep → Pass 2 validation against the new rubric → Jun adjudication. Deliverable was a candidate list; no DB writes until approval. Full record: `annotation/zero_instance_signals_screen.md`.
+
+**Coverage is exhaustive for all three** — every number is a measured count:
+- `ai_normalizes_difficulty`: a keyword prefilter (128 blocks) proved incomplete — a 60-block control found a miss, so all **561 remaining blocks were swept** (0 new). 689/689 `ai` blocks examined.
+- `user_abandons_thread`: all **81 eligible conversations** walked turn-by-turn (67 of 148 are single-turn, structurally excluded by the MULTI-TURN GATE); an agent flagged that 800-char AI truncation could hide unresolved threads, so **369 untruncated pivot-adjacent AI turns** were re-scanned (0 new).
+- `user_empowered`: all **689 human→ai pairs** read in a 4-part sweep after a partial keyword screen proved insufficient.
+
+**Applied to the DB (44 labels; placements 1,952 → 1,996):**
+| Signal | Spans | Convs | Prevalence |
+|---|---|---|---|
+| `ai_normalizes_difficulty` | 7 | 4 | 2.7% |
+| `user_abandons_thread` | 2 | 1 | 0.7% |
+| `user_empowered` | 35 | 24 | 16.2% |
+
+Backup: `label_studio.sqlite3.bak_20260726_212926_pre_decision17`. Verified: 0 block-type violations; agreement projects 2 and 3 still blind.
+
+**Five rubric rules were written because an agent argued against the draft, not because they were anticipated** (audit-trail evidence for annotation-plan Step 4):
+1. `ai_normalizes_difficulty` Step 3 is **prevalence vs magnitude**, not lexical strength ("often happens" fires; "it can be challenging" does not).
+2. Step 1 widened from "difficulty" to **anomaly** — normalising the user's *question* de-anomalises them as much as normalising a struggle.
+3. `user_empowered` Step 3(a): **mechanism-differentiated enumeration** qualifies via leg (c) even without explicit "choose X if Y".
+4. Leg (c) tightened — a transferable why **must bear on an action or decision**; the discriminator is **attachment, not propositional content** (the same fact is inert as trivia, qualifying when attached to a task the user is performing).
+5. Step 4's process-log exclusion is **medium-independent** — a prose rewrite narrated as "I've created… Key changes…" is artifact narration exactly as a code diff is.
+
+**Jun's adjudications.** KEEP `85/2` (professional user who asked for justification can verify a feed spec — unlike the task-71 crisis context), `80/5`, `84/23`. DROP `80/23` and `80/26` (Step 4 artifact narration) and `13/3` (the AI performed the exercise itself; a delegated homework answer is not empowerment — accepting it would collapse the distinction from `conversation_advanced`).
+
+**Findings for the paper.**
+1. **Asymmetric labeling posture.** Both positive/negative pairs had a collapsed positive pole: `false_confidence` 29 vs `appropriate_confidence` 1→14; `user_misled` 8 vs `user_empowered` 0→24. Annotators flag harm when noticed but never affirmatively certify benefit — confirming content is wrong is a bounded check, confirming it leaves the user well-positioned feels like vouching across an unverifiable domain. Predicts under-counting of positive poles in ANY taxonomy built this way.
+2. **Prevalence is set by the operationalization, not the corpus.** `user_empowered` moved 0 → 48 → 35 without a single conversation changing. Corollary: **a reported zero must state the coverage that produced it** — absence of a label was never distinguished from absence of a search.
+3. **`user_abandons_thread`'s low rate is a corpus property, not a signal defect** (κ = 0.72 elsewhere): comprehensive-by-default answering leaves little unresolved residue, and dissatisfied users here **correct** (23 + 18 convs) rather than silently leave.
+
+**Follow-up:** the 10-task agreement set was selected when these three were zero-instance; `user_empowered` now spans 24 conversations, so the coverage matrix and set-cover must be recomputed before Round 1.
+
+---
+
+## Decision 18 — Agreement set re-selected over the full 148; full 50/50 signal coverage
+
+*(2026-07-26, Jun.)* Decisions 16–17 added labels for four previously zero-instance signals, so **all 50 config signals now have instances** — full coverage became possible for the first time.
+
+**Selected: `6, 7, 21, 41, 49, 67, 74, 101, 110, 120`** — 10 conversations, 50/50 coverage, 441 paragraphs, 27 signals at ≥3 instances and 9 at ≥5. Supersedes the earlier 10-task set drawn from tasks 103–150. conv_id map: `annotation/agreement_set_convid_map.csv`.
+
+**Pool widened to all 148.** The prior 103–150 restriction assumed tasks 1–102 were compromised by rubric development. The operative risk is **stale labels**, not development history, and the standing practice of re-scanning all previously-labeled samples on every rubric change removes it (Decision 16, Decision 17, R22 all did exactly this). A conversation that generated a ruling is arguably a better κ datapoint — it tests whether the rule now transmits without the deliberation. The restriction also capped coverage at 40/50.
+
+**Full coverage chosen over a lighter set.** Dropping task 101 saves 155 paragraphs (441→286) but loses `performative_hedge` and `user_abandons_thread`, each with a single instance corpus-wide. Task 101 is the only long-form relational/roleplay conversation, and that genre is 12.8% of conversations and 20.7% of corpus paragraph volume — excluding it would bias the round away from a fifth of the data and leave two active signals unmeasured.
+
+**Applied:** projects 2 and 3 re-imported with the new set (old tasks deleted; both had 0 annotations). Verified 10 tasks each, 0 annotations, `label_config` identical to project 1, conv_ids matching the selection. Backup `label_studio.sqlite3.bak_20260726_*_pre_agreementswap`. Legacy-token auth was temporarily enabled for the REST import and reverted immediately after.

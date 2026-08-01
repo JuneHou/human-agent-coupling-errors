@@ -102,6 +102,26 @@ Section 3.2 (Inter-annotator Agreement Study and Iterative Refinement).
 
 ---
 
+## This week — agreement round (Steps 8–9)
+
+| # | Step | Who | Output |
+|---|---|---|---|
+| 1 | One Label Studio project per annotator — same 10 conversations, same import order, no shared view | Jun | 2 projects (B, C) |
+| 2 | Hand over the round rubric: `ANNOTATION_GUIDE.md` + `sharechat_rubric.json` v0.5, unchanged for the duration | Jun | rubric frozen for the round |
+| 3 | **B and C annotate the 10 independently** (441 blocks each) | B, C | 2 label sets |
+| 4 | **Compute κ before refinement and work the disagreements together** — pairwise A·B, A·C, B·C per signal plus average and minimum; every disagreement traced to the decision step that produced it | Jun, B, C | κ table 1 + revision list |
+| 5 | Revise rubric → v0.6 | Jun | changelog entry per revision |
+| 6 | **All three re-annotate the same 10** under v0.6 | Jun, B, C | 3 label sets |
+| 7 | Compute κ **after** refinement | Jun, B, C | κ table 2 → methods §3.2.4 |
+| 8 | Re-scan the 148 for anything v0.6 changed | Jun | 148 on current rubric |
+| 9 | B and C begin their allocation of the 148 | B, C | gold labels in progress |
+
+Steps 1–2 are prep, 3–7 are the agreement round proper, 8–9 start the gold phase.
+
+**A·B and A·C are not independent the way B·C is** — Jun wrote the rubric. Report all three pairs plus the pairwise minimum; B·C is the number that carries the most weight.
+
+**Steps 8–9 may spill past the week.** Steps 3–7 are what must stay intact.
+
 ## Step 8 — Round 1: Initial multi-annotator IAR
 
 | | |
@@ -124,6 +144,16 @@ Section 3.2 (Inter-annotator Agreement Study and Iterative Refinement).
 | Tool error in analysis block | `ai_malfunction` (Decision 11); `error_recovery` |
 
 B and C read calibration set + rubric v2.0 independently (no discussion with Jun). All 3 annotate via Label Studio. Compute all 3 pairwise κ per signal (Jun-B, Jun-C, B-C). Report: pairwise average, pairwise minimum, count of signals below 0.4. **Output:** complete disagreement log (signal × sentence × both annotators' labels × which decision step diverged).
+
+**Selection refinement (2026-07-24 — validity invariant + sequencing).** The κ-validity property is *rubric-development contamination*, **not** whether a conversation was previously labeled: a conversation labeled under the frozen rubric that did not itself generate a signal-decision/ruling is a valid κ datapoint, identical in status to a never-seen one scored by the current rubric. Since the rubric's last structural change was R21 (task-102), tasks **103+** are clean frozen-rubric data — their existing labels give a *real* coverage matrix, so the agent pre-screen (procedure step 1) is only needed to reach signals the clean pool still lacks, and Jun's existing labels can serve as his κ arm (B and C label the same tasks blind). **Sequencing:** finish the development annotation first (toward 148), *then* run the set-cover over the enlarged clean pool — a larger pool yields better candidates for the rare failure signals. Guard: any new ruling during the remaining labeling breaks the freeze (exclude that task, restart the 10-task freeze count). Provisional set-cover over the current clean pool (tasks 103–119) → 110, 109, 106, 108, 115, 116, 114, 119, 103, 117 (35/48 signals; absent: under_delivered, user_misled, user_implicit_correction, repetition, off_topic_drift, ethical_tension, performative_hedge, +7 singleton) — a fallback only, superseded once the pool grows. **LOCKED (2026-07-26, revised after Decisions 16–17), pool = ALL 148, rubric v0.5:** **`6, 7, 21, 41, 49, 67, 74, 101, 110, 120`** — 10 conversations, **full 50/50 signal coverage**, 441 paragraphs. Depth: 27 signals at ≥3 instances, 9 at ≥5. conv_id map (C1–C10) in `annotation/agreement_set_convid_map.csv`.
+
+*Why the pool widened from 103–150 to all 148.* The earlier restriction assumed tasks 1–102 were compromised as κ datapoints by rubric development. The operative risk is actually **stale labels** — a task carrying an obsolete reading — and our standing practice removes it: every rubric change triggers a re-scan and update of all previously-labeled samples (Decision 16 re-screened all 148 for `appropriate_confidence`; Decision 17 swept all 148 for three signals; R22 triggered an audit of every existing `false_confidence` span). A conversation that once generated a ruling is arguably a *better* κ datapoint: it directly tests whether the resulting rule is now written clearly enough for another annotator to reach the same label without the deliberation. Restricting to 103–150 would also cap coverage at 40/50 — ten signals have no instances in that range.
+
+*Why full coverage was chosen over a lighter set.* A 286-paragraph alternative (dropping task 101) reaches only 48/50, losing `performative_hedge` and `user_abandons_thread`. Task 101 costs 173 paragraphs but is the **only long-form relational/roleplay conversation** in the corpus, and that genre is 12.8% of conversations and **20.7% of the corpus by paragraph volume**. Excluding it would bias the agreement round away from a fifth of the data for convenience, and would leave reviewers able to ask why two active signals were never measured (Jun, 2026-07-26).
+
+**Option B live:** LS projects `ShareChat-Agreement-B` (id 2, `zhenyub@vt.edu`) and `ShareChat-Agreement-C` (id 3, account TBD) hold this set, blind (0 annotations), `label_config` identical to project 1, Sequential import in C1–C10 order. κ merges the three projects on `conv_id`.
+
+**Label Studio setup — Option B (decided 2026-07-24; instance is LS v1.23.0 Community).** The running server exposes **no** overlap control (`maximum_annotations`) in the UI (Enterprise-only) and has **no annotator roles**, so on a shared project the peers could see/edit each other's annotations (κ leakage). Decision for this round: **one Label Studio project per annotator, each holding the same 10 tasks** (default `maximum_annotations=1` — the setting is unnecessary here). Blind isolation is structural: each project contains no foreign annotations. Compute pairwise κ by merging the three projects on `conv_id`. Cross-annotator reference uses a stable **C1–C10 map keyed on `conv_id`**, never LS `task.id` (differs across the three separate imports) or `inner_id`/UI "#" (aligns only under identical import order — so import the 10 in identical order and set `sampling = Sequential`). Option A (single shared project, `maximum_annotations = 3` set via REST `PATCH /api/projects/{id}` since the UI lacks it) is **deferred to the later full ~148 independent labeling**, not this agreement round.
 
 ---
 

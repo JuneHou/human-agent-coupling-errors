@@ -14,6 +14,17 @@ Open a browser on `wangserv` (via VNC or X forwarding) and go to `http://localho
 
 ---
 
+## Agreement round (Round-1 IAR) — for collaborating annotators
+
+If you are here to compute inter-annotator agreement (κ), a few rules override the "discovery pass" framing above:
+
+- **Open only your assigned project** — `ShareChat-Agreement-B` or `ShareChat-Agreement-C`. Do **not** open the other annotator's project or the lead's project (`ShareChat-Test`).
+- **Annotate independently and blind** — no discussion with the other annotators or the lead until everyone has submitted. Do not look at anyone else's labels.
+- **Complete all conversations** in your project (do not skip any).
+- Use the **same signal rules below**; the authoritative decision source is `sharechat_rubric.json` (**v0.4**) — follow each signal's `decision_steps`.
+
+---
+
 ## Block types
 
 | Block | What it is | Visible to user? |

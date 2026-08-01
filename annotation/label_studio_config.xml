@@ -73,7 +73,7 @@
     <Label value="user_provides_invalid_input"  background="#b07aa1"/>
 
     <!-- ══ GREY: candidate signals ══════════════════════════════════ -->
-    <Label value="CANDIDATE_SIGNAL"             background="#666666"/>
+    <!-- CANDIDATE_SIGNAL retired at freeze (Decision 15c); removed 2026-07-26 -->
     <Label value="ai_missing_retrieval"         background="#666666"/>
     <Label value="ai_asks_followup"             background="#666666"/>
 

@@ -34,7 +34,7 @@ signals (e.g. `silent_assumption`, `intent_missed`), we may reuse that single κ
 *operational definition* — borrow definitions, not the category skeleton.
 
 > Caveat to budget for: many predecessor signals are tier-2 / low-κ (e.g.
-> `generate_without_clarifying` κ=0.22 with extreme cross-model asymmetry). Adapting any
+> `generate_without_clarifying` κ=0.21 with extreme cross-model asymmetry). Adapting any
 > definition means re-calibrating.
 
 ## 3. The taxonomy is an OUTPUT, not an input (settled 2026-05-30)
