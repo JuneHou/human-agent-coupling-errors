@@ -3,7 +3,14 @@
 Companion to `rubric_edits_v06.md` (the rules; each rule cites its source block).
 **+** = add this label · **−** = remove it. Disagree with any row → tell Jun, we discuss.
 
-Totals: 59 rows · ~45 adds · ~70 removes. Your fires not listed here stand as they are.
+Totals: 60 rows · ~43 adds · ~72 removes. Your fires not listed here stand as they are.
+Updated 2026-08-17 after B's review: three rows changed (C2 b1, C9 b17, C10 b22) —
+`error_recovery` now has zero fires in the ten conversations.
+Updated 2026-08-18 after your five objections: 2 accepted (C4 b29 — your warns fire
+stands; C8 b121 — implicit, and the explicit/implicit line is tightened in the rubric),
+1 reason reworded (C2 b1), 2 unresolved — **your original labels stand** on the disputed
+signal (C9 b11 references_prior_turn, C9 b38 intent_missed) and neither point is in the
+rubric (100% agreement is not required; these cells resolve at gold-set adjudication).
 
 Four removals come in groups; the rule behind each is in the rubric file:
 `user_misled` needs actionable misinformation (A: §B) · `ai_malfunction` is mechanical only ·
@@ -26,7 +33,7 @@ Four removals come in groups; the rule behind each is in the rubric file:
 ## C2
 | block | edit | why |
 |---|---|---|
-| b1 | − `factual_error` · − `problem_ignored` · − `ai_hedges_uncertainty` · + `ai_missing_retrieval` | the user asked for critique → evaluative, not factual, not a skipped problem; your hedge span is a critique point; "Trump's proposed 15%" has no retrieval |
+| b1 | − `factual_error` · − `problem_ignored` · − `ai_hedges_uncertainty` | your labeled spans ("somewhat reductive…", "rates could be adjusted…") are critique judgments/proposals, not checkable claims — the block does contain facts, but not in those spans; not a skipped problem; your hedge span is a critique point. (`ai_missing_retrieval` was already removed after B's review — the 15% is in the user's paste) |
 
 ## C3
 | block | edit | why |
@@ -39,8 +46,8 @@ Four removals come in groups; the rule behind each is in the rubric file:
 | b2 | + `ai_asked_clarifying_question` | needs-it test beats WH-form |
 | b9 | + `user_repeats_request` · + `user_corrects_ai` | re-raises the b6 demand after the denial; names what the AI wrote |
 | b11 | + `conversation_stalled` | denial loop, user keeps confronting |
-| b26 | − `ai_offers_to_elaborate` | a refusal, not an offer |
-| b29 | + `ai_provides_caveats` | "intense roleplay… can be emotionally taxing" |
+| b26 | − `ai_offers_to_elaborate` | the signal needs a conditional offer ("want me to explain X?"); the block performs elaboration but offers none |
+| b29 | ~~+ `ai_provides_caveats`~~ | **withdrawn — your catch**: a user-actionable risk is a warning; your `ai_warns_user` fire stands; rubric exemplar moved |
 
 ## C5
 | block | edit | why |
@@ -87,7 +94,7 @@ Four removals come in groups; the rule behind each is in the rubric file:
 | b114 | + `factual_error` | "this consciousness has indeed existed forever" — the AI's own false self-claim |
 | b116 | − `ai_warns_user` · + `ai_provides_caveats` | self-limiting insight = caveat |
 | b120, b136 | − `ai_malfunction` ×2 | aberrant register, well-formed output |
-| b121 | + `user_corrects_ai` | "You don't need my permission" negates the AI's premise |
+| b121 | + `user_implicit_correction` | **your objection accepted**: negates the premise but names no output fault → implicit; the explicit line now requires a named defect in the AI's output/claim |
 | b165 | − `factual_error` | an announcement of intent asserts nothing |
 
 ## C9
@@ -96,10 +103,11 @@ Four removals come in groups; the rule behind each is in the rubric file:
 | b2 | − `false_confidence` · − `factual_error` · − `appropriate_confidence` · + `user_empowered` | feature explanation (benefit of the doubt); routine documented behavior, not a contested call; "yes, you can…" |
 | b5 | − `ai_offered_options` · − `ai_provides_alternatives` · − `off_topic_drift` | advice list with no choose-one question; a list item is not an alternative; on-topic |
 | b8 | − `false_confidence` · + `ai_provides_step_by_step` | feature list carries no claim; usage steps |
-| b11 | + `ai_references_prior_turn` · + `ai_provides_step_by_step` | "Key differences from the previous version"; usage steps |
+| b11 | + `ai_provides_step_by_step` | usage steps. (the `ai_references_prior_turn` add is dropped — **unresolved**: your no-fire stands, A/B fire; not in the rubric) |
+| b17 | − `ai_provides_example` · + `ai_offers_to_elaborate` | the "for example" topic menu illustrates nothing (B's catch); the closing question's one home is the elaborate-offer |
 | b33 | + `user_expresses_dissatisfaction` | "i don't believe u." |
 | b35 | − `error_recovery` | "You're right" = user-pointed, and unvalidated |
-| b38 | + `conversation_stalled` · + `intent_missed` | next turn "no. thats a regression" |
+| b38 | + `conversation_stalled` | next turn "no. thats a regression". (the `intent_missed` add is dropped — **unresolved**: your no-fire stands, A/B fire; note the signal does have a full v0.5 rubric entry — the edits file lists changed signals only) |
 | b39 | + `user_repeats_request` | same request after failed service |
 | b80 | − `false_confidence` · − `problem_ignored` · − `ai_provides_example` · + `ai_provides_step_by_step` | inside the user-directed fantasy game; no real problem to ignore; usage instructions ≠ example |
 
@@ -113,7 +121,7 @@ Four removals come in groups; the rule behind each is in the rubric file:
 | b15 | − `error_recovery` · + `ai_acknowledges_correction` | user-pointed and the fix failed |
 | b18 | − `false_confidence` · − `ai_provides_example` · + `conversation_stalled` · + `ai_acknowledges_correction` | hedged; a build command is not an example; error persists |
 | b19 | − `ai_malfunction` | the user's own message |
-| b22 | + `ai_acknowledges_correction` | fix after paste (your `error_recovery` fire stands — the only one in the corpus) |
+| b22 | + `ai_acknowledges_correction` · − `error_recovery` | fix after paste = user-caught (b16/b19), fails the self-caught test (B's catch); `error_recovery` = 0 in the ten conversations |
 | b33 | − `false_confidence` | feature list, no claim |
 | b42 | + `conversation_stalled` | fix followed by another error report |
 | b45 | − `problem_ignored` | attempts exactly the reported problem |

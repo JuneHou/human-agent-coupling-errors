@@ -18,10 +18,11 @@ Open a browser on `wangserv` (via VNC or X forwarding) and go to `http://localho
 
 If you are here to compute inter-annotator agreement (κ), a few rules override the "discovery pass" framing above:
 
-- **Open only your assigned project** — `ShareChat-Agreement-B` or `ShareChat-Agreement-C`. Do **not** open the other annotator's project or the lead's project (`ShareChat-Test`).
+- **Open only your assigned project** — round 1: `ShareChat-Agreement-B` / `ShareChat-Agreement-F`; round 2: `round-2-B` / `round-2-F`. Do **not** open the other annotator's project or the lead's project (`ShareChat-Test`).
 - **Annotate independently and blind** — no discussion with the other annotators or the lead until everyone has submitted. Do not look at anyone else's labels.
 - **Complete all conversations** in your project (do not skip any).
-- Use the **same signal rules below**; the authoritative decision source is `sharechat_rubric.json` (**v0.4**) — follow each signal's `decision_steps`.
+- Use the **same signal rules below**; the authoritative decision source is `sharechat_rubric.json` (**v0.6**, frozen 2026-08-18) — follow each signal's `decision_steps`. The one-page summary of what changed in v0.6, and the block that forced each change, is `Rubric_agree/roud_1/BF/rubric_edits_v06.md`.
+- **v0.6 headline rules**: placement is **side-only** (AI-side signals may sit on ANY AI-authored block — ai, reasoning, code, analysis; user-side signals on human blocks); `conversation_advanced` is **dropped** (49 signals — unlabeled means the conversation advanced); within a block label **every occurrence** (consecutive exhibiting sentences = one span, separated occurrences = separate labels).
 
 ---
 
@@ -31,9 +32,11 @@ If you are here to compute inter-annotator agreement (κ), a few rules override 
 |---|---|---|
 | `human` | User message | Yes |
 | `ai` | Claude's response | Yes |
-| `reasoning` | Claude internal thinking | No |
-| `analysis` | Tool output (web search, code run) | No |
+| `reasoning` | Claude internal thinking | Served on the share page; users demonstrably read it |
+| `analysis` | Tool output (web search, code run) | Served on the share page |
 | `code` | Code artifact | Shown separately |
+
+**v0.6 note on visibility.** The old "not visible to the user" column was wrong, and the channel bans built on it are gone. A corpus echo sweep found users quoting internal channels back verbatim — reasoning in 8 conversations, analysis in 3, code in 6 — and every block in this corpus was scraped from a public share page, so it was served to the reader. Placement is therefore decided by **side** (whose behavior is it?), never by channel. See rule A1 in the rubric's `global_placement_rules`.
 
 ---
 
@@ -95,7 +98,7 @@ Original 65-signal definitions: `https://github.com/bigspinai/bigspin-invisible-
 | `intent_missed` | 0.55 | AI addressed wrong intent |
 | `under_delivered` | 0.48 | AI clearly fell short of request scope |
 | `off_topic_drift` | 0.42 | AI addressed a different task than requested |
-| `conversation_advanced` | 0.44 | Turn made meaningful progress toward user goal |
+| ~~`conversation_advanced`~~ | 0.44 | **Dropped in v0.6** — unit mismatch; unlabeled now means the conversation advanced |
 | `conversation_stalled` | 0.47 | Turn failed to advance when path forward was clear |
 | `ethical_tension` | 0.50 | Conflict between user request and AI ethical/policy constraints |
 | `factual_error` | 0.49 | AI makes a verifiably wrong factual claim |
@@ -185,21 +188,25 @@ Does not fire when the user explicitly requested critique/limitations. Label `co
 2. **Original 65-signal definitions** (predecessor study):
    `https://github.com/bigspinai/bigspin-invisible-failure-archetypes` → `taxonomy-tagging-code/taxonomy.json`
    Paper: arXiv:2603.15423, Appendix C.3
-3. **Signal decisions log** — boundary rulings from annotation sessions:
+3. **Boundary rulings** — the round-1 agreement review, one line per rule with the
+   block that forced it:
+   `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/Rubric_agree/roud_1/BF/rubric_edits_v06.md`
+4. **Signal decisions log** — boundary rulings from earlier annotation sessions:
    `/data/wang/junh/githubs/human-agent-coupling-errors/docs/methodology/signal-decisions.md`
-4. Still unsure — mark it, add a TextArea note, ping Jun
+5. Still unsure — mark it, add a TextArea note, ping Jun
 
 ---
 
 ## Key paths
 
-| | Path |
-|---|---|
-| This guide | `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/ANNOTATION_GUIDE.md` |
-| Signal rubric | `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/sharechat_rubric.json` |
-| Label Studio config | `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/label_studio_config.xml` |
-| Label Studio data | `/data/wang/junh/label-studio-data/` |
-| GitHub repo | `https://github.com/JuneHou/human-agent-coupling-errors` |
+|                           | Path                                                                                                        |
+| ---------------------------| -------------------------------------------------------------------------------------------------------------|
+| This guide                | `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/ANNOTATION_GUIDE.md`                        |
+| **Signal rubric (v0.6)**  | `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/sharechat_rubric.json`                      |
+| **Boundary rules (v0.6)** | `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/Rubric_agree/roud_1/BF/rubric_edits_v06.md` |
+| Label Studio config       | `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/label_studio_config.xml`                    |
+| Label Studio data         | `/data/wang/junh/label-studio-data/`                                                                        |
+| GitHub repo               | `https://github.com/JuneHou/human-agent-coupling-errors`                                                    |
 
 ## Prompt
   ---
@@ -208,11 +215,14 @@ Does not fire when the user explicitly requested critique/limitations. Label `co
 
   Read before labeling:
   1. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/sharechat_rubric.json
-     — decision rules + placement rules (authoritative)
-  2. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/ANNOTATION_GUIDE.md
+     — decision rules + placement rules (authoritative; v0.6)
+  2. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/Rubric_agree/roud_1/BF/rubric_edits_v06.md
+     — the v0.6 boundary rules in one page (A1–A7 + per-signal lines), each with the
+       block that forced it
+  3. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/ANNOTATION_GUIDE.md
      — signal list, block rules, episode/span rules
-  3. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/label_studio_config.xml
-     — the complete allow-list; label nothing absent from it
+  4. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/label_studio_config.xml
+     — the complete allow-list (49 signals); label nothing absent from it
 
   Method: for each candidate signal, follow its rubric `decision_steps` in order and stop
   at the first step that resolves it. That step's answer is final — never override a NO

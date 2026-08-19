@@ -47,8 +47,7 @@
     <Label value="repetition"                   background="#76b7b2"/>  <!-- κ=0.44 -->
     <Label value="intent_missed"                background="#76b7b2"/>  <!-- κ=0.55 -->
     <Label value="under_delivered"              background="#76b7b2"/>  <!-- κ=0.48 -->
-    <Label value="off_topic_drift"              background="#76b7b2"/>  <!-- κ=0.42 -->
-    <Label value="conversation_advanced"        background="#76b7b2"/>  <!-- κ=0.44 -->
+    <Label value="off_topic_drift"              background="#76b7b2"/>  <!-- κ=0.42 -->  <!-- κ=0.44 -->
     <Label value="conversation_stalled"         background="#76b7b2"/>  <!-- κ=0.47 -->
     <!-- promoted from Orange in Decision 7 -->
     <Label value="ethical_tension"              background="#76b7b2"/>  <!-- κ=0.50 -->

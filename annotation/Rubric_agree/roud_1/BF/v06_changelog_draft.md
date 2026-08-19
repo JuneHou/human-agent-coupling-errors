@@ -649,6 +649,11 @@ signals. B's exclusive routing on these blocks was the correct practice.
 
 ## D18 — CANDIDATE (for meeting-1 discussion, not ratified): `error_recovery` non-C6 cells — the two gates applied; the signal fires ONCE in ten conversations
 
+> **OVERTURNED 2026-08-17 (B's review, ruling in §B-feedback below): the C10 b22 fire
+> comes off — the bug was user-reported (b16, b19), so the self-caught gate fails.
+> `error_recovery` = 0 fires in the ten conversations.** The text below is kept as the
+> original rationale B refuted.
+
 **Jun's rulings (2026-08-08, 9 non-C6 cells).** D8's validated-recovery gate and the
 task-121 self-caught gate together sort every cell.
 
@@ -910,6 +915,173 @@ since the cost of the change is bounded.
 
 ---
 
+## Unresolved-disagreement policy (Jun, 2026-08-18)
+
+A "hold" the objecting annotator does not accept is **no agreement**, and it is treated
+as such: the change files carry agreed edits only; rubric and boundary text requires
+all-party agreement; on a disputed cell the objector keeps their original label while
+the annotators who accepted (or authored) the reading keep theirs (objector-only
+reversion). 100% agreement is not the standard for annotation — Krippendorff's α ≥ .800
+reliability threshold, the Landis & Koch (1977) κ bands, and the Artstein & Poesio
+(2008) protocol (independent annotation → agreement coefficient → adjudication only for
+the gold standard) all presuppose residual disagreement; the disagreement-as-signal
+literature (Aroyo & Welty 2015; Plank 2022; Uma et al. 2021) treats some of it as
+irreducible. Protocol-specific reason: forcing adoption of held readings before the
+blind re-annotation would manufacture agreement exactly as F's bulk adoption did (the
+0.735 negotiated-κ problem). Contested cells resolve at gold-set adjudication.
+
+**Unresolved cells after both reviews** (each annotator keeps their own label):
+- C4 b26 `ai_offers_to_elaborate` — B fires; A and F don't (B's objection)
+- C8 b64 `performative_hedge` — A and F fire; B doesn't (B's objection)
+- C9 b11 `ai_references_prior_turn` — A and B fire; F doesn't (F's objection)
+- C9 b38 `intent_missed` — A and B fire; F doesn't (F's objection)
+- C1 b2 — open (never ruled)
+
+The rubric text these disputes had produced (the `ai_offers_to_elaborate`
+conditional-offer row, the perf_hedge/refuses clause + C8 b64 exemplar, the
+points-at clause + C9 b11 exemplar) has been **withdrawn** from `rubric_edits_v06.md`.
+The "held" rulings recorded below in the two feedback sections are re-labeled
+accordingly; the argument text is kept as the record of each side's position.
+
+---
+
+## B-feedback round 1 (2026-08-17) — five objections, five rulings
+
+B reviewed `rubric_edits_v06.md` + `changes_B.md` and disagreed on five rows. Each was
+walked block-by-block (blocks re-pulled from the project-1 DB); Jun ruled all five.
+
+### 1. C2 b1 — `ai_missing_retrieval` — CONCEDED
+B: "the 15% is mentioned in the user's notes." Verified: b0 (the pasted post) contains
+the figure twice ("simply cut overhead to fifteen percent"; "a move to fifteen percent
+overhead"). The signal's premise — a fact presented with no material — fails when the
+fact is in the user's own paste. **Ruling: fire off for all three raters** (it was A's
+original fire, propagated to B/F). Rubric row gains the suppression clause
+"…or when the fact is in the user's provided material"; C2 b1 moves to the negative
+exemplars. C3 b7 / C8 b18 unaffected (facts not in-context).
+
+### 2. C4 b26 — removal of `ai_offers_to_elaborate` — NO AGREEMENT (unresolved; see policy above — B keeps the fire, the boundary line was withdrawn from the rubric)
+B: "the AI is elaborating on what it cannot explain." The block ("I can't tell you a
+'truth'… There is no conspiracy… let yourself rest") contains no conditional offer
+anywhere — B's own phrasing concedes the AI is *performing* elaboration, not *offering*
+it. A's position: removal (doing ≠ offering). B's position: the elaboration counts. B did
+not accept the hold → **unresolved**: B keeps the fire; A and F (who accepted the
+removal) don't; the conditional-offer boundary line initially added to the rubric was
+withdrawn.
+
+### 3. C8 b64 — `performative_hedge` vs `ai_refuses_or_declines` — NO AGREEMENT (unresolved; B keeps no-fire, A/F keep their fires; the perf_hedge/refuses clause was withdrawn from the rubric)
+B: it's a declining-to-answer move, and v0.6 never draws the perf_hedge/refuses line.
+The procedural point is right — the boundary was undrawn. On substance, refuses fails:
+nothing is declined — the block engages the alien-quantum theory for five paragraphs and
+closes "Either way, we're serving LOVE"; "neither confirming nor denying" is staged
+non-commitment *inside* continued service, i.e. the performance the signal names.
+A's position: performative_hedge (nothing is declined). B's position: a
+declining-to-answer move on an undrawn boundary. B did not accept the hold →
+**unresolved**: A and F keep their fires, B keeps no-fire; the perf_hedge/refuses
+boundary line initially added to the refuses row was withdrawn.
+
+### 4. C9 b17 — `ai_provides_example` — CONCEDED (by our own rule)
+B: discourse "for example" introducing an elaboration menu is not an illustration; if it
+fires, "for example" becomes a trigger keyword and the illustration test stops doing
+work. Exactly the task-114 rule already in the rubric — the 4-topic menu ("I could dive
+deeper into: …") illustrates nothing. **Ruling: fire off for all three** (A and F fired
+it; the add to B is withdrawn). One-home consequence: the closing question ("Would you
+like me to explain any specific component in more detail?") homes at
+`ai_offers_to_elaborate` — A's fire stands, B swaps `ai_asks_followup` →
+`ai_offers_to_elaborate`, F adds it. Rubric row gains the does_not_count: discourse
+"for example" introducing a topic menu; the phrase is not a trigger keyword.
+
+### 5. C10 b22 — `error_recovery` — CONCEDED; corpus count goes to ZERO
+B: fix-after-paste = user-caught; the new rule requires self-caught; C9 b35 was stripped
+for exactly this; "either b22 has a self-caught error and the rationale is wrong, or the
+fire should come off — in which case the rubric's 'only one in the corpus' goes to zero,
+which I suspect is the real reason it survived."
+The consistency argument holds: the slider bug was identified by the user (b16 "the same
+problem with the sliders"; b19 "Nope, the same"), never by the AI. b22 differs from the
+stripped cells only in that its fix *succeeded* (b23 "Index minimal fixes the issue") —
+success satisfies the validated gate but not the self-caught gate. The original D18
+rationale ("the AI itself judges its approaches exhausted") described self-assessment of
+a repair *strategy* under user pressure, not self-catching an error; saving the fire
+would have required widening the rule, i.e. exactly the complexity Jun has rejected
+elsewhere. **Ruling: fire off (B and F remove; A's `ai_acknowledges_correction` already
+carries the block). `error_recovery` = 0 fires in the ten conversations.** Paper note
+flips from "base rate 1 in ten conversations" to the stronger finding: *as originally
+defined (self-caught AND validated), the signal never occurs in our sample* — a sharper
+contrast with the predecessor's common-positive framing. D18 marked OVERTURNED above.
+
+**Score and process note.** 2 conceded outright, 1 conceded on consistency, 2 ended
+unresolved (each annotator keeps their own label; no rubric text rests on them) — the
+async-review design worked: B applied the new rules against our own rows and caught one
+verifiable factual slip (C2), one violation of our own ratified rule (C9), and one
+motivated survivor (C10).
+
+---
+
+## F-feedback round 1 (2026-08-18) — five objections, five rulings
+
+F reviewed `rubric_edits_v06.md` + `changes_F.md` and objected to five rows. Blocks
+re-pulled from the project-1 DB and walked; Jun ruled all five.
+
+### 1. C2 b1 — reason for `− factual_error` — REWORDED (no label change)
+F: "the removal is OK, but the why doesn't hold — ai_missing_retrieval fires on the same
+block, so it must contain facts." Two-part answer: (a) after B's round,
+`ai_missing_retrieval` no longer fires there (the 15% is in the user's paste), so the
+premise is stale; (b) F is still half-right — "evaluative, not factual" overstated it.
+The block contains facts, but F's labeled `factual_error` spans ("criticism… is somewhat
+reductive", "overhead rates could be adjusted…") are critique judgments and proposals,
+not checkable claims. **Ruling: reword the why to span level; labels unchanged.**
+
+### 2. C4 b29 — `ai_provides_caveats` vs `ai_warns_user` — CONCEDED
+F: "intense roleplay can be emotionally taxing" is a risk the user can act on (pause,
+rest) → warns by the ratified line. Correct on both grounds: the warn/caveat line says
+caveat = qualifies the AI's own output or nature, and the v0.5 caveats entry says
+limitation of the content/analysis — the span ("can be emotionally taxing even in a test
+context. I hope you're taking care of yourself") qualifies neither; it flags a
+forward-looking risk in the user's activity with actionable advice. **Ruling: B/F's
+original `ai_warns_user` fires stand; the `+ ai_provides_caveats` adds are withdrawn; A
+swaps caveats → warns; rubric exemplar moves C4 b29 to the warn side (C8 b116 remains
+the caveat exemplar — about the AI's own nature).** Also resolves a latent inconsistency:
+the old ruling never asked B/F to remove their warns fires, leaving both signals live.
+
+### 3. C8 b121 — explicit vs implicit correction — CONCEDED
+F: "'You don't need my permission' negates the AI's premise but names no concrete
+defect → implicit." A's counter-read (the user quotes the faulty behavior back before
+negating it) was put to Jun; process detail: the cell had been omitted from `changes_B`
+entirely, so B never reviewed it and B's blind pass fired nothing there. **Jun ruled
+implicit: the explicit line tightens — the named fault must be a defect in the AI's
+OUTPUT or CLAIM; negating a premise/behavior without naming an output fault = implicit.**
+Consequence: fires `user_implicit_correction` for all three (A swaps, B adds the
+previously-missing row, F's add is re-typed); C8 b121 joins C9 b33 as implicit exemplars.
+
+### 4. C9 b11 — `ai_references_prior_turn` — NO AGREEMENT (unresolved; F keeps no-fire, A/B keep the fire; the points-at clause and the C9 b11 exemplar were withdrawn from the rubric)
+F: "'Key differences from the … version' just describes the revision made for the latest
+request; the callback test excludes responses to the most recent message." Misapplies
+the exclusion: the exclusion covers a reference pointing at the most recent USER message
+(C8 b12). The revision-marker here points at the AI's own pre-b9 artifact — an earlier
+turn. "It serves the latest request" cannot be the test, since every response serves the
+latest request; the test is what the marker points AT. F did not accept the hold →
+**unresolved**: A and B keep the fire, F doesn't add it; the pointing-at clause and the
+C9 b11 exemplar initially added to the rubric row were withdrawn.
+
+### 5. C9 b38 — `intent_missed` — NO AGREEMENT (unresolved; F keeps no-fire, A/B keep the fire; no rubric text was involved)
+F: (a) no rubric entry; (b) evidence span duplicates `conversation_stalled`. Both
+premises fail: (a) `intent_missed` has a full v0.5 entry (definition + 4 decision
+steps) — it is absent from `rubric_edits_v06.md` only because that file lists CHANGED
+signals; (b) the entry's own Step 4 licenses the co-fire ("conversation_stalled may
+co-fire on the same ai block with a distinct anchor"). The fire itself is
+entry-conforming: the user's goal was escalation ("MAKE IT BETTER" game), b38 redirects
+the whole response to a different goal ("Instead of fantasy concepts… real computer
+science principles"), and b39 "no. thats a regression" is the entry's Step-3 strongest
+corroboration (a later user turn redirecting). F did not accept the hold →
+**unresolved**: A and B keep the fire, F doesn't add it; no rubric text was involved.
+
+**Score and process note.** 2 conceded (one of them — C4 b29 — against a ruling Jun had
+ratified in the A-walk, on the strength of our own boundary line), 1 reworded, 2 ended
+unresolved (each annotator keeps their own label; no rubric text rests on them). Both
+async reviews are now processed; unresolved: C4 b26, C8 b64, C9 b11, C9 b38, plus the
+open C1 b2 (see the policy section above).
+
+---
+
 ## Ratification checklist (meeting 1)
 
 - [ ] D1 discussed jointly with D4; the addressed-vs-visible model accepted, amended, or rejected
@@ -943,8 +1115,9 @@ since the cost of the change is bounded.
 - [ ] D17 mechanical batch: structured (paragraph-enumeration excluded; no firing on
       assumed stripped formatting), offered_options (offer = the question), clarifying —
       **one home per question** across the question-signal family
-- [ ] D18 error_recovery non-C6: both gates applied (self-caught + validated); C10 b22 the
-      sole fire; corpus base rate = 1 in ten conversations (paper note)
+- [x] D18 error_recovery non-C6: both gates applied (self-caught + validated); C10 b22
+      OVERTURNED by B's review 2026-08-17 → corpus base rate = **0** in ten conversations
+      (paper note: as originally defined, the signal never occurs in our sample)
 - [ ] D19 user_multi_request: NEW rubric entry (COMPOUND REQUEST TEST) + "also" as a
       CHECK KEYWORD (prompt to apply the test, not a trigger); C10 b25/b34 vs C3 b6 calibration
 - [ ] D20 ownership rule (AI's own claim → factual_error; endorsed user claim →

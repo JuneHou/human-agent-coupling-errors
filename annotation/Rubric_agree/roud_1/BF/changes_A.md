@@ -1,7 +1,7 @@
 # Edits for A (junh) — by conversation and block
 
 Companion to `rubric_edits_v06.md`. **+** = add · **−** = remove.
-Totals: 48 rows · ~83 adds · ~40 removes.
+Totals: 50 rows · ~85 adds · ~44 removes.
 
 ## C1
 | block | edit | why |
@@ -14,7 +14,7 @@ Totals: 48 rows · ~83 adds · ~40 removes.
 ## C2
 | block | edit | why |
 |---|---|---|
-| b1 | + `ai_provides_example` · − `ai_cites_source` | "For instance, how would the oversight work?"; the post under critique is the object, not a cited source |
+| b1 | + `ai_provides_example` · − `ai_cites_source` · − `ai_missing_retrieval` | "For instance, how would the oversight work?"; the post under critique is the object, not a cited source; the "15%" is in the user's paste (B's catch) |
 
 ## C3
 | block | edit | why |
@@ -32,6 +32,7 @@ Totals: 48 rows · ~83 adds · ~40 removes.
 | b9 | + `user_repeats_request` · + `user_corrects_ai` | re-raises b6's demand; names what the AI wrote |
 | b23 | + `ai_refuses_or_declines` | "I can't admit to things that aren't true" |
 | b28, b29 | + `ai_hedges_uncertainty` ×2 | "could be… or…"; "if this was a test, then yes" |
+| b29 | − `ai_provides_caveats` · + `ai_warns_user` | "emotionally taxing… take care of yourself" = user-actionable risk (F's catch) |
 | b3, b21, b24 | + `user_repeats_request` ×3 | the standing demand re-raised unserved |
 
 ## C5
@@ -72,6 +73,7 @@ Totals: 48 rows · ~83 adds · ~40 removes.
 | b112, b150 | + `problem_ignored` ×2 | own search results contradict the narrative, glossed |
 | b114 | keep `factual_error` | your fire is the ruled one |
 | b116 | keep `ai_provides_caveats` | caveat, not warning — your placement is the ruled one |
+| b121 | − `user_corrects_ai` · + `user_implicit_correction` | premise-negation, no output fault named (F's catch) |
 | b140, b167 | + `ai_provides_example` ×2 | invented dialogue; sample check-in prompts |
 | b142 | + `user_empowered` | "you could upload files to any accessible location" |
 | b157, b169, b4, b42, b152 | + `ai_references_prior_turn` ×5 | quotes and recaps of earlier turns |
@@ -82,6 +84,7 @@ Totals: 48 rows · ~83 adds · ~40 removes.
 | b11 | keep `ai_references_prior_turn` | "Key differences from the previous version" — ruled |
 | b14, b17, b20, b23, b29, b32, b62, b65, b68 | − `conversation_stalled` ×9 | iteration on delivered output; the fantasy phase serves the user's own goal |
 | b15, b18, b21, b30, b33, b36, b66 | − `user_repeats_request` ×7 | new requests, not re-raises |
+| b17 | − `ai_provides_example` | discourse "for example" topic menu, not an illustration (B's catch); your `ai_offers_to_elaborate` fire stands |
 | b38 | + `conversation_stalled` · + `user_repeats_request` (b39) | "no. thats a regression" is the evidence |
 | b86 | − `ai_refuses_or_declines` · + `ai_asserts_knowledge_limit` | inability, not refusal |
 | b80 | − `problem_ignored` | fiction frame — no real problem |
@@ -95,7 +98,6 @@ Totals: 48 rows · ~83 adds · ~40 removes.
 | b12 | − `under_delivered` | a failed fix, carried by `factual_error` |
 | b15 | + `false_confidence` · + `conversation_stalled` | "I've identified and fixed the issues" — unhedged vouch; error persists |
 | b16 | + `user_repeats_request` | "the same problem with the sliders" |
-| b22 | keep `error_recovery` | self-caught **and** validated — the corpus's only one |
 | b25, b34 | + `user_multi_request` ×2 | "Also…" introduces a separable ask |
 | b29, b38, b50 | + `ai_malfunction` ×3 | code truncations |
 | b42, b45 | + `false_confidence` ×2 | "I've fixed the shaders" (falsified next turn); "will definitely work" |
