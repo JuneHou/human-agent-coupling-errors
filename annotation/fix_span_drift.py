@@ -20,11 +20,19 @@ conversation_advanced everywhere in projects 1-3 (rubric v0.6 rule A7).
 
 Both modes are dry-run unless --apply is passed.
 
+Mode 3 (--list-wide-spans) -- list the labels mode 2 added whose span still
+covers the whole block (the change file quoted no locatable evidence). Presence
+and kappa are correct; only the highlight needs narrowing, by the annotator who
+owns the label. With --write, the report replaces the "Span fix-ups" section at
+the end of each changes_X.md so each annotator keeps ONE to-do document.
+
 Usage:
     python annotation/fix_span_drift.py [--apply]
     python annotation/fix_span_drift.py --apply-v06-edits [--apply] [--db PATH]
+    python annotation/fix_span_drift.py --list-wide-spans [--write]
 """
 import csv, hashlib, json, re, sqlite3, sys
+from collections import defaultdict
 from pathlib import Path
 
 SIGNAL = "ai_validates_user"
@@ -297,9 +305,113 @@ def apply_v06_edits(apply_changes):
           f"{len(touched)} completion(s) would change")
 
 
+SPAN_SECTION_MARKER = "# Span fix-ups"
+PREVIEW = 320
+
+
+def _evidence_for(signal, why):
+    """The part of a change-file reason that belongs to THIS signal.
+
+    A reason column often covers several operations of the same row
+    ("...; the post under critique is the object, not a cited source"), so the
+    clause naming another signal is noise for this one. Prefer the quoted
+    phrase; fall back to the clause that does not name a different signal.
+    """
+    why = re.sub(r"\s+", " ", why).strip()
+    quotes = re.findall(r'"([^"]{4,})"', why)
+    if quotes:
+        return " / ".join(f'"{q}"' for q in quotes[:2])
+    parts = [p.strip() for p in re.split(r";|·", why) if p.strip()]
+    own = [p for p in parts
+           if not re.search(r"`[a-z_]+`", p) or f"`{signal}`" in p]
+    return (own[0] if own else why)[:160]
+
+
+def list_wide_spans(write=False):
+    """Report the labels added by --apply-v06-edits whose span still covers the
+    whole block, because the change file's reason carried no quote precise
+    enough to locate the evidence. Presence (and therefore kappa) is correct;
+    only the span needs narrowing, by the annotator who owns the label.
+
+    With --write, the report replaces the "Span fix-ups" section at the end of
+    each changes_X.md, so every annotator keeps ONE to-do document.
+    """
+    conv_of = {r["c_index"]: r["conv_id"]
+               for r in csv.DictReader(open(ANNOT_DIR / "agreement_set_convid_map.csv"))}
+    con = sqlite3.connect(f"file:{db_path()}?mode=ro", uri=True)
+    store = {}
+    for pid, tid, data, res_raw in con.execute(
+            """SELECT t.project_id, t.id, t.data, tc.result
+               FROM task_completion tc JOIN task t ON t.id = tc.task_id
+               WHERE tc.was_cancelled = 0 AND t.project_id IN (1, 2, 3)"""):
+        payload = json.loads(data)
+        store[(pid, payload.get("conv_id"))] = (tid, payload["dialogue"],
+                                                json.loads(res_raw))
+    con.close()
+
+    for rater, project in RATER_PROJECT.items():
+        per_conv = defaultdict(lambda: defaultdict(list))   # conv -> block -> rows
+        meta, total = {}, 0
+        for conv, block, signal, op, why in parse_change_file(
+                BF_DIR / f"changes_{rater}.md"):
+            if op != "add":
+                continue
+            rec = store.get((project, conv_of[conv]))
+            if rec is None:
+                continue
+            tid, dialogue, result = rec
+            wanted = _new_id(project, conv, block, signal)
+            for it in result:
+                if it.get("id") != wanted:
+                    continue
+                v = it["value"]
+                text = dialogue[block]["text"].replace("\n", " ")
+                if v["startOffset"] == 0 and v["endOffset"] == len(text):
+                    per_conv[conv][block].append((signal, _evidence_for(signal, why)))
+                    meta[conv] = (tid, conv_of[conv])
+                    total += 1
+
+        out = ["", "---", "",
+               f"{SPAN_SECTION_MARKER} — same labels, narrower spans", "",
+               f"**{total} labels across "
+               f"{sum(len(b) for b in per_conv.values())} blocks.** Each one is "
+               "already in your project on the right block with the right signal, "
+               "so the agreement numbers are unaffected — only the highlight needs "
+               "narrowing. They were added by script, and the reason recorded in "
+               "the table above did not always quote enough text to place a span, "
+               "so they currently cover the whole block.", "",
+               "For each block below: open the task, select the evidence text, and "
+               "move the label onto that selection. Span rule — consecutive "
+               "exhibiting sentences form ONE span; occurrences separated by other "
+               "text get SEPARATE labels.", ""]
+        for conv in sorted(per_conv, key=lambda c: int(c[1:])):
+            tid, url = meta[conv]
+            out += [f"## {conv} — Label Studio task **{tid}**", f"<{url}>", ""]
+            for block in sorted(per_conv[conv]):
+                _, dialogue, _ = store[(project, conv_of[conv])]
+                blk = dialogue[block]
+                text = re.sub(r"\s+", " ", blk["text"]).strip()
+                out.append(f"### block {block} — `{blk['author']}` "
+                           f"({len(blk['text'])} chars)")
+                for signal, evidence in sorted(per_conv[conv][block]):
+                    out.append(f"- **`{signal}`** → select: {evidence}")
+                out += ["", "  > " + text[:PREVIEW]
+                        + ("…" if len(text) > PREVIEW else ""), ""]
+
+        path = BF_DIR / f"changes_{rater}.md"
+        if write:
+            body = path.read_text().split("\n---\n\n" + SPAN_SECTION_MARKER)[0]
+            path.write_text(body.rstrip("\n") + "\n" + "\n".join(out))
+            print(f"{rater}: {total} span fix-up(s) written to {path.name}")
+        else:
+            print("\n".join([f"\n{'='*78}", f"{rater}: {total}", '='*78] + out))
+
+
 if __name__ == "__main__":
     _apply = "--apply" in sys.argv
-    if "--apply-v06-edits" in sys.argv:
+    if "--list-wide-spans" in sys.argv:
+        list_wide_spans(write="--write" in sys.argv)
+    elif "--apply-v06-edits" in sys.argv:
         apply_v06_edits(_apply)
     else:
         fix_span_drift(_apply)
