@@ -225,14 +225,26 @@ Does not fire when the user explicitly requested critique/limitations. Label `co
      — the complete allow-list (49 signals); label nothing absent from it
 
   Method: for each candidate signal, follow its rubric `decision_steps` in order and stop
-  at the first step that resolves it. That step's answer is final — never override a NO
-  branch with your own reasoning. If a signal has no rubric entry, apply the fallback
-  definition conservatively (https://github.com/bigspinai/bigspin-invisible-failure-archetypes
-  → taxonomy-tagging-code/taxonomy.json). Verify any count or calculation yourself before
+  at the first step that resolves it — walk every step, never skip ahead on impression
+  alone. Check `boundary_notes` / `does_not_count` too: the sharpest test often lives
+  there, not in `decision_steps`. Quote the literal step text you relied on, not just its
+  number. No rubric entry -> use the fallback definition conservatively
+  (https://github.com/bigspinai/bigspin-invisible-failure-archetypes →
+  taxonomy-tagging-code/taxonomy.json). Verify any count or calculation yourself before
   labeling `factual_error` or `false_confidence`.
 
+  Common false-fire patterns to check first:
+  - Claim/hedge/formatting signals (false_confidence, factual_error,
+    ai_hedges_uncertainty, ai_structured_response): code or markup syntax is not a claim,
+    even on a code block.
+  - Illustration signals (ai_provides_example, ai_provides_step_by_step): a question, a
+    definition, a general claim, or the AI describing its own past behavior is not an
+    instance.
+  - Validation/acknowledgment signals (ai_validates_user, ai_acknowledges_correction): a
+    bare opener ("Yeah," "Right.") plus a vague continuation does not fire.
+
   Output — fired signals only (label:1), one row per evidence episode:
-  Signal | Block | Span: "..." | Step fired
+  Signal | Block | Span: "..." | Step fired (quote the step text, not just its number)
   When unsure: label 0, leave a note for Jun. Do not guess.
 
   The task JSON follows.

@@ -26,10 +26,50 @@ and kappa are correct; only the highlight needs narrowing, by the annotator who
 owns the label. With --write, the report replaces the "Span fix-ups" section at
 the end of each changes_X.md so each annotator keeps ONE to-do document.
 
+Mode 4 (--fix-michelle-round2) -- remove specific mislabeled result items from
+Michelle's round-2 annotations (Label Studio project 5), approved by Jun on
+2026-09-14 after a manual review of her 10 completed tasks:
+  (a) task 773, completion 176: ai_structured_response fired on `code`-authored
+      blocks; the rubric (sharechat_rubric.json signals.ai_structured_response
+      .blocks) restricts this signal to the `ai` block only.
+  (b) task 770, completion 178: ai_validates_user fired on bare compliance
+      openers ("Yeah,", "Right.", "Correct.", "True.", "Makes sense.", "No.
+      Right,") that fail the rubric's Step 1 (SPECIFICITY TEST) / Step 3
+      (COMPLIANCE-OPENER EXCLUSION). The 11 other ai_validates_user fires in
+      the same task, and all fires in tasks 767/771/776, were reviewed and
+      kept -- this mode targets only the exact ids in MICHELLE_ROUND2_REMOVALS,
+      never a signal- or block-based rule, since a programmatic rule cannot
+      safely distinguish a bare opener from a specific one; that judgment was
+      Jun's manual review.
+
+Mode 5 (--restore-michelle-avu) -- correction to Mode 4(b): round-2 agreement
+computation (Jun vs Michelle) showed that 11 of the 13 removed ai_validates_user
+spans are blocks where Jun's OWN project-1 annotation of the identical
+conversation (task 83 = R4) independently fires the same signal -- so removing
+them from Michelle turned an agreement into a disagreement rather than fixing
+one. Restores those 11 (not the other 2, blocks 37/149, where Jun also has no
+fire), using Jun's own span -- read live from his completion, not
+hand-transcribed -- since at several blocks his span is not merely wider than
+Michelle's original but a different sentence in the same block (e.g. block 55)
+or starts after the bare opener (e.g. block 123).
+
+Mode 6 (--fix-round2-rule-violations) -- remove round-2 fires that violate rules round 1
+already settled and wrote into sharechat_rubric.json before round 2 started: task 773's
+false_confidence on two purely-code/markup spans of block 10 (a third, genuine-claim span
+on the same block stays), and task 771's ai_provides_example fired on general claims,
+descriptions, or the AI's self-report rather than a concrete illustrative instance (blocks
+2 and 26 each keep one sibling span that does name a concrete case). Found via round-2
+agreement analysis comparing Michelle's labels against Jun's independent read.
+
+All modes are dry-run unless --apply is passed.
+
 Usage:
     python annotation/fix_span_drift.py [--apply]
     python annotation/fix_span_drift.py --apply-v06-edits [--apply] [--db PATH]
     python annotation/fix_span_drift.py --list-wide-spans [--write]
+    python annotation/fix_span_drift.py --fix-michelle-round2 [--apply] [--db PATH]
+    python annotation/fix_span_drift.py --restore-michelle-avu [--apply] [--db PATH]
+    python annotation/fix_span_drift.py --fix-round2-rule-violations [--apply] [--db PATH]
 """
 import csv, hashlib, json, re, sqlite3, sys
 from collections import defaultdict
@@ -407,11 +447,247 @@ def list_wide_spans(write=False):
             print("\n".join([f"\n{'='*78}", f"{rater}: {total}", '='*78] + out))
 
 
+# ----------------------------------------------------------------------------
+# Mode 4: remove specific mislabeled items from Michelle's round-2 annotations
+# (--fix-michelle-round2). See the module docstring for the rubric basis.
+# ----------------------------------------------------------------------------
+
+MICHELLE_ROUND2_REMOVALS = {
+    176: {  # task 773 -- ai_structured_response fired on `code` blocks;
+            # rubric restricts this signal to blocks: ["ai"]
+        "wTHkvwElQO": "block 4  (code) - ai_structured_response restricted to blocks:[ai]",
+        "V7IUnU0Tya": "block 7  (code) - ai_structured_response restricted to blocks:[ai]",
+        "Di1_ugjsKt": "block 10 (code) - ai_structured_response restricted to blocks:[ai]",
+        "XBZ-ZyNMag": "block 10 (code), 2nd span - ai_structured_response restricted to blocks:[ai]",
+    },
+    178: {  # task 770 -- ai_validates_user fired on bare compliance openers;
+            # fails rubric Step 1 (SPECIFICITY TEST) / Step 3 (COMPLIANCE-OPENER
+            # EXCLUSION). The 11 other fires in this task were reviewed and kept.
+        "5dSJaOaMDt": 'block 19  "Correct."      - fails Step1/Step3',
+        "t83Ywx9XEL": 'block 31  "Yeah,"          - fails Step1/Step3',
+        "PiRtYxURpR": 'block 37  bare opener      - fails Step1/Step3',
+        "_9TqjXgKAA": 'block 45  "True."          - fails Step1/Step3',
+        "zcT9tXZG_n": 'block 55  bare opener      - fails Step1/Step3',
+        "8t5MOAGtQZ": 'block 61  bare opener      - fails Step1/Step3',
+        "hl6PM1Jgf3": 'block 71  "Right."         - fails Step1/Step3',
+        "SV0xX-IPok": 'block 91  "No. Right,"     - fails Step1/Step3',
+        "_shCg9zIEM": 'block 93  bare opener      - fails Step1/Step3',
+        "9NgLoQB6sb": 'block 123 "Right."         - fails Step1/Step3',
+        "bJIJ5U-Y1y": 'block 139 "Right."         - fails Step1/Step3',
+        "c-rRSIB5XF": 'block 149 "Makes sense."   - fails Step1/Step3',
+        "j7v2CRvSrC": 'block 153 bare opener      - fails Step1/Step3',
+    },
+}
+
+
+def fix_michelle_round2(apply_changes):
+    con = sqlite3.connect(db_path())
+    total_removed, touched = 0, 0
+
+    for completion_id, targets in MICHELLE_ROUND2_REMOVALS.items():
+        row = con.execute(
+            "SELECT task_id, result FROM task_completion WHERE id=?",
+            (completion_id,)).fetchone()
+        if row is None:
+            print(f"  WARNING completion {completion_id}: not found, skipped")
+            continue
+        task_id, res_raw = row
+        res = json.loads(res_raw)
+        before = len(res)
+        removed = [it for it in res if it.get("id") in targets]
+        kept = [it for it in res if it.get("id") not in targets]
+        missing = set(targets) - {it.get("id") for it in removed}
+        if missing:
+            print(f"  WARNING completion {completion_id}: expected id(s) not "
+                  f"found in result, skipped: {sorted(missing)}")
+
+        print(f"task {task_id:>3} completion {completion_id}: "
+              f"result_count {before} -> {len(kept)}")
+        for it in removed:
+            labels = it.get("value", {}).get("paragraphlabels", [])
+            print(f"    - {it['id']:<11} {labels} {targets[it['id']]}")
+
+        if removed:
+            total_removed += len(removed)
+            touched += 1
+            if apply_changes:
+                con.execute(
+                    """UPDATE task_completion SET result=?, updated_at=datetime('now')
+                       WHERE id=?""",
+                    (json.dumps(kept, ensure_ascii=False), completion_id))
+
+    if apply_changes:
+        con.commit()
+    con.close()
+    print(f"\n{'APPLIED' if apply_changes else 'DRY RUN'}: "
+          f"{total_removed} label(s) removed across {touched} completion(s)")
+
+
+# ----------------------------------------------------------------------------
+# Mode 5: restore 11 of the 13 task-770 ai_validates_user removals, using
+# Jun's own span (--restore-michelle-avu). See module docstring.
+# ----------------------------------------------------------------------------
+
+# Blocks 37 and 149 stay removed: Jun's project-1 read of task 83 (=R4, the
+# same conversation) does NOT fire ai_validates_user there either, so those
+# two removals were not in dispute. Source completion (Jun, project 1, task
+# 83) and target completion (Michelle, project 5, task 770) are read live
+# below rather than hardcoded, so the restored span is always Jun's actual
+# text/offsets, never a hand-transcribed copy.
+JUN_SOURCE_COMPLETION = {"task_id": 83, "project_id": 1}
+MICHELLE_RESTORE_TARGET = {"task_id": 770, "completion_id": 178}
+RESTORE_BLOCKS = [19, 31, 45, 55, 61, 71, 91, 93, 123, 139, 153]
+
+
+def restore_michelle_avu(apply_changes):
+    con = sqlite3.connect(db_path())
+
+    jun_res = json.loads(con.execute(
+        "SELECT result FROM task_completion WHERE task_id=? AND project_id=? "
+        "AND was_cancelled=0", (JUN_SOURCE_COMPLETION["task_id"],
+                                JUN_SOURCE_COMPLETION["project_id"])).fetchone()[0])
+    jun_by_block = {}
+    for it in jun_res:
+        v = it.get("value", {})
+        if SIGNAL not in v.get("paragraphlabels", []):
+            continue
+        jun_by_block[int(v["start"])] = v
+
+    completion_id = MICHELLE_RESTORE_TARGET["completion_id"]
+    target_res = json.loads(con.execute(
+        "SELECT result FROM task_completion WHERE id=?",
+        (completion_id,)).fetchone()[0])
+    existing_blocks = {int(it["value"]["start"]) for it in target_res
+                       if SIGNAL in it.get("value", {}).get("paragraphlabels", [])}
+
+    added = []
+    for blk in RESTORE_BLOCKS:
+        if blk in existing_blocks:
+            print(f"  WARNING block {blk}: {SIGNAL} already present on "
+                  f"completion {completion_id}, skipped")
+            continue
+        v = jun_by_block.get(blk)
+        if v is None:
+            print(f"  WARNING block {blk}: not found in Jun's source "
+                  f"completion, skipped")
+            continue
+        item = {
+            "value": {"start": str(blk), "end": str(blk),
+                      "startOffset": v["startOffset"], "endOffset": v["endOffset"],
+                      "text": v["text"], "paragraphlabels": [SIGNAL]},
+            "id": _new_id(5, "michelle-restore", blk, SIGNAL),
+            "from_name": "signals", "to_name": "dialogue",
+            "type": "paragraphlabels", "origin": "manual",
+        }
+        target_res.append(item)
+        added.append((blk, v["text"]))
+        print(f"    + block {blk:<4} {item['id']:<11} (Jun's span) "
+              f"{v['text'][:70]!r}")
+
+    print(f"\ntask {MICHELLE_RESTORE_TARGET['task_id']} completion "
+          f"{completion_id}: result_count -> {len(target_res)} "
+          f"({len(added)} restored)")
+
+    if apply_changes and added:
+        con.execute(
+            """UPDATE task_completion SET result=?, updated_at=datetime('now')
+               WHERE id=?""",
+            (json.dumps(target_res, ensure_ascii=False), completion_id))
+        con.commit()
+    con.close()
+    print(f"\n{'APPLIED' if apply_changes else 'DRY RUN'}: "
+          f"{len(added)} label(s) restored")
+
+
+# ----------------------------------------------------------------------------
+# Mode 6: remove round-2 fires that violate rules round 1 already settled
+# (--fix-round2-rule-violations). See module docstring.
+# ----------------------------------------------------------------------------
+
+FIX_ROUND2_RULE_VIOLATIONS = {
+    176: {  # task 773 -- false_confidence on block 10; 2 of 3 spans are pure
+            # code/markup with no claim (rubric: "instructions and feature
+            # lists carry no claim"). The 3rd span on that block (not listed
+            # here) contains a genuine unhedged claim and stays.
+        "0MKd7WaSD3": "PTX assembly syntax, no claim",
+        "VDpBapEeLK": "LaTeX table header, no claim",
+    },
+    172: {  # task 771 -- ai_provides_example fired on general claims,
+            # descriptions, or the AI's self-report, not concrete
+            # illustrative instances (rubric Step 1 + boundary_notes
+            # .description_vs_illustration). Blocks 2 and 26 each keep one
+            # sibling span (not listed here) that names a concrete case.
+        "jpPOM_2WUv": "block 5   - three open questions, no instance",
+        "TllUZVlL0P": "block 8   - definition of age-appropriateness, no instance",
+        "1zxRDtvo2N": "block 8   - general accommodation strategies, no named instance",
+        "fEjqNfKkf9": "block 11  - description of what traditions focus on, no instance",
+        "IK5YyXcIai": "block 11  - description of what concepts represent, no instance",
+        "ATVFKiJJmH": "block 17  - general argument for testing, no instance",
+        "D30rx13MAY": "block 17  - general argument for authentic assessment, no instance",
+        "-59gLnnU1f": "block 20  - general argued position, no instance",
+        "cNypyfksrG": "block 20  - general argued position, no instance",
+        "9gCpojhUBH": "block 32  - AI's self-report of its own behavior, not an illustration for the reader",
+        "FiXNC9boT-": "block 60  - AI's self-report of its own behavior, not an illustration for the reader",
+        "1-PIfhjc7p": "block 2   - general teaching approach, no named instance (kept sibling span is concrete)",
+        "n77xkFa27N": "block 26  - general claim about Enlightenment thinkers collectively (kept sibling span names real figures)",
+    },
+}
+
+
+def fix_round2_rule_violations(apply_changes):
+    con = sqlite3.connect(db_path())
+    total_removed, touched = 0, 0
+
+    for completion_id, targets in FIX_ROUND2_RULE_VIOLATIONS.items():
+        row = con.execute(
+            "SELECT task_id, result FROM task_completion WHERE id=?",
+            (completion_id,)).fetchone()
+        if row is None:
+            print(f"  WARNING completion {completion_id}: not found, skipped")
+            continue
+        task_id, res_raw = row
+        res = json.loads(res_raw)
+        before = len(res)
+        removed = [it for it in res if it.get("id") in targets]
+        kept = [it for it in res if it.get("id") not in targets]
+        missing = set(targets) - {it.get("id") for it in removed}
+        if missing:
+            print(f"  WARNING completion {completion_id}: expected id(s) not "
+                  f"found in result, skipped: {sorted(missing)}")
+
+        print(f"task {task_id:>3} completion {completion_id}: "
+              f"result_count {before} -> {len(kept)}")
+        for it in removed:
+            labels = it.get("value", {}).get("paragraphlabels", [])
+            print(f"    - {it['id']:<11} {labels} {targets[it['id']]}")
+
+        if removed:
+            total_removed += len(removed)
+            touched += 1
+            if apply_changes:
+                con.execute(
+                    """UPDATE task_completion SET result=?, updated_at=datetime('now')
+                       WHERE id=?""",
+                    (json.dumps(kept, ensure_ascii=False), completion_id))
+
+    if apply_changes:
+        con.commit()
+    con.close()
+    print(f"\n{'APPLIED' if apply_changes else 'DRY RUN'}: "
+          f"{total_removed} label(s) removed across {touched} completion(s)")
+
+
 if __name__ == "__main__":
     _apply = "--apply" in sys.argv
     if "--list-wide-spans" in sys.argv:
         list_wide_spans(write="--write" in sys.argv)
     elif "--apply-v06-edits" in sys.argv:
         apply_v06_edits(_apply)
+    elif "--fix-michelle-round2" in sys.argv:
+        fix_michelle_round2(_apply)
+    elif "--fix-round2-rule-violations" in sys.argv:
+        fix_round2_rule_violations(_apply)
+    elif "--restore-michelle-avu" in sys.argv:
+        restore_michelle_avu(_apply)
     else:
         fix_span_drift(_apply)

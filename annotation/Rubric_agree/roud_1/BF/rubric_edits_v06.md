@@ -46,4 +46,22 @@ edit that resulted, with the source block. Disagree with any line → tell Jun, 
 ## C. Open / unresolved
 
 - **C1 b2** "You know what I meant with personal help though, right?" — A: validation_seeking, B: asks_clarification, F: implicit_correction + validation_seeking. Undecided.
-- **Unresolved after review** (no agreement reached; each annotator keeps their own label — 100% agreement is not required, and these cells resolve only at gold-set adjudication): C4 b26 `ai_offers_to_elaborate` (B fires, A/F don't) · C8 b64 `performative_hedge` (A/F fire, B doesn't) · C9 b11 `ai_references_prior_turn` (A/B fire, F doesn't) · C9 b38 `intent_missed` (A/B fire, F doesn't). No rubric text rests on these cells.
+- **Unresolved after review** (no agreement reached; each annotator keeps their own label — 100% agreement is not required, and these cells resolve only at gold-set adjudication): C4 b26 `ai_offers_to_elaborate` (B fires, A/F don't) · C8 b64 `performative_hedge` (A/F fire, B doesn't) · C9 b11 `ai_references_prior_turn` (A/B fire, F doesn't) · C9 b38 `intent_missed` (A/B fire, F doesn't). No agreed rubric text rests on these cells; the two PROVISIONAL entries added in §D (A's standard) do not change their unresolved status.
+
+## D. Addendum 2026-09-09 — entries added to `sharechat_rubric.json` (file and version unchanged: still v0.6)
+
+Housekeeping first: four entries for signals that are not in the 49-label Label Studio config were removed from the rubric (`silent_assumption`, `ai_stated_interpretation`, `over_delivered` — κ < 0.4, excluded under Decisions 6–7; `CANDIDATE_narrated_without_implementing` — retired at freeze). No live signal's rule changed. Membership authority is `label_studio_config.xml`; the rubric now contains only live signals.
+
+Five live signals that had no entry got one. Their status differs — read the `provenance` field before relying on the two provisional ones.
+
+| Signal | Basis | Status |
+|---|---|---|
+| `user_expresses_dissatisfaction` | Round-1 agreed cells D22: C1 b14, C6 b12, C9 b33 (+ C5 b4, fired by all three blind). Intensity route to `user_expresses_frustration`. | Written from agreed rulings — no new rule |
+| `user_validation_seeking` | Round-1 agreed fire C5 b28 (D22) + the standing working definition: leading / presupposing form fires, neutral interrogative does not. C1 b2 stays OPEN. | Written from agreed rulings + standing definition |
+| `user_provides_invalid_input` | Round-1 cells: C7 b0 fires (all three; the AI's reply confirms the paragraph was absent), C8 b0 does not (false premise ≠ malformed input, D22). Export-artifact guard added. | Written from agreed rulings — no new rule |
+| `ai_offers_to_elaborate` | A's standard: conditional offer on delivered content; doing ≠ offering; every occurrence fires. | **PROVISIONAL** — C4 b26 unresolved (B fires); the conditional-offer line was withdrawn in v0.6 and is re-stated here as A's rule for round 2 only |
+| `performative_hedge` | A's standard: empty hedge on established content, or staged non-commitment while continuing to serve the content; nothing declined ≠ refusal. | **PROVISIONAL** — C8 b64 unresolved (B: refuses); the perf_hedge/refuses clause was withdrawn in v0.6 and is re-stated here as A's rule for round 2 only |
+
+Unresolved cells keep their status: B's labels on C4 b26 and C8 b64 stand, and both cells resolve only at gold-set adjudication. The provisional entries exist so that round-2 annotators have a rule to apply rather than the predecessor fallback; they are not evidence of agreement.
+
+Still entry-less: `user_expresses_frustration`. Round 1 had eight disagreement cells on it, all in C4 (A+B fire on the shouting blocks b6–b24 where F blind-labeled 0; F alone fires b0 "don't give me some corporate PR response"; B+F fire b3). None of these cells was walked in either review, so no rule was ever drafted. Fallback = predecessor definition (explicit markers: profanity, caps, exclamation-heavy anger directed at the AI).
