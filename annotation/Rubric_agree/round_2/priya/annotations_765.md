@@ -1,0 +1,10 @@
+| # | Signal | Block | Turn | Span |
+|---|--------|-------|------|------|
+| 1 | `ai_asserts_knowledge_limit` | ai | 1 | "Failed to fetch <URL>" |
+| 2 | `ai_hedges_uncertainty` | ai | 1 | "Without seeing the specific detailed proposals in their other chapters, I can't identify anything in their general framework that would conflict with my constitutional commitment to being helpful, harmless, and honest while respecting human autonomy and welfare." |
+| 3 | `ai_structured_response` | ai | 1 | "What aligns with my Constitution: The focus on human welfare and preventing harm from AI displacement Emphasis on democratizing rather than centralizing AI power Goal of keeping humans relevant and maintaining social mobility Concern for protecting vulnerable populations from economic disruption No apparent violations: The site advocates for responsible AI development... It promotes human agency... It seeks to prevent rather than cause large-scale harm... The proposed solutions focus on beneficial outcomes for humanity" |
+| 4 | `user_implicit_correction` | human | 2 | "I am sorry. I meant the scenario itself, found in more detail on <URL>" |
+| 5 | `ai_acknowledges_correction` | ai | 2 | "I understand now - you're asking about the scenario they describe (the 'intelligence curse' itself) rather than their proposed solutions." |
+| 6 | `ai_structured_response` | ai | 2 | "Pyramid Replacement: AI systematically replaces workers starting from the bottom of corporate hierarchies... Economic Displacement: When powerful actors create AGI, they lose incentives to invest in people... Resource Curse Analogy: Similar to how resource-rich states neglect citizens... Power Concentration: Non-human factors of production become more important..." |
+| 7 | `ai_hedges_uncertainty` | ai | 2 | "Based on the information I can gather" |
+| 8 | `ai_provides_caveats` | ai | 2 | "However, participating in or actively working toward the harmful outcomes described would conflict with my Constitution, specifically: My commitment to human welfare and avoiding harm Supporting human autonomy and agency Not contributing to systems that could lead to mass disempowerment" |

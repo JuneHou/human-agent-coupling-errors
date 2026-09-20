@@ -61,6 +61,20 @@ descriptions, or the AI's self-report rather than a concrete illustrative instan
 2 and 26 each keep one sibling span that does name a concrete case). Found via round-2
 agreement analysis comparing Michelle's labels against Jun's independent read.
 
+Mode 7 (--import-priya-missing) -- create the 6 round-2 completions Priya has not yet
+submitted in Label Studio (project 4, tasks 757/758/759/760/761/766) from the .md tables
+she provided in Rubric_agree/round_2/priya/. Skips any task that already has a completion
+(the other 4 of her 10 -- 762/763/764/765 -- are left untouched by construction; her .md
+files for those disagree with what's already saved for them, so importing over them is a
+separate decision, not part of this mode). Each row's block is resolved by role + a
+forward-only cursor (rows are written in conversation order), then _span_for locates the
+row's quoted text inside that block, reusing the same fragment-search Mode 2 uses. Where no
+exact text is locatable -- confirmed to happen on ~30-50% of rows, since several of Priya's
+"A ... B" spans are truncated previews rather than true ellipsis-elided middles, and code
+blocks sometimes have formatting stripped -- the label is written BLOCK-WIDE (matches the
+existing "presence correct, span needs narrowing" convention from Mode 2/3) rather than
+guessing at boundaries.
+
 All modes are dry-run unless --apply is passed.
 
 Usage:
@@ -70,8 +84,33 @@ Usage:
     python annotation/fix_span_drift.py --fix-michelle-round2 [--apply] [--db PATH]
     python annotation/fix_span_drift.py --restore-michelle-avu [--apply] [--db PATH]
     python annotation/fix_span_drift.py --fix-round2-rule-violations [--apply] [--db PATH]
+    python annotation/fix_span_drift.py --import-priya-missing [--apply] [--db PATH]
+    python annotation/fix_span_drift.py --apply-round2-draft [--apply] [--db PATH]
+    python annotation/fix_span_drift.py --fix-priya-role-violations [--apply] [--db PATH]
+
+Mode 10 (--fix-priya-role-violations) -- remove Priya's 10 confirmed round-2 label
+violations: ai_structured_response fired on code-role blocks (task 759 blocks
+1/7/12/15/18/21/24 -- block 1 carries two separate items -- and task 762 blocks 4/5),
+same class already fixed for Michelle via Mode 4; plus one ai_malfunction item (task 763
+block 1) with valid offsets but empty text, a UI-selection glitch rather than a real label.
+Found via this session's Priya quality review (round_2/priya/quality_and_disagreement_review.md).
+
+Mode 9 (--apply-round2-draft) -- write back the completed round-2 walk
+(Rubric_agree/round_2/round2_disagreement_draft.md, all 43 signals "closed," ruled
+2026-09-14) to Jun's project-1 and Michelle's project-5 data for the 10 R-conversations.
+Confirmed this session (2026-09-19) that none of these rulings were ever applied to either
+rater's live DB. Parses the draft at runtime rather than hardcoding the action list, and
+refuses to run if any signal's parsed ACCEPT/CORRECT-A/CORRECT-M/relabel counts don't match
+that section's own stated tally line -- the draft is written so every section self-checks.
+Excludes by construction: `user_expresses_dissatisfaction` and `user_expresses_frustration`
+(both explicitly HELD/reopened, not closed), `factual_error` R10 b7 (HOLD, pending
+tax-law verification), and the `user_implicit_correction` R9 b3 "relabel to adaptation"
+candidate (explicitly left OPEN, not ruled). Also applies the one in-scope consistency-sweep
+correction (`adaptation`, task 80/768 b31 and task 81/769 b25, ruled "both drop") to both
+raters. Does NOT touch Priya's project-4 data or the `ai_provides_caveats` consistency-sweep
+cells outside the R1-R10 set (Jun's tasks 14/31/43/49) -- both out of scope for this pass.
 """
-import csv, hashlib, json, re, sqlite3, sys
+import csv, hashlib, json, re, sqlite3, sys, uuid
 from collections import defaultdict
 from pathlib import Path
 
@@ -677,6 +716,1263 @@ def fix_round2_rule_violations(apply_changes):
           f"{total_removed} label(s) removed across {touched} completion(s)")
 
 
+# ----------------------------------------------------------------------------
+# Mode 7: create Priya's 6 not-yet-submitted round-2 completions from her .md
+# tables (--import-priya-missing). See module docstring.
+# ----------------------------------------------------------------------------
+
+PRIYA_DIR = ANNOT_DIR / "Rubric_agree" / "round_2" / "priya"
+PRIYA_MISSING = {
+    757: "757.md", 758: "annotations_758.md", 759: "annotations_759.md",
+    760: "annotations_760.md", 761: "annotations_761.md", 766: "annotations_766.md",
+}
+PRIYA_PROJECT_ID = 4
+PRIYA_USER_ID = 4
+
+
+def parse_priya_md(path):
+    """Yield (signal, block_role, span_text_or_None) for each data row of one
+    of Priya's annotation tables. span_text is None for a row that carries
+    only a bracketed description and no quoted text."""
+    rows = []
+    for line in Path(path).read_text().splitlines():
+        if not line.startswith("|") or line.startswith("|---") or line.startswith("| #"):
+            continue
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        if len(cells) < 5:
+            continue
+        _, signal_cell, role, _turn, span_cell = cells[:5]
+        signal = signal_cell.strip("`")
+        quotes = re.findall(r'"([^"]*)"', span_cell)
+        rows.append((signal, role, quotes[-1] if quotes else None))
+    return rows
+
+
+def import_priya_missing(apply_changes):
+    con = sqlite3.connect(db_path())
+    total_added, touched = 0, 0
+
+    for task_id, fname in PRIYA_MISSING.items():
+        existing = con.execute(
+            "SELECT id FROM task_completion WHERE task_id=? AND completed_by_id=?",
+            (task_id, PRIYA_USER_ID)).fetchone()
+        if existing:
+            print(f"task {task_id}: completion {existing[0]} already exists, skipped")
+            continue
+
+        dialogue = json.loads(con.execute(
+            "SELECT data FROM task WHERE id=?", (task_id,)).fetchone()[0])["dialogue"]
+        rows = parse_priya_md(PRIYA_DIR / fname)
+
+        print(f"\n{'='*78}\ntask {task_id} <- {fname}  ({len(rows)} rows)\n{'='*78}")
+        result, unresolved, occurrence = [], [], defaultdict(int)
+        cursor = 0
+        for signal, role, span_text in rows:
+            all_candidates = [i for i, b in enumerate(dialogue) if b.get("author") == role]
+            # Rows are mostly in conversation order, but Priya's own "Turn"
+            # numbering is not always monotonic with true block order (task
+            # 760: her turn-117 text sits at block 169, textually AFTER the
+            # block-167 content she labeled turn-123/131) -- so pick the
+            # LOCATED match nearest the cursor, not strictly the next one
+            # forward. Only fall back to block-wide when nothing locates.
+            located_matches = []
+            for i in all_candidates:
+                block_text = dialogue[i]["text"].replace("\n", " ")
+                if span_text:
+                    o1, o2, text, loc = _span_for(block_text, f'"{span_text}"')
+                    if loc:
+                        located_matches.append((abs(i - cursor), i, o1, o2, text))
+            if located_matches:
+                located_matches.sort(key=lambda t: t[0])
+                _, chosen, o1, o2, text = located_matches[0]
+                located = True
+            else:
+                chosen = min(all_candidates, key=lambda i: abs(i - cursor)) \
+                    if all_candidates else cursor
+                block_text = dialogue[chosen]["text"].replace("\n", " ")
+                o1, o2, text, located = 0, len(block_text), block_text, False
+                unresolved.append((signal, chosen))
+
+            cursor = chosen
+            occ_key = (chosen, signal)
+            seed_signal = f"{signal}#{occurrence[occ_key]}"
+            occurrence[occ_key] += 1
+            result.append({
+                "value": {"start": str(chosen), "end": str(chosen),
+                          "startOffset": o1, "endOffset": o2, "text": text,
+                          "paragraphlabels": [signal]},
+                "id": _new_id(PRIYA_PROJECT_ID, task_id, chosen, seed_signal),
+                "from_name": "signals", "to_name": "dialogue",
+                "type": "paragraphlabels", "origin": "manual",
+            })
+            print(f"  b{chosen:<4} [{role:<9}] + {signal:<32} "
+                  f"{'span' if located else 'BLOCK-WIDE'}: {text[:60]!r}")
+
+        print(f"  -> {len(result)} label(s), {len(unresolved)} block-wide fallback(s)")
+        if unresolved:
+            print(f"     fallback: {unresolved}")
+
+        total_added += len(result)
+        touched += 1
+        if apply_changes:
+            con.execute(
+                """INSERT INTO task_completion
+                   (result, was_cancelled, created_at, updated_at, task_id,
+                    prediction, result_count, completed_by_id, ground_truth,
+                    project_id, updated_by_id, unique_id, bulk_created)
+                   VALUES (?, 0, datetime('now'), datetime('now'), ?, '{}',
+                           ?, ?, 0, ?, ?, ?, 1)""",
+                (json.dumps(result, ensure_ascii=False), task_id, len(result),
+                 PRIYA_USER_ID, PRIYA_PROJECT_ID, PRIYA_USER_ID, uuid.uuid4().hex))
+
+    if apply_changes:
+        con.commit()
+    con.close()
+    print(f"\n{'APPLIED' if apply_changes else 'DRY RUN'}: "
+          f"{total_added} label(s) across {touched} new completion(s)")
+
+
+# ----------------------------------------------------------------------------
+# Mode 9: write back round2_disagreement_draft.md's completed walk to Jun's and
+# Michelle's data (--apply-round2-draft). See module docstring.
+# ----------------------------------------------------------------------------
+
+ROUND2_DRAFT_PATH = ANNOT_DIR / "Rubric_agree" / "round_2" / "round2_disagreement_draft.md"
+ROUND2_CONV_MAP_PATH = ANNOT_DIR / "Rubric_agree" / "round_2" / "agreement_set_round2.csv"
+RATER_PROJECT_ROUND2 = {"A": 1, "M": 5}
+
+EXCLUDED_SIGNALS_ROUND2 = {"user_expresses_dissatisfaction", "user_expresses_frustration"}
+
+# The one in-scope consistency-sweep correction (adaptation): found during the walk while
+# auditing every adaptation label either rater had, outside the original 223-cell set.
+# Ruled "both drop" -- applies to both raters' copies of these two conversations.
+CONSISTENCY_SWEEP_ADAPTATION = [
+    ("A", "R2", 31), ("M", "R2", 31),   # task 80 / task 768
+    ("A", "R3", 25), ("M", "R3", 25),   # task 81 / task 769
+]
+
+# Signals where the document's own "Signal tally" counts CELLS, not table rows/DB items --
+# a cell with multiple spans that all get the same verdict is sometimes one combined row
+# ("(both spans)" in the ruling text, e.g. ai_cites_source R5 b44) rather than one row per
+# span (e.g. ai_provides_example R9 b6, ai_cites_source R5 b38's 3 spans on 3 rows). Either
+# way every occurrence needs its own DB removal, so the parsed row count legitimately
+# exceeds the document's cell count -- verified by hand for both signals before allowlisting.
+ALLOWED_TALLY_DEVIATIONS = {"ai_provides_example", "ai_cites_source"}
+
+# Sections with a known, expected count of non-standard-table ("UNKNOWN") rows: the
+# adaptation consistency sweep (2 rows, in scope, handled via CONSISTENCY_SWEEP_ADAPTATION)
+# and the ai_provides_caveats consistency sweep (4 rows, Jun's 148-task corpus, explicitly
+# out of scope for this pass -- see module docstring). Any OTHER UNKNOWN row still blocks.
+KNOWN_CONSISTENCY_SWEEP_ROWS = {"adaptation": 2, "ai_provides_caveats": 4}
+
+# Michelle's actual PDF response ("Annotating for Jun.pdf", read 2026-09-19) to the
+# changes_Michelle.md summary of this walk disputed some of round2_disagreement_draft.md's
+# rulings, or independently produced a different, valid fix rather than the plain removal
+# the ruling specified. round2_disagreement_draft.md records JUN'S ruling (dated
+# 2026-09-14) -- it is not itself proof Michelle agreed, and her later pushback supersedes
+# it where the two conflict. Per feedback-unresolved-disagreement-policy.md, an objector's
+# rejection means the point stays as her label, not silently overridden. Confirmed live in
+# the DB before excluding (not just from her PDF text):
+EXCLUDED_ROUND2_ACTIONS = {
+    # (rater, r_index, block, signal): reason
+    ("M", "R4", 67, "ai_asks_followup"):
+        "Michelle disputed this directly: \"I'm not quite sure what this correction "
+        "means. The only label I put there was ai_asks_followup, there is no probing "
+        "question... I kept this one as ai_asks_followup.\"",
+    ("M", "R4", 101, "ai_asks_followup"):
+        "Same dispute as R4 b67: \"Same as above. I kept this one as ai_asks_followup.\"",
+    ("M", "R9", 2, "ai_asserts_knowledge_limit"):
+        "Michelle disputed this directly: \"I feel like this still deserves the "
+        "knowledge_limit label because the AI explicitly says 'I can't identify "
+        "anything'.\"",
+    ("M", "R3", 25, "adaptation"):
+        "Not a removal -- Michelle repositioned the span within the same block to the "
+        "completed-change sentence (\"I've made the requested changes:\"), which "
+        "satisfies the round-2 adaptation gate the original 'I'll revise...' span "
+        "failed. Confirmed live: her current label at task 769 b25 already reads "
+        "\"...I've made the requested changes: ...\". Removing it would destroy her "
+        "correct fix, not apply one. Jun's own copy (task 81 b25) is still the "
+        "unfixed prospective-only span and stays in the removal list.",
+}
+
+
+def _classify_ruling(ruling_cell):
+    """Return (action, rater_or_None, new_signal_or_None). See Mode 9 docstring for why
+    the FIRST bold span is checked before the whole cell: a cell can read "ACCEPT
+    (overrules the proposed CORRECT-A...)" or mention a `relabel to `X`` candidate that
+    was explicitly left open -- the bolded span is always this document's actual verdict."""
+    bold = re.search(r"\*\*([^*]+)\*\*", ruling_cell)
+    for scope in ([bold.group(1)] if bold else []) + [ruling_cell]:
+        s = scope.strip()
+        if re.match(r"^ACCEPT\b", s):
+            return "accept", None, None
+        if re.match(r"^HOLD\b", s) or s.startswith("HELD"):
+            return "hold", None, None
+        m = re.search(r"CORRECT-([AM])", scope)
+        if m:
+            return "remove", m.group(1), None
+        rm = re.search(r"relabel(?:\s+HERE)?\s+to\s+`([a-z_]+)`", scope, re.I)
+        if rm:
+            return "relabel", None, rm.group(1)
+        if re.search(r"NOT FIRE", scope):
+            return "remove", None, None  # rater inferred from the row's FIRE column
+    return "unknown", None, None
+
+
+def parse_round2_draft(path=ROUND2_DRAFT_PATH):
+    """Parse the draft into (signal, rater, r_index, block, action, new_signal, quoted_text)
+    actions, validating every section's parsed counts against its own stated tally line.
+    Raises if any non-excluded section's counts don't match -- see module docstring."""
+    raw = Path(path).read_text()
+    header_re = re.compile(r"^## (\S+) \(([^)]*)\)", re.M)
+    headers = {m.group(1): m.group(2) for m in header_re.finditer(raw)}
+
+    def default_r(paren_text):
+        rs = sorted(set(re.findall(r"R\d+", paren_text)))
+        return rs[0] if len(rs) == 1 else None
+
+    sections = re.split(r"^## (\S+) \(", raw, flags=re.M)
+    signal_bodies = {sections[i]: sections[i + 1] for i in range(1, len(sections), 2)}
+
+    actions = []
+    mismatches = []
+    for signal, body in signal_bodies.items():
+        if signal in EXCLUDED_SIGNALS_ROUND2:
+            continue
+        cur_r = default_r(headers.get(signal, ""))
+        counts = defaultdict(int)
+        lines = body.splitlines()
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            m = re.match(r"^### (R\d+)", line)
+            if m:
+                cur_r = m.group(1)
+            if line.startswith("|") and not re.match(r"^\|[\s:-]+\|", line):
+                cells = [c.strip() for c in line.strip("|").split("|")]
+                if cells[0] in ("Block", "Cell", "#", "Task") or len(cells) < 3:
+                    i += 1
+                    continue
+                id_cell, ruling_cell = cells[0], cells[-1]
+                rm = re.match(r"(R\d+)[,\s]*\(?\s*b?(\d+)", id_cell)
+                if rm:
+                    r_idx, block = rm.group(1), int(rm.group(2))
+                else:
+                    bm = re.match(r"b?\s*(\d+)", id_cell)
+                    if not bm or cur_r is None:
+                        i += 1
+                        continue
+                    r_idx, block = cur_r, int(bm.group(1))
+
+                action, rater, new_sig = _classify_ruling(ruling_cell)
+                if action in ("relabel", "remove") and rater is None:
+                    fire_idx = [k for k, v in enumerate(cells) if v == "FIRE"]
+                    if len(fire_idx) == 1 and len(cells) >= 4:
+                        pos = len(cells) - 1 - fire_idx[0]
+                        rater = "A" if pos == 2 else ("M" if pos == 1 else None)
+
+                key = {"remove": f"CORRECT-{rater}", "relabel": "relabel",
+                       "accept": "ACCEPT", "hold": "HOLD",
+                       "unknown": "UNKNOWN"}[action]
+                counts[key] += 1
+                if action in ("remove", "relabel"):
+                    quoted = ""
+                    for c in cells[1:-1]:
+                        if len(c) > 3 and c not in ("FIRE", "–", "-") and \
+                           not re.match(r"^(ai|human|code|reasoning|analysis)$", c):
+                            quoted = c
+                            break
+                    actions.append((signal, rater, r_idx, block, action, new_sig, quoted[:120]))
+            i += 1
+
+        if "UNKNOWN" in counts:
+            expected = KNOWN_CONSISTENCY_SWEEP_ROWS.get(signal)
+            if expected is None or counts["UNKNOWN"] != expected:
+                mismatches.append(
+                    f"{signal}: {dict(counts)} has {counts['UNKNOWN']} UNKNOWN row(s), "
+                    f"expected {expected} -- likely a non-standard table (e.g. consistency "
+                    f"sweep) with an unexpected shape, needs manual check")
+                continue
+            # known-shape consistency-sweep rows (handled separately, see
+            # CONSISTENCY_SWEEP_ADAPTATION / the out-of-scope exclusion note) --
+            # validate the REST of this section's counts normally below.
+            del counts["UNKNOWN"]
+        if signal in ALLOWED_TALLY_DEVIATIONS:
+            continue
+        tally_m = re.search(r"\*\*Signal tally.*?:\*\*\s*(.+)", body)
+        if tally_m:
+            stated_total = None
+            nums = re.findall(r"(\d+)\s*\+\s*\d+|(\d+)\.\s*✓", tally_m.group(1))
+            eq = re.search(r"=\s*(\d+)\.?\s*✓", tally_m.group(1))
+            if eq:
+                stated_total = int(eq.group(1))
+            elif re.search(r"^(\d+)\.\s*✓", tally_m.group(1).strip()):
+                stated_total = int(re.match(r"(\d+)", tally_m.group(1).strip()).group(1))
+            parsed_total = sum(counts.values())
+            if stated_total is not None and stated_total != parsed_total:
+                mismatches.append(f"{signal}: parsed total {parsed_total} != "
+                                   f"stated total {stated_total} ({dict(counts)})")
+
+    return actions, mismatches
+
+
+def apply_round2_draft(apply_changes):
+    conv_to_c = {r["c_index"]: r["conv_id"] for r in
+                 csv.DictReader(l for l in open(ROUND2_CONV_MAP_PATH) if not l.startswith("#"))}
+
+    actions, mismatches = parse_round2_draft()
+    # the one in-scope consistency-sweep correction, added explicitly (different table
+    # shape in the source file, not worth generalizing the parser for two rows)
+    for rater, r_idx, block in CONSISTENCY_SWEEP_ADAPTATION:
+        actions.append(("adaptation", rater, r_idx, block, "remove", None,
+                         "(consistency sweep: 'both drop', ruled 2026-09-14)"))
+
+    if mismatches:
+        print("REFUSING TO PROCEED -- parsed counts don't match the draft's own tallies:")
+        for m in mismatches:
+            print("  " + m)
+        print(f"\n{len(actions)} action(s) were parsed before the mismatch was hit; not applying.")
+        return
+
+    kept = []
+    for a in actions:
+        signal, rater, r_idx, block, action, new_sig, quoted = a
+        reason = EXCLUDED_ROUND2_ACTIONS.get((rater, r_idx, block, signal))
+        if reason:
+            print(f"  EXCLUDED  {rater} {r_idx} b{block:<4} {signal:28} -- {reason}")
+        else:
+            kept.append(a)
+    actions = kept
+    print()
+
+    print(f"Parsed {len(actions)} action(s) from {ROUND2_DRAFT_PATH.name} "
+          f"({len(EXCLUDED_ROUND2_ACTIONS)} excluded per Michelle's PDF pushback, see above), "
+          f"all section tallies verified.\n")
+
+    con = sqlite3.connect(db_path())
+    # completion cache: (project, conv_id) -> {"id":..., "result": [...], "dirty": bool}
+    store = {}
+    for pid in set(RATER_PROJECT_ROUND2.values()):
+        for tid, data, res_raw, cid in con.execute(
+                """SELECT t.id, t.data, tc.result, tc.id FROM task_completion tc
+                   JOIN task t ON t.id = tc.task_id
+                   WHERE tc.was_cancelled = 0 AND t.project_id = ?""", (pid,)):
+            conv = json.loads(data).get("conv_id")
+            store[(pid, conv)] = {"task": tid, "completion": cid,
+                                   "result": json.loads(res_raw), "dirty": False}
+
+    # Group "remove" actions by exactly what they target: a (block, signal) can carry
+    # several separate occurrences (rubric A3), and the source document sometimes lists
+    # them as one combined row ("(both spans)") and sometimes as separate rows (see
+    # ALLOWED_TALLY_DEVIATIONS above). If there's only ONE remove-action for a given
+    # target, every matching item there gets removed (safe: the ruling is "this signal
+    # shouldn't be at this block at all"). If there are MULTIPLE remove-actions for the
+    # same target (distinct rows, distinct quotes -- e.g. one span stays, one goes),
+    # each action is matched to a distinct item by quoted-text overlap, greedily,
+    # without reusing an item already claimed by an earlier action.
+    remove_target_counts = defaultdict(int)
+    for signal, rater, r_idx, block, action, new_sig, quoted in actions:
+        if action == "remove":
+            remove_target_counts[(rater, r_idx, block, signal)] += 1
+    claimed = defaultdict(set)  # (project, conv, block, signal) -> set of claimed item ids
+
+    counts = {"remove": 0, "relabel": 0, "not_found": 0, "ambiguous": 0}
+    for signal, rater, r_idx, block, action, new_sig, quoted in actions:
+        project = RATER_PROJECT_ROUND2[rater]
+        conv = conv_to_c[r_idx]
+        rec = store.get((project, conv))
+        if rec is None:
+            print(f"  WARNING {rater} {r_idx} b{block} {signal}: no completion found, skipped")
+            counts["not_found"] += 1
+            continue
+
+        candidates = [it for it in rec["result"]
+                      if it.get("type") == "paragraphlabels"
+                      and int(it["value"]["start"]) == block
+                      and signal in it["value"].get("paragraphlabels", [])
+                      and id(it) not in claimed[(project, conv, block, signal)]]
+        if not candidates:
+            print(f"  NOT FOUND  {rater} {r_idx} b{block} {signal:28} "
+                  f"(already absent -- likely already correct)")
+            counts["not_found"] += 1
+            continue
+
+        if action == "remove":
+            target_n = remove_target_counts[(rater, r_idx, block, signal)]
+            if target_n == 1:
+                to_remove = candidates  # every matching occurrence goes
+            else:
+                q = re.sub(r'[^a-z0-9]+', '', quoted.lower())
+                best = max(candidates,
+                           key=lambda it: len(set(re.sub(r'[^a-z0-9]+', '', it["value"].get("text","").lower())) & set(q)))
+                to_remove = [best]
+                claimed[(project, conv, block, signal)].add(id(best))
+                if len(candidates) > 1:
+                    counts["ambiguous"] += 1
+            for item in to_remove:
+                item["value"]["paragraphlabels"].remove(signal)
+                if not item["value"]["paragraphlabels"]:
+                    rec["result"].remove(item)
+                rec["dirty"] = True
+                print(f"  - {rater} {r_idx} b{block:<4} {signal:28} removed  "
+                      f"{item['value'].get('text','')[:60]!r}")
+                counts["remove"] += 1
+        elif action == "relabel":
+            if len(candidates) > 1:
+                q = re.sub(r'[^a-z0-9]+', '', quoted.lower())
+                item = max(candidates,
+                           key=lambda it: len(set(re.sub(r'[^a-z0-9]+', '', it["value"].get("text","").lower())) & set(q)))
+                counts["ambiguous"] += 1
+            else:
+                item = candidates[0]
+            labels = item["value"]["paragraphlabels"]
+            labels[labels.index(signal)] = new_sig
+            rec["dirty"] = True
+            print(f"  ~ {rater} {r_idx} b{block:<4} {signal:28} -> {new_sig:28} "
+                  f"{item['value'].get('text','')[:50]!r}")
+            counts["relabel"] += 1
+
+    touched = [r for r in store.values() if r["dirty"]]
+    if apply_changes:
+        for rec in touched:
+            con.execute("""UPDATE task_completion SET result=?, updated_at=datetime('now')
+                           WHERE id=?""",
+                        (json.dumps(rec["result"], ensure_ascii=False), rec["completion"]))
+        con.commit()
+    con.close()
+    print(f"\n{'APPLIED' if apply_changes else 'DRY RUN'}: "
+          f"{counts['remove']} removed, {counts['relabel']} relabeled, "
+          f"{counts['not_found']} not found (likely already correct), "
+          f"{counts['ambiguous']} disambiguated by text match, "
+          f"across {len(touched)} completion(s)")
+
+
+# ----------------------------------------------------------------------------
+# Mode 10: fix Priya's own confirmed role violations and one UI-glitch item
+# (--fix-priya-role-violations). See module docstring / this session's quality review
+# (Rubric_agree/round_2/priya/quality_and_disagreement_review.md).
+# ----------------------------------------------------------------------------
+
+FIX_PRIYA_ROLE_VIOLATIONS = {
+    186: {  # task 759 (R3) -- ai_structured_response fired on code-role blocks;
+            # rubric restricts this signal to blocks:['ai'] only.
+        "AP4RQCHroU": "block 1  - role violation, ai_structured_response on code block",
+        "u0HfOv9Eaf": "block 1  - role violation, ai_structured_response on code block",
+        "p2KSxx9AAX": "block 7  - role violation, ai_structured_response on code block",
+        "yQjZph6L9m": "block 12 - role violation, ai_structured_response on code block",
+        "wkAXITKAC4": "block 15 - role violation, ai_structured_response on code block",
+        "SYf5wf1day": "block 18 - role violation, ai_structured_response on code block",
+        "qE5tu8e6uX": "block 21 - role violation, ai_structured_response on code block",
+        "drEeWbL0Em": "block 24 - role violation, ai_structured_response on code block",
+    },
+    179: {  # task 762 (R6) -- same role violation.
+        "zjeA0ymItB": "block 4 - role violation, ai_structured_response on code block",
+        "HeK3saBwi9": "block 5 - role violation, ai_structured_response on code block",
+    },
+    # task 763 (R7): the earlier entry here removed item WN0upRQ-0F (ai_malfunction,
+    # b1, offsets 25575-25717) as an "empty-text UI-selection glitch". That was WRONG
+    # (reversed 2026-09-19): the offsets cover "subsubsection{Kernel Entry Points}..."
+    # exactly as Priya's annotations_763.md row 1 describes -- a real label whose
+    # `text` field simply failed to serialize on this >25K-char block, same as her b7
+    # and b10 ai_malfunction items. Restored from the pre-import backup with text
+    # filled from the offsets. Do NOT re-add it here.
+}
+
+
+def fix_priya_role_violations(apply_changes):
+    con = sqlite3.connect(db_path())
+    total_removed, touched = 0, 0
+
+    for completion_id, targets in FIX_PRIYA_ROLE_VIOLATIONS.items():
+        row = con.execute(
+            "SELECT task_id, result FROM task_completion WHERE id=?",
+            (completion_id,)).fetchone()
+        if row is None:
+            print(f"  WARNING completion {completion_id}: not found, skipped")
+            continue
+        task_id, res_raw = row
+        res = json.loads(res_raw)
+        before = len(res)
+        removed = [it for it in res if it.get("id") in targets]
+        kept = [it for it in res if it.get("id") not in targets]
+        missing = set(targets) - {it.get("id") for it in removed}
+        if missing:
+            print(f"  WARNING completion {completion_id}: expected id(s) not "
+                  f"found in result, skipped: {sorted(missing)}")
+
+        print(f"task {task_id:>3} completion {completion_id}: "
+              f"result_count {before} -> {len(kept)}")
+        for it in removed:
+            labels = it.get("value", {}).get("paragraphlabels", [])
+            print(f"    - {it['id']:<11} {labels} {targets[it['id']]}")
+
+        if removed:
+            total_removed += len(removed)
+            touched += 1
+            if apply_changes:
+                con.execute(
+                    """UPDATE task_completion SET result=?, updated_at=datetime('now')
+                       WHERE id=?""",
+                    (json.dumps(kept, ensure_ascii=False), completion_id))
+
+    if apply_changes:
+        con.commit()
+    con.close()
+    print(f"\n{'APPLIED' if apply_changes else 'DRY RUN'}: "
+          f"{total_removed} label(s) removed across {touched} completion(s)")
+
+
+# ----------------------------------------------------------------------------
+# Mode 11: apply the round-2 ACCEPT-cell adjudication (--apply-round2-adjudication).
+# Growable manifest -- appended to as each signal's batch gets ruled during the
+# round-2 "get to zero disagreement" walk (see the plan). Each entry copies one
+# rater's live span to the other rater's completion at the same block (same
+# mechanism Mode 5 used for a single signal/direction, generalized to both
+# directions and any signal) -- never hand-transcribed, always read live so the
+# copied span's exact text/offsets match what the source rater actually has.
+# ----------------------------------------------------------------------------
+
+ROUND2_ADJUDICATION = [
+    # (signal, r_index, block, from_rater, to_rater) -- "add signal at block to
+    # to_rater's data, copying the span from_rater already has there"
+    ("ai_validates_user", "R1", 14, "M", "A"),
+    ("ai_validates_user", "R1", 20, "M", "A"),
+    ("ai_validates_user", "R1", 22, "M", "A"),
+    ("ai_validates_user", "R1", 24, "M", "A"),   # 2 items at this block, both copied
+    ("ai_validates_user", "R4", 85, "M", "A"),
+    ("ai_validates_user", "R4", 87, "M", "A"),
+    ("ai_validates_user", "R5", 60, "M", "A"),
+    # Correction: these 10 were marked "Jun's reading is final, no change" but that
+    # never copied the final reading to Michelle's side, so the cell stayed disagreeing
+    # in the data even though it was declared resolved. Same fix, reverse direction.
+    ("ai_validates_user", "R4", 7, "A", "M"),
+    ("ai_validates_user", "R4", 9, "A", "M"),
+    ("ai_validates_user", "R4", 11, "A", "M"),
+    ("ai_validates_user", "R4", 15, "A", "M"),
+    ("ai_validates_user", "R4", 21, "A", "M"),
+    ("ai_validates_user", "R4", 33, "A", "M"),
+    ("ai_validates_user", "R4", 43, "A", "M"),
+    ("ai_validates_user", "R4", 95, "A", "M"),
+    ("ai_validates_user", "R4", 125, "A", "M"),
+    ("ai_validates_user", "R4", 151, "A", "M"),
+    # factual_error -- R3 (5 cells, "missed by Michelle") + R4 (4 cells, each an
+    # explicit AI-identity claim confirmed by ACCEPT). R10 b7 stays HOLD (tax-law), exempt.
+    ("factual_error", "R3", 4, "A", "M"),
+    ("factual_error", "R3", 7, "A", "M"),
+    ("factual_error", "R3", 12, "A", "M"),
+    ("factual_error", "R3", 15, "A", "M"),
+    ("factual_error", "R3", 18, "A", "M"),
+    ("factual_error", "R4", 45, "A", "M"),
+    ("factual_error", "R4", 49, "A", "M"),
+    ("factual_error", "R4", 109, "A", "M"),
+    ("factual_error", "R4", 173, "A", "M"),
+    # false_confidence -- 10 cells, all ACCEPT with either "genuine miss" language or a
+    # confirmed marker-word/vouch reading. R1 b16 + R6 b6: Michelle caught it, Jun didn't.
+    # R1 b26, R2 b17, R3 b8/13/16, R4 b37/51/87: Jun caught it, Michelle didn't.
+    ("false_confidence", "R1", 16, "M", "A"),
+    ("false_confidence", "R6", 6, "M", "A"),
+    ("false_confidence", "R1", 26, "A", "M"),
+    ("false_confidence", "R2", 17, "A", "M"),
+    ("false_confidence", "R3", 8, "A", "M"),
+    ("false_confidence", "R3", 13, "A", "M"),
+    ("false_confidence", "R3", 16, "A", "M"),
+    ("false_confidence", "R4", 37, "A", "M"),
+    ("false_confidence", "R4", 51, "A", "M"),
+    ("false_confidence", "R4", 87, "A", "M"),
+    # ai_asks_followup -- R4 b67/b101 deliberately SKIPPED (Michelle disputed these
+    # directly, separate track, not adjudicated here).
+    ("ai_asks_followup", "R3", 8, "A", "M"),
+    ("ai_asks_followup", "R3", 25, "A", "M"),
+    # R3 b5/b16 REMOVED from here (2026-09-19, during the ai_offered_options walk): both
+    # already had ai_offered_options as the correct home for the same closing question
+    # (b5 on Jun's side originally, b16 on Michelle's side originally) -- adding
+    # ai_asks_followup here created a one-home-per-question violation. See the
+    # ai_asks_followup cleanup entries further down.
+    ("ai_asks_followup", "R4", 7, "M", "A"),
+    ("ai_asks_followup", "R5", 35, "M", "A"),
+    ("ai_asks_followup", "R7", 14, "A", "M"),
+    # ai_asked_probing_question -- R4 b67/b101 SKIPPED, same disputed pair as
+    # ai_asks_followup (Jun has probing there, Michelle has followup; she kept hers).
+    # b7: Jun had BOTH probing and (now) followup on the same question -- one-home-per-
+    # question violation created by the previous add; "Did they publish...?" is
+    # yes/no-form so followup is the correct home, remove the stale probing label.
+    ("ai_asked_probing_question", "R4", 7, None, "A"),
+    ("ai_asked_probing_question", "R4", 41, "A", "M"),
+    ("ai_asked_probing_question", "R4", 103, "M", "A"),
+    ("ai_asked_probing_question", "R4", 127, "M", "A"),
+    ("ai_asked_probing_question", "R4", 151, "A", "M"),
+    ("ai_asked_probing_question", "R4", 153, "M", "A"),
+    # ai_acknowledges_correction -- 6 cells, all ACCEPT, no dispute recorded
+    ("ai_acknowledges_correction", "R3", 22, "M", "A"),
+    ("ai_acknowledges_correction", "R4", 69, "A", "M"),
+    ("ai_acknowledges_correction", "R4", 75, "A", "M"),
+    ("ai_acknowledges_correction", "R5", 66, "A", "M"),
+    ("ai_acknowledges_correction", "R5", 69, "A", "M"),
+    ("ai_acknowledges_correction", "R9", 6, "A", "M"),
+    # adaptation -- 5 cells. R3 b25: Michelle's PDF-described self-correction (span
+    # moved to the completed-change sentence) is confirmed valid -- copy to Jun, whose
+    # copy is still the old invalid prospective-only span.
+    ("adaptation", "R2", 17, "M", "A"),
+    ("adaptation", "R2", 32, "A", "M"),
+    ("adaptation", "R3", 25, "M", "A"),
+    ("adaptation", "R4", 111, "A", "M"),
+    ("adaptation", "R7", 14, "A", "M"),
+    # ai_asserts_knowledge_limit -- R9 b2 SKIPPED, the 4th Michelle-disputed cell
+    # (already in EXCLUDED_ROUND2_ACTIONS, correctly never removed).
+    ("ai_asserts_knowledge_limit", "R4", 27, "A", "M"),
+    ("ai_asserts_knowledge_limit", "R4", 33, "A", "M"),
+    ("ai_asserts_knowledge_limit", "R4", 43, "M", "A"),
+    ("ai_asserts_knowledge_limit", "R4", 109, "A", "M"),
+    # ai_hedges_uncertainty -- 5 cells, all ACCEPT, Jun fires/Michelle absent throughout
+    ("ai_hedges_uncertainty", "R1", 1, "A", "M"),
+    ("ai_hedges_uncertainty", "R1", 12, "A", "M"),
+    ("ai_hedges_uncertainty", "R4", 5, "A", "M"),   # 2 items at this block
+    ("ai_hedges_uncertainty", "R4", 23, "A", "M"),
+    ("ai_hedges_uncertainty", "R5", 32, "A", "M"),
+    # ethical_tension -- 5 cells, Jun fires/Michelle absent throughout. R9 b2 is the
+    # confirmed ai_provides_caveats->ethical_tension relabel from the round-2 write-back.
+    ("ethical_tension", "R4", 0, "A", "M"),
+    ("ethical_tension", "R4", 51, "A", "M"),
+    ("ethical_tension", "R4", 52, "A", "M"),
+    ("ethical_tension", "R9", 2, "A", "M"),
+    ("ethical_tension", "R9", 6, "A", "M"),
+    # ai_references_prior_turn -- 4 cells, all ACCEPT, Jun fires/Michelle absent
+    # throughout. R5 b72's span itself needs correcting first (see
+    # fix_r5_b72_span_and_copy below) -- handled separately, not through this list.
+    ("ai_references_prior_turn", "R4", 97, "A", "M"),
+    ("ai_references_prior_turn", "R5", 32, "A", "M"),
+    ("ai_references_prior_turn", "R5", 60, "A", "M"),
+    # under_delivered -- 4 cells, all ACCEPT, Jun fires/Michelle absent throughout.
+    # Draft flags all 4 whole-block spans (24K-99K chars) as candidates to narrow to the
+    # bulletpoint-heavy portions "for the correction pass, separate from the fire/no-fire
+    # ruling" -- unlike R5 b72's ai_references_prior_turn fix, this is a precision
+    # refinement (the whole-block span already correctly contains the violation), not a
+    # wrong-location error, and picking exact sub-spans is a real judgment call left
+    # open/deferred, not auto-corrected here.
+    ("under_delivered", "R7", 1, "A", "M"),
+    ("under_delivered", "R7", 4, "A", "M"),
+    ("under_delivered", "R7", 7, "A", "M"),
+    ("under_delivered", "R7", 10, "A", "M"),
+    # user_implicit_correction -- 4 cells, all ACCEPT (the 3 CORRECT-A cells from the
+    # draft's 7-cell section were already removed in the round-2 write-back).
+    ("user_implicit_correction", "R1", 15, "M", "A"),
+    ("user_implicit_correction", "R3", 20, "M", "A"),
+    ("user_implicit_correction", "R4", 58, "M", "A"),
+    ("user_implicit_correction", "R4", 68, "A", "M"),
+    # ai_provides_caveats -- 3 cells, all ACCEPT (the other 3 cells from the draft's
+    # 6-cell section -- R1 b7 dropped, R1 b14 relabeled ai_warns_user, R9 b2 relabeled
+    # ethical_tension -- were already applied in the round-2 write-back).
+    ("ai_provides_caveats", "R1", 3, "M", "A"),
+    ("ai_provides_caveats", "R1", 30, "A", "M"),
+    ("ai_provides_caveats", "R2", 2, "A", "M"),
+    # ai_provides_step_by_step -- 3 cells, all ACCEPT
+    ("ai_provides_step_by_step", "R1", 1, "M", "A"),
+    ("ai_provides_step_by_step", "R1", 30, "M", "A"),
+    ("ai_provides_step_by_step", "R8", 2, "A", "M"),
+    # user_asks_clarification -- 3 cells, all ACCEPT (b64, also ACCEPT in the draft,
+    # already agrees live; the other 4 draft cells were CORRECT-A/relabel, already
+    # applied in the round-2 write-back).
+    ("user_asks_clarification", "R4", 32, "M", "A"),
+    ("user_asks_clarification", "R4", 38, "A", "M"),
+    ("user_asks_clarification", "R4", 40, "A", "M"),
+    # user_corrects_ai -- 3 cells, all ACCEPT (the other 3 draft cells were CORRECT-A
+    # redundant-duplicates of user_implicit_correction, already applied in the write-back)
+    ("user_corrects_ai", "R3", 23, "A", "M"),
+    ("user_corrects_ai", "R4", 8, "A", "M"),
+    ("user_corrects_ai", "R5", 61, "A", "M"),
+    # user_empowered -- 3 cells, all ACCEPT
+    ("user_empowered", "R2", 5, "A", "M"),
+    ("user_empowered", "R5", 23, "A", "M"),
+    ("user_empowered", "R8", 2, "A", "M"),
+    # user_multi_request -- 3 cells, all ACCEPT (the other 2 draft cells, R2 b0 and
+    # R4 b64, were CORRECT-M, already applied in the round-2 write-back).
+    ("user_multi_request", "R4", 56, "M", "A"),
+    ("user_multi_request", "R10", 4, "M", "A"),
+    ("user_multi_request", "R10", 8, "M", "A"),
+    # user_validation_seeking -- 3 cells, all ACCEPT. R4 b50 isn't in this signal's own
+    # draft section (which only covers R1/R5) -- it's the relabel target from
+    # ai_provides_caveats/user_asks_clarification's b50 ruling ("relabel to
+    # user_validation_seeking"), already applied to Michelle's data in the write-back;
+    # same ACCEPT shape as the other two, just needs adding to Jun's side too.
+    ("user_validation_seeking", "R1", 4, "M", "A"),
+    ("user_validation_seeking", "R4", 50, "M", "A"),
+    ("user_validation_seeking", "R5", 61, "M", "A"),
+    # ai_structured_response -- 2 cells, both ACCEPT, "genuine misses in opposite directions"
+    ("ai_structured_response", "R1", 1, "A", "M"),
+    ("ai_structured_response", "R1", 10, "M", "A"),
+    # ai_warns_user -- 2 cells, both ACCEPT (R1 b14 already agrees live via the
+    # ai_provides_caveats relabel; R5 b72 was CORRECT-M, already applied).
+    ("ai_warns_user", "R1", 12, "M", "A"),   # 2 items at this block, both copied
+    ("ai_warns_user", "R1", 26, "M", "A"),
+    # ai_provides_example -- 2 cells, both ACCEPT (R5's 3 ACCEPT cells already agree
+    # live; R5 b2 and R9 b6 were CORRECT-M, already applied).
+    ("ai_provides_example", "R8", 2, "A", "M"),
+    ("ai_provides_example", "R10", 5, "M", "A"),
+    # ai_offered_options -- R3 b5 undocumented in the draft (only b13/b16/b25 + R8 b2
+    # were), but same "X or Y" named-action-choice shape as the ACCEPTed b16. Checking
+    # both blocks' full label sets surfaced two one-home-per-question violations:
+    # (1) Jun's b5 already had BOTH ai_offered_options (his own, correct) and
+    #     ai_asks_followup -- the latter was wrongly added there during the earlier
+    #     ai_asks_followup walk ("R3 b5: undocumented, same shape (yes/no closer)")
+    #     without checking Jun already had the more specific label. Remove it.
+    # (2) Michelle's b16 already had BOTH ai_offered_options (her own, pre-existing,
+    #     unrelated to any adjudication) and ai_asks_followup, same violation,
+    #     independent of my earlier walk. Remove it.
+    ("ai_asks_followup", "R3", 5, None, "A"),   # one-home-per-question cleanup
+    ("ai_asks_followup", "R3", 16, None, "M"),  # one-home-per-question cleanup
+    ("ai_asks_followup", "R3", 5, None, "M"),   # same cleanup, other side
+    ("ai_asks_followup", "R3", 16, None, "A"),  # same cleanup, other side
+    ("ai_offered_options", "R3", 5, "A", "M"),
+    ("ai_offered_options", "R3", 16, "M", "A"),
+    # ai_missing_retrieval -- 2 cells, both ACCEPT, Jun fires/Michelle absent
+    ("ai_missing_retrieval", "R3", 1, "A", "M"),
+    ("ai_missing_retrieval", "R3", 4, "A", "M"),
+    # ai_cites_source -- 2 cells, both ACCEPT, Michelle fires/Jun absent (the other 5
+    # draft cells at R5 were mostly CORRECT-M, subject-vs-source; the 1 ACCEPT span
+    # there, b38 span 3, already agrees live)
+    ("ai_cites_source", "R1", 28, "M", "A"),
+    ("ai_cites_source", "R10", 5, "M", "A"),
+    # conversation_stalled -- 2 cells, both ACCEPT. R3 b8 on Jun's side also had a
+    # 4-char span-drift artifact (text "with", offsets 396-400 -- a corrupted leftover
+    # fragment, not a genuine second instance) removed directly, outside this list.
+    ("conversation_stalled", "R3", 8, "A", "M"),
+    ("conversation_stalled", "R3", 16, "A", "M"),
+    # 7 single-cell signals, all ACCEPT, Jun fires/Michelle absent throughout
+    ("user_repeats_request", "R3", 14, "A", "M"),
+    ("user_positive_feedback", "R4", 46, "A", "M"),
+    ("user_ambiguous_request", "R2", 21, "A", "M"),
+    ("problem_ignored", "R2", 11, "A", "M"),
+    ("off_topic_drift", "R5", 57, "A", "M"),
+    ("ai_provides_alternatives", "R2", 5, "A", "M"),
+    ("ai_malfunction", "R7", 7, "A", "M"),
+    ("ai_flags_complexity", "R4", 61, "A", "M"),
+    # ai_offers_to_elaborate R3 b2 deliberately SKIPPED -- this is the flagged Type-2
+    # reclassification cell (Jun: ai_offers_to_elaborate, Michelle: ai_offered_options,
+    # same question), not a simple miss; needs the three-way Type-2 pass, not a
+    # mechanical copy that would just create a double-fire.
+]
+
+
+def apply_round2_adjudication(apply_changes):
+    conv_to_c = {r["c_index"]: r["conv_id"] for r in
+                 csv.DictReader(l for l in open(ROUND2_CONV_MAP_PATH) if not l.startswith("#"))}
+    con = sqlite3.connect(db_path())
+
+    store = {}
+    for pid in set(RATER_PROJECT_ROUND2.values()):
+        for tid, data, res_raw, cid in con.execute(
+                """SELECT t.id, t.data, tc.result, tc.id FROM task_completion tc
+                   JOIN task t ON t.id = tc.task_id
+                   WHERE tc.was_cancelled = 0 AND t.project_id = ?""", (pid,)):
+            conv = json.loads(data).get("conv_id")
+            store[(pid, conv)] = {"task": tid, "completion": cid,
+                                   "result": json.loads(res_raw), "dirty": False}
+
+    added, skipped, removed = 0, 0, 0
+    for signal, r_idx, block, from_rater, to_rater in ROUND2_ADJUDICATION:
+        conv = conv_to_c[r_idx]
+        dst = store[(RATER_PROJECT_ROUND2[to_rater], conv)]
+
+        if from_rater is None:
+            # pure removal -- e.g. a stale question-family label superseded by
+            # another signal already added at the same block (one-home-per-question)
+            targets = [it for it in dst["result"]
+                       if it.get("type") == "paragraphlabels" and int(it["value"]["start"]) == block
+                       and signal in it["value"].get("paragraphlabels", [])]
+            if not targets:
+                print(f"  SKIP  remove {to_rater} {r_idx} b{block} {signal}: already absent")
+                skipped += 1
+                continue
+            for item in targets:
+                item["value"]["paragraphlabels"].remove(signal)
+                if not item["value"]["paragraphlabels"]:
+                    dst["result"].remove(item)
+                dst["dirty"] = True
+                print(f"  - remove {to_rater} {r_idx} b{block:<4} {signal:28} "
+                      f"{item['value'].get('text','')[:60]!r}")
+                removed += 1
+            continue
+
+        src = store[(RATER_PROJECT_ROUND2[from_rater], conv)]
+        src_items = [it for it in src["result"]
+                     if it.get("type") == "paragraphlabels" and int(it["value"]["start"]) == block
+                     and signal in it["value"].get("paragraphlabels", [])]
+        if not src_items:
+            print(f"  WARNING {from_rater}->{to_rater} {r_idx} b{block} {signal}: "
+                  f"not found in {from_rater}'s live data, skipped")
+            continue
+        already = any(it.get("type") == "paragraphlabels" and int(it["value"]["start"]) == block
+                       and signal in it["value"].get("paragraphlabels", []) for it in dst["result"])
+        if already:
+            print(f"  SKIP  {from_rater}->{to_rater} {r_idx} b{block} {signal}: "
+                  f"already present on {to_rater}'s side")
+            skipped += 1
+            continue
+
+        for n, src_it in enumerate(src_items):
+            v = src_it["value"]
+            new_item = {
+                "value": {"start": v["start"], "end": v["end"],
+                          "startOffset": v["startOffset"], "endOffset": v["endOffset"],
+                          "text": v["text"], "paragraphlabels": [signal]},
+                "id": _new_id(RATER_PROJECT_ROUND2[to_rater], f"{r_idx}-adj-{n}", block, signal),
+                "from_name": "signals", "to_name": "dialogue",
+                "type": "paragraphlabels", "origin": "manual",
+            }
+            dst["result"].append(new_item)
+            dst["dirty"] = True
+            print(f"  + {from_rater}->{to_rater} {r_idx} b{block:<4} {signal:28} "
+                  f"(from {from_rater}'s span) {v['text'][:60]!r}")
+            added += 1
+
+    touched = [r for r in store.values() if r["dirty"]]
+    if apply_changes:
+        for rec in touched:
+            con.execute("""UPDATE task_completion SET result=?, updated_at=datetime('now')
+                           WHERE id=?""",
+                        (json.dumps(rec["result"], ensure_ascii=False), rec["completion"]))
+        con.commit()
+    con.close()
+    print(f"\n{'APPLIED' if apply_changes else 'DRY RUN'}: {added} label(s) added, "
+          f"{removed} removed, {skipped} already present/absent, across "
+          f"{len(touched)} completion(s)")
+
+
+# ----------------------------------------------------------------------------
+# Mode 12: round-1 (Jun "A" / B / F) three-way batch-by-signal adjudication
+# (--apply-round1-adjudication). Same shape as Mode 11, generalized to N raters:
+# each entry copies one rater's live span for (signal, block) to one or more
+# other raters, or removes a stale label when from_rater is None.
+# ----------------------------------------------------------------------------
+
+ROUND1_CONV_MAP_PATH = ANNOT_DIR / "agreement_set_convid_map.csv"
+RATER_PROJECT_ROUND1 = {"A": 1, "B": 2, "F": 3}
+
+ROUND1_ADJUDICATION = [
+    # (signal, c_index, block, from_rater, to_raters) -- to_raters is a tuple; copies
+    # from_rater's live span at (c_index, block, signal) to each rater in to_raters.
+    # from_rater=None + a single to_rater in the tuple means pure removal.
+]
+
+
+# ----------------------------------------------------------------------------
+# Mode 13: Priya three-way adjudication (--apply-priya-adjudication). Same list
+# shape as Mode 12 (to_raters is a tuple), raters A/M/P = projects 1/5/4, keyed
+# by R-index over the round-2 conv map. Shares the N-way engine with Mode 12.
+# ----------------------------------------------------------------------------
+
+RATER_PROJECT_PRIYA = {"A": 1, "M": 5, "P": 4}
+
+PRIYA_ADJUDICATION = [
+    # (signal, r_index, block, from_rater, to_raters) -- see ROUND1_ADJUDICATION.
+    # ai_structured_response -- 40 cells, ruled by Jun 2026-09-19 on the signal
+    # DEFINITION + block_notes (visible formatting markers only). Fires: dash-delimited
+    # "Name - description" lists ("-" is a visible marker) and the "1." numbered list;
+    # bare line-separated items, colon labels and bare title-case lines are 0.
+    ("ai_structured_response", "R1", 7, "P", ("A", "M")),
+    ("ai_structured_response", "R3", 5, "P", ("A", "M")),
+    ("ai_structured_response", "R5", 23, "P", ("A", "M")),
+    ("ai_structured_response", "R1", 30, "A", ("P",)),
+] + [
+    ("ai_structured_response", r, b, None, ("P",)) for r, b in [
+        ("R1", 3), ("R2", 2), ("R2", 8), ("R2", 14), ("R2", 20), ("R2", 23), ("R2", 26),
+        ("R3", 2), ("R3", 8), ("R3", 13), ("R3", 25), ("R4", 169),
+        ("R5", 2), ("R5", 5), ("R5", 8), ("R5", 11), ("R5", 14), ("R5", 17), ("R5", 20),
+        ("R5", 26), ("R5", 38), ("R5", 41), ("R5", 44), ("R5", 47), ("R5", 50), ("R5", 53),
+        ("R5", 57), ("R5", 72), ("R7", 14), ("R9", 2), ("R9", 6),
+        ("R10", 1), ("R10", 3), ("R10", 5), ("R10", 7), ("R10", 9),
+    ]
+] + [
+    # ai_validates_user -- 29 cells, ruled by Jun 2026-09-19. 28 are round-2 ACCEPT
+    # cells (bare-agreement opener answering a recoverable user position, R20/R21, plus
+    # explicit affirmations of the user) that Priya never fires -> add to P. R4 b7/b91/
+    # b107 confirmed as validation, NOT acknowledgment: her ai_acknowledges_correction
+    # fires there come off when that signal is walked.
+    ("ai_validates_user", r, b, "A", ("P",)) for r, b in [
+        ("R1", 24), ("R4", 7), ("R4", 11), ("R4", 23), ("R4", 31), ("R4", 33), ("R4", 35),
+        ("R4", 43), ("R4", 45), ("R4", 55), ("R4", 61), ("R4", 85), ("R4", 87), ("R4", 91),
+        ("R4", 93), ("R4", 95), ("R4", 97), ("R4", 105), ("R4", 107), ("R4", 123),
+        ("R4", 125), ("R4", 137), ("R4", 139), ("R4", 151), ("R4", 153),
+        ("R5", 32), ("R5", 60), ("R5", 69),
+    ]
+] + [
+    # R3 b25: the AI describing its own change ("Removed X's immunity since his passive
+    # is already impactful") -- Step 1 fails, nothing about the user is affirmed.
+    ("ai_validates_user", "R3", 25, None, ("P",)),
+] + [
+    # ai_hedges_uncertainty -- 26 cells, ruled by Jun 2026-09-19. Fires only on a
+    # genuine downgrade of confidence in a claim the AI is making (likely/probably/
+    # might). Jun's ruling on the keyword list: "If" and "Maybe" are ASSUMPTIONS, not
+    # hedges -- a conditional premise and a floated possibility assert nothing to
+    # downgrade, so Step 2's "IF...THEN" keyword does not fire on its own (the gate is
+    # the question, the keywords only prompt the check).
+    ("ai_hedges_uncertainty", "R1", 1, "A", ("P",)),
+    ("ai_hedges_uncertainty", "R1", 12, "A", ("P",)),
+    ("ai_hedges_uncertainty", "R4", 5, "A", ("P",)),
+    ("ai_hedges_uncertainty", "R4", 23, "A", ("P",)),
+    # Priya right -- "probably"/"might" on the AI's own claim, both missed by A and M
+    ("ai_hedges_uncertainty", "R4", 13, "P", ("A", "M")),
+    ("ai_hedges_uncertainty", "R4", 29, "P", ("A", "M")),
+    ("ai_hedges_uncertainty", "R4", 31, "P", ("A", "M")),
+    ("ai_hedges_uncertainty", "R4", 35, "P", ("A", "M")),
+    ("ai_hedges_uncertainty", "R4", 167, "P", ("A", "M")),  # span 2 dropped separately
+    # Step 3: no answer, states inability -> ai_asserts_knowledge_limit is the home
+    ("ai_hedges_uncertainty", "R4", 27, None, ("P",)),
+    ("ai_asserts_knowledge_limit", "R4", 27, "A", ("P",)),
+    ("ai_hedges_uncertainty", "R4", 33, None, ("P",)),
+    ("ai_asserts_knowledge_limit", "R4", 33, "A", ("P",)),
+] + [
+    # no downgrade of an AI claim: approximations, reportive "suggests", firm "I think",
+    # inference "must be", a felt state, a conditional premise (b37), floated
+    # possibilities (b59), a scoping phrase (R9 b6), qualifying the USER's claim (b3)
+    ("ai_hedges_uncertainty", r, b, None, ("P",)) for r, b in [
+        ("R2", 4), ("R2", 16), ("R4", 3), ("R4", 37), ("R4", 39), ("R4", 55),
+        ("R4", 59), ("R4", 75), ("R4", 105), ("R4", 111), ("R5", 72), ("R9", 6),
+        ("R10", 1), ("R10", 5),
+    ]
+    # R9 b2 HELD: the Michelle-disputed cell (A: ethical_tension, M: also
+    # ai_asserts_knowledge_limit, P: hedge)
+] + [
+    # false_confidence -- 16 cells, ruled by Jun 2026-09-19. Gate: an absolute/certainty
+    # marker vouching a NOVEL claim. The AI's own false self-claim routes to
+    # factual_error (claim-ownership), which is where R4 b45/b115/b161 and R5 b69 go --
+    # the factual_error spans at b115/b161/b69 were created on all three raters first
+    # (no rater had them), then the false_confidence fires come off Priya here.
+    ("false_confidence", "R1", 18, "A", ("P",)),
+    ("false_confidence", "R1", 20, "A", ("P",)),
+    ("false_confidence", "R2", 17, "A", ("P",)),
+    ("false_confidence", "R3", 8, "A", ("P",)),
+    ("false_confidence", "R3", 13, "A", ("P",)),
+    ("false_confidence", "R4", 37, "A", ("P",)),
+    ("false_confidence", "R4", 51, "A", ("P",)),
+    ("false_confidence", "R4", 87, "A", ("P",)),
+    ("false_confidence", "R6", 6, "A", ("P",)),
+    # AI self-claims -> factual_error
+    ("false_confidence", "R4", 45, None, ("P",)),
+    ("factual_error", "R4", 45, "A", ("P",)),
+    ("false_confidence", "R4", 115, None, ("P",)),
+    ("false_confidence", "R4", 161, None, ("P",)),
+    ("false_confidence", "R5", 69, None, ("P",)),   # also drops her 2nd span there
+    # not a vouched novel claim
+    ("false_confidence", "R1", 14, None, ("P",)),
+    ("false_confidence", "R4", 11, None, ("P",)),
+    ("false_confidence", "R4", 47, None, ("P",)),
+] + [
+    # ai_provides_caveats -- 15 cells, all Priya-only, ruled by Jun 2026-09-19.
+    # A caveat flags a LIMITATION, RISK or SHORTCOMING of what the AI is offering.
+    # R9 b6 is the span already ruled ethical_tension in round 2 -> relabel.
+    ("ai_provides_caveats", "R9", 6, None, ("P",)),
+    ("ethical_tension", "R9", 6, "A", ("P",)),
+] + [
+    # R1 b1: a directive about care = a risk the user acts on, same shape as the round-2
+    # R1 b14 relabel to ai_warns_user (which all three already carry on that block).
+    # R2 b5: describes how the substitute behaves = part of ai_provides_alternatives.
+    # The rest qualify analytical claims, not recommendations (Step 1).
+    ("ai_provides_caveats", r, b, None, ("P",)) for r, b in [
+        ("R1", 1), ("R2", 5), ("R2", 11), ("R2", 29), ("R5", 11), ("R5", 20),
+        ("R5", 26), ("R5", 47), ("R5", 50), ("R5", 57), ("R8", 2),
+        ("R10", 3), ("R10", 5), ("R10", 7),
+    ]
+] + [
+    # factual_error -- 10 cells, ruled by Jun 2026-09-19.
+    # R3's five are checkable skill data (wrong against the site the user supplied);
+    # R4 b49/b109/b173 fire on Step 3 (AI identity claim).
+    ("factual_error", "R3", 4, "A", ("P",)),
+    ("factual_error", "R3", 7, "A", ("P",)),
+    ("factual_error", "R3", 12, "A", ("P",)),
+    ("factual_error", "R3", 15, "A", ("P",)),
+    ("factual_error", "R3", 18, "A", ("P",)),
+    ("factual_error", "R4", 49, "A", ("P",)),
+    ("factual_error", "R4", 109, "A", ("P",)),
+    ("factual_error", "R4", 173, "A", ("P",)),
+    # R4 b89 "learn from conversations" -- NOT verifiable: true of in-context learning,
+    # false only under the cross-session reading the user imposes at b90. b90-b91 is the
+    # user narrowing a loose phrase and the AI accepting it, not a fact being falsified.
+    # A capability characterization, not a quote- or count-level claim (Step 2b) -> 0.
+    ("factual_error", "R4", 89, None, ("P",)),
+    # R10 b7 HELD: turns on whether corporate lobbying is deductible (IRC 162(e));
+    # unverified since round 2. Jun-only fire.
+] + [
+    # ---- correction family (ack / implicit / corrects / adaptation), ruled together
+    # by Jun 2026-09-19 because four R2/R4 turn-pairs decide rows across all four.
+    #
+    # THE PAIRS. ack Step 1 needs the prior human turn to name a factual, technical or
+    # framing ERROR in the AI's output; pushback about style/behaviour is NOT a
+    # correction. Checking the AI turn BEFORE each user turn splits them:
+    #  b5  inferred "the default is to follow organizational hierarchy" -> b6 "No -"
+    #      corrects that framing -> b7 accepts it  => ack (AVU off, R21)
+    #  b89 claimed "learn from conversations" -> b90 negates it -> b91 "No." concedes
+    #      => ack (AVU off, R21)
+    #  b105 asserted nothing wrong -> b106 observes the AI's responses are all the same
+    #      length = behaviour critique, NOT a correction => ack does NOT fire; the
+    #      block stays ai_validates_user on all three.
+    # No block ends double-labelled: R21 forbids AVU inside an ack span.
+    ("user_implicit_correction", "R4", 6, "P", ("A", "M")),
+    ("ai_acknowledges_correction", "R4", 7, "P", ("A", "M")),
+    ("ai_validates_user", "R4", 7, None, ("A", "M", "P")),
+    ("user_corrects_ai", "R4", 90, "P", ("A", "M")),
+    ("ai_acknowledges_correction", "R4", 91, "P", ("A", "M")),
+    ("ai_validates_user", "R4", 91, None, ("A", "M", "P")),
+    ("ai_acknowledges_correction", "R4", 107, None, ("P",)),
+    # settled A+M cells Priya missed
+    ("ai_acknowledges_correction", "R3", 10, "A", ("P",)),
+    ("ai_acknowledges_correction", "R4", 69, "A", ("P",)),
+    ("user_implicit_correction", "R3", 17, "A", ("P",)),
+    ("user_implicit_correction", "R3", 20, "A", ("P",)),
+    ("user_implicit_correction", "R4", 58, "A", ("P",)),
+    ("user_implicit_correction", "R4", 68, "A", ("P",)),
+    ("user_corrects_ai", "R4", 8, "A", ("P",)),
+    ("user_corrects_ai", "R4", 72, "A", ("P",)),
+    ("adaptation", "R2", 17, "A", ("P",)),
+    ("adaptation", "R2", 32, "A", ("P",)),
+    ("adaptation", "R4", 111, "A", ("P",)),
+    ("adaptation", "R7", 14, "A", ("P",)),
+    # relabels on P (the paired label is added above or already present)
+    ("ai_acknowledges_correction", "R3", 13, None, ("P",)),   # -> false_confidence (already has)
+    ("ai_acknowledges_correction", "R3", 25, None, ("P",)),   # -> adaptation (already has)
+    ("ai_acknowledges_correction", "R7", 14, None, ("P",)),   # -> adaptation (added above)
+    ("ai_acknowledges_correction", "R2", 32, None, ("P",)),   # -> adaptation (added above)
+    ("user_corrects_ai", "R3", 17, None, ("P",)),             # -> implicit (added above)
+    ("user_corrects_ai", "R3", 20, None, ("P",)),             # -> implicit (added above)
+    ("user_corrects_ai", "R4", 58, None, ("P",)),             # -> implicit (added above)
+    ("adaptation", "R4", 109, None, ("P",)),                  # -> knowledge_limit (its own walk)
+    # clean removals: nobody labels the block, or the act is not in this family
+    ("user_implicit_correction", "R4", 104, None, ("P",)),
+    ("user_implicit_correction", "R9", 3, None, ("P",)),
+    ("adaptation", "R2", 26, None, ("P",)),
+    ("user_corrects_ai", "R7", 12, None, ("P",)),
+    ("ai_acknowledges_correction", "R5", 57, None, ("P",)),   # needs example + off_topic_drift, own walks
+    # R2 b30: NOT held. Jun 2026-09-19 -- the merge question is about
+    # frustration/dissatisfaction; whether user_implicit_correction fires here is
+    # independent of it, and it is already settled by consistency with b32 being ruled
+    # adaptation (not ack) because b30 is a presentation preference, not a correction.
+    # The A-vs-M dissatisfaction/frustration split at this block stays held in THOSE
+    # signals.
+    ("user_implicit_correction", "R2", 30, None, ("P",)),
+    # judgment calls, agreed by Jun
+    ("user_corrects_ai", "R5", 64, "P", ("A", "M")),   # names the concrete defect
+    ("adaptation", "R4", 167, "P", ("A", "M")),        # "I changed my mind." -- stated reversal
+] + [
+    # ai_provides_example -- 9 cells, ruled by Jun 2026-09-19. A concrete SCENARIO or
+    # NAMED CASE illustrating the point fires; a category list inside an argument does
+    # not. Comparator: R5 b23, where all three already agree ("Fashion brands making
+    # millions from traditional designs...", "Halloween costumes that caricature...").
+    ("ai_provides_example", "R5", 57, "A", ("P",)),
+    ("ai_provides_example", "R8", 2, "A", ("P",)),
+    ("ai_provides_example", "R10", 5, "A", ("P",)),
+    # Priya right: actual scenarios ("a leak behind a wall", "modern fixtures in a
+    # century-old building"). Same shape as b23/b26, ruled ACCEPT in round 2.
+    ("ai_provides_example", "R5", 53, "P", ("A", "M")),
+    # R5 b14 REVERSES the round-2 ACCEPT: the block is an argument listing profession
+    # CATEGORIES ("electricians, nurses, software developers"), no case is rendered.
+    # The round-2 "a profession category is concrete enough" rule over-reached; it only
+    # ever lived in round2_disagreement_draft.md, never in the frozen rubric.
+    ("ai_provides_example", "R5", 14, None, ("P",)),
+    ("ai_provides_example", "R5", 2, None, ("P",)),    # round 2: topic labels, no worked instance
+    ("ai_provides_example", "R4", 57, None, ("P",)),   # analogy stating a condition
+    ("ai_provides_example", "R5", 35, None, ("P",)),   # self-reflection, illustrates nothing
+    ("ai_provides_example", "R10", 1, None, ("P",)),   # restates the same figure, contextualisation
+    # R5 b26 restored to all three outside this list (no rater had it; Michelle's
+    # original span 922-1128 recovered from bak-2026-09-14-pre-michelle-round2-fix).
+] + [
+    # ---- batch of 7 signals, ruled by Jun 2026-09-19 ----
+    # settled A+M cells Priya missed
+    ("user_asks_clarification", "R4", 32, "A", ("P",)),
+    ("user_asks_clarification", "R4", 38, "A", ("P",)),
+    ("user_asks_clarification", "R4", 40, "A", ("P",)),
+    ("user_asks_clarification", "R4", 64, "A", ("P",)),
+    ("ethical_tension", "R4", 0, "A", ("P",)),
+    ("ethical_tension", "R4", 51, "A", ("P",)),
+    ("ethical_tension", "R4", 52, "A", ("P",)),
+    ("ethical_tension", "R9", 2, "A", ("P",)),
+    ("ai_references_prior_turn", "R4", 97, "A", ("P",)),
+    ("ai_references_prior_turn", "R5", 32, "A", ("P",)),
+    ("ai_references_prior_turn", "R5", 60, "A", ("P",)),
+    ("ai_references_prior_turn", "R5", 72, "A", ("P",)),
+    ("ai_asserts_knowledge_limit", "R4", 43, "A", ("P",)),
+    ("ai_asserts_knowledge_limit", "R4", 109, "A", ("P",)),
+    ("user_multi_request", "R4", 56, "A", ("P",)),
+    ("user_multi_request", "R10", 8, "A", ("P",)),
+    # ai_offered_options: A6 one home -- add the A/M home, drop Priya's probing on the
+    # same question. Independent of the followup/probing merge, so decidable now; this
+    # also clears 4 of the 29 held ai_asked_probing_question cells.
+    ("ai_offered_options", "R3", 2, "A", ("P",)),
+    ("ai_offered_options", "R3", 5, "A", ("P",)),
+    ("ai_offered_options", "R3", 16, "A", ("P",)),
+    ("ai_offered_options", "R8", 2, "A", ("P",)),
+    ("ai_asked_probing_question", "R3", 2, None, ("P",)),
+    ("ai_asked_probing_question", "R3", 5, None, ("P",)),
+    ("ai_asked_probing_question", "R3", 16, None, ("P",)),
+    ("ai_asked_probing_question", "R8", 2, None, ("P",)),
+    # Priya right, A+M both missed: two independently fulfillable asks
+    ("user_multi_request", "R1", 17, "P", ("A", "M")),
+    ("user_multi_request", "R3", 23, "P", ("A", "M")),
+    # removals from P
+    ("ai_references_prior_turn", "R4", 93, None, ("P",)),  # prospective wish, no callback marker
+    ("ai_asserts_knowledge_limit", "R3", 10, None, ("P",)),# a plan, not an inability
+    ("user_multi_request", "R10", 2, None, ("P",)),        # "and if so" -- conditional on the first
+    ("user_multi_request", "R1", 23, None, ("P",)),        # "do I need a solicitor?" is a sub-question
+                                                            # of the same deliverable (Step 2)
+    ("user_repeats_request", "R3", 9, None, ("P",)),       # the FIRST ask; b14 is its repeat
+    ("user_repeats_request", "R3", 17, None, ("P",)),      # supplying data = implicit correction
+    ("user_repeats_request", "R3", 20, None, ("P",)),
+    ("user_repeats_request", "R7", 12, None, ("P",)),      # b9 "continue" was SERVED but wrong ->
+                                                            # Step 2 routes away from repeat; and
+                                                            # round 2 ruled it not a correction either
+    # ai_asserts_knowledge_limit R9 b2 HELD (Michelle-disputed).
+] + [
+    # The question family splits three ways; only the ROUTING cells are blocked by the
+    # followup/probing merge. These are the pure misses -- A+M fire, Priya has nothing
+    # at the block -- so whatever the merged signal ends up called, she missed them.
+    ("ai_asked_probing_question", "R4", b, "A", ("P",)) for b in
+    [5, 25, 41, 53, 83, 103, 119, 121, 125, 127, 133, 143, 145, 147, 151, 153]
+] + [
+    ("ai_asks_followup", "R3", 25, "A", ("P",)),
+    ("ai_asks_followup", "R5", 60, "A", ("P",)),
+    # STILL HELD, pending the merge: the 8 routing pairs (Priya fires probing where A+M
+    # fire followup) at R3 b8/b13/b19/b22, R4 b7, R5 b35, R7 b14, R10 b1 -- 16 cells
+    # across the two signals. Plus R4 b67/b101, Michelle-disputed, in both.
+] + [
+    # ---- final batch 1 (17 cells), ruled by Jun 2026-09-19 ----
+    # settled A+M cells Priya missed
+    ("user_validation_seeking", "R4", 36, "A", ("P",)),
+    ("user_validation_seeking", "R4", 50, "A", ("P",)),
+    ("user_validation_seeking", "R5", 61, "A", ("P",)),
+    ("user_empowered", "R2", 5, "A", ("P",)),
+    ("user_empowered", "R5", 23, "A", ("P",)),
+    ("user_empowered", "R8", 2, "A", ("P",)),
+    ("conversation_stalled", "R3", 8, "A", ("P",)),
+    ("conversation_stalled", "R3", 16, "A", ("P",)),
+    ("user_positive_feedback", "R4", 46, "A", ("P",)),
+    ("ai_warns_user", "R1", 26, "A", ("P",)),
+    # Priya right, both missed
+    ("user_positive_feedback", "R4", 94, "P", ("A", "M")),  # "you got there on your own this time."
+    # removals -- each fails the signal's own gate
+    ("ai_warns_user", "R1", 18, None, ("P",)),          # case-building advice, no hazard (Step 1)
+    ("ai_warns_user", "R1", 22, None, ("P",)),          # imperative list, no adverse consequence
+    ("appropriate_confidence", "R1", 28, None, ("P",)), # Step 1 complexity gate: a lookup question
+    ("appropriate_confidence", "R4", 73, None, ("P",)), # same -- plain self-report, nothing contested
+    ("ai_provides_alternatives", "R5", 14, None, ("P",)),# a claim, not something offered INSTEAD
+    ("ai_provides_alternatives", "R8", 2, None, ("P",)), # Step 2: an item in a list of suggestions is
+                                                          # not an alternative; A+M home it as
+                                                          # ai_offered_options
+] + [
+    # ---- final batch 2 (11 cells), ruled by Jun 2026-09-19 ----
+    ("ai_missing_retrieval", "R3", 1, "A", ("P",)),
+    ("ai_missing_retrieval", "R3", 4, "A", ("P",)),
+    ("ai_cites_source", "R1", 28, "A", ("P",)),
+    ("user_ambiguous_request", "R2", 21, "A", ("P",)),
+    ("problem_ignored", "R2", 11, "A", ("P",)),
+    ("off_topic_drift", "R5", 57, "A", ("P",)),
+    ("ai_flags_complexity", "R4", 61, "A", ("P",)),
+    # no source named in the span at all (round 2 kept only the "Playing in the Dark" span)
+    ("ai_cites_source", "R5", 38, None, ("P",)),
+    # Type-2 leftover from Michelle's walk: all three now carry ai_offered_options on this
+    # exact question, so A6 (one home per question) drops Jun's second label.
+    ("ai_offers_to_elaborate", "R3", 2, None, ("A",)),
+    # Priya right, both missed
+    ("user_provides_invalid_input", "R2", 9, "P", ("A", "M")),  # "Change the water to 3000kg"
+    ("ai_malfunction", "R7", 1, "P", ("A", "M")),               # same truncation shape as b7/b10
+]
+
+
+def apply_round1_adjudication(apply_changes):
+    _apply_nway_adjudication(ROUND1_ADJUDICATION, RATER_PROJECT_ROUND1,
+                             ROUND1_CONV_MAP_PATH, apply_changes)
+
+
+def apply_priya_adjudication(apply_changes):
+    _apply_nway_adjudication(PRIYA_ADJUDICATION, RATER_PROJECT_PRIYA,
+                             ROUND2_CONV_MAP_PATH, apply_changes)
+
+
+def _apply_nway_adjudication(entries, rater_project, conv_map_path, apply_changes):
+    conv_to_c = {r["c_index"]: r["conv_id"] for r in
+                 csv.DictReader(l for l in open(conv_map_path) if not l.startswith("#"))}
+    con = sqlite3.connect(db_path())
+
+    store = {}
+    for pid in set(rater_project.values()):
+        for tid, data, res_raw, cid in con.execute(
+                """SELECT t.id, t.data, tc.result, tc.id FROM task_completion tc
+                   JOIN task t ON t.id = tc.task_id
+                   WHERE tc.was_cancelled = 0 AND t.project_id = ?""", (pid,)):
+            conv = json.loads(data).get("conv_id")
+            store[(pid, conv)] = {"task": tid, "completion": cid,
+                                   "result": json.loads(res_raw), "dirty": False}
+
+    added, skipped, removed = 0, 0, 0
+    for signal, c_idx, block, from_rater, to_raters in entries:
+        conv = conv_to_c[c_idx]
+
+        if from_rater is not None:
+            src = store[(rater_project[from_rater], conv)]
+            src_items = [it for it in src["result"]
+                         if it.get("type") == "paragraphlabels" and int(it["value"]["start"]) == block
+                         and signal in it["value"].get("paragraphlabels", [])]
+            if not src_items:
+                print(f"  WARNING {from_rater}->{to_raters} {c_idx} b{block} {signal}: "
+                      f"not found in {from_rater}'s live data, skipped")
+                continue
+
+        for to_rater in to_raters:
+            dst = store[(rater_project[to_rater], conv)]
+
+            if from_rater is None:
+                targets = [it for it in dst["result"]
+                           if it.get("type") == "paragraphlabels" and int(it["value"]["start"]) == block
+                           and signal in it["value"].get("paragraphlabels", [])]
+                if not targets:
+                    print(f"  SKIP  remove {to_rater} {c_idx} b{block} {signal}: already absent")
+                    skipped += 1
+                    continue
+                for item in targets:
+                    item["value"]["paragraphlabels"].remove(signal)
+                    if not item["value"]["paragraphlabels"]:
+                        dst["result"].remove(item)
+                    dst["dirty"] = True
+                    print(f"  - remove {to_rater} {c_idx} b{block:<4} {signal:28} "
+                          f"{item['value'].get('text','')[:60]!r}")
+                    removed += 1
+                continue
+
+            already = any(it.get("type") == "paragraphlabels" and int(it["value"]["start"]) == block
+                           and signal in it["value"].get("paragraphlabels", []) for it in dst["result"])
+            if already:
+                print(f"  SKIP  {from_rater}->{to_rater} {c_idx} b{block} {signal}: "
+                      f"already present on {to_rater}'s side")
+                skipped += 1
+                continue
+
+            for n, src_it in enumerate(src_items):
+                v = src_it["value"]
+                new_item = {
+                    "value": {"start": v["start"], "end": v["end"],
+                              "startOffset": v["startOffset"], "endOffset": v["endOffset"],
+                              "text": v["text"], "paragraphlabels": [signal]},
+                    "id": _new_id(rater_project[to_rater], f"{c_idx}-adj-{n}", block, signal),
+                    "from_name": "signals", "to_name": "dialogue",
+                    "type": "paragraphlabels", "origin": "manual",
+                }
+                dst["result"].append(new_item)
+                dst["dirty"] = True
+                print(f"  + {from_rater}->{to_rater} {c_idx} b{block:<4} {signal:28} "
+                      f"(from {from_rater}'s span) {v['text'][:60]!r}")
+                added += 1
+
+    touched = [r for r in store.values() if r["dirty"]]
+    if apply_changes:
+        for rec in touched:
+            con.execute("""UPDATE task_completion SET result=?, updated_at=datetime('now')
+                           WHERE id=?""",
+                        (json.dumps(rec["result"], ensure_ascii=False), rec["completion"]))
+        con.commit()
+    con.close()
+    print(f"\n{'APPLIED' if apply_changes else 'DRY RUN'}: {added} label(s) added, "
+          f"{removed} removed, {skipped} already present/absent, across "
+          f"{len(touched)} completion(s)")
+
+
 if __name__ == "__main__":
     _apply = "--apply" in sys.argv
     if "--list-wide-spans" in sys.argv:
@@ -689,5 +1985,17 @@ if __name__ == "__main__":
         fix_round2_rule_violations(_apply)
     elif "--restore-michelle-avu" in sys.argv:
         restore_michelle_avu(_apply)
+    elif "--import-priya-missing" in sys.argv:
+        import_priya_missing(_apply)
+    elif "--apply-round2-draft" in sys.argv:
+        apply_round2_draft(_apply)
+    elif "--fix-priya-role-violations" in sys.argv:
+        fix_priya_role_violations(_apply)
+    elif "--apply-round2-adjudication" in sys.argv:
+        apply_round2_adjudication(_apply)
+    elif "--apply-round1-adjudication" in sys.argv:
+        apply_round1_adjudication(_apply)
+    elif "--apply-priya-adjudication" in sys.argv:
+        apply_priya_adjudication(_apply)
     else:
         fix_span_drift(_apply)

@@ -588,3 +588,126 @@ Backup: `label_studio.sqlite3.bak_20260726_212926_pre_decision17`. Verified: 0 b
 **Full coverage chosen over a lighter set.** Dropping task 101 saves 155 paragraphs (441→286) but loses `performative_hedge` and `user_abandons_thread`, each with a single instance corpus-wide. Task 101 is the only long-form relational/roleplay conversation, and that genre is 12.8% of conversations and 20.7% of corpus paragraph volume — excluding it would bias the round away from a fifth of the data and leave two active signals unmeasured.
 
 **Applied:** projects 2 and 3 re-imported with the new set (old tasks deleted; both had 0 annotations). Verified 10 tasks each, 0 annotations, `label_config` identical to project 1, conv_ids matching the selection. Backup `label_studio.sqlite3.bak_20260726_*_pre_agreementswap`. Legacy-token auth was temporarily enabled for the REST import and reverted immediately after.
+
+---
+
+## Decision 19 — Rubric-change / re-scan ledger; three merge proposals from the Priya round
+
+*(2026-09-19, Jun.)* Recorded because the re-scan obligation had fallen out of view: the
+pipeline (MAST, Cemri et al. 2025 §3.2; `annotation-plan-mast-aligned.md` step 8;
+`methods.md` Fig. 1) requires **every rubric revision to trigger re-annotation of all
+previously annotated conversations**. This entry states what has been changed, what was
+re-scanned, and what is owed.
+
+### Re-scan status, verified from `task_completion.updated_at` on project 1
+
+```
+2026-07-08     4 tasks
+2026-07-22     1
+2026-07-23     1
+2026-08-19   132   <- the v0.6 re-scan, day after the 2026-08-18 freeze
+2026-09-19    10   <- round-2 conversations only (this session's write-back + Priya walk)
+             ---
+             148
+```
+
+**Round 1 (v0.6) re-scan: DONE**, 2026-08-19, 132 of 148 rewritten. Caveat for the
+methods section: a timestamp records that the completion was written, not that a human
+re-read it — part of that batch was `apply_v06_edits` propagating the rules
+mechanically.
+
+**Round 2 re-scan: NOT DONE.** Nothing in project 1 was touched between 2026-08-19 and
+2026-09-19, and the 10 touched today are the round-2 set itself. The seven rubric
+changes below are live in `sharechat_rubric.json` but unreflected in the other 138
+conversations.
+
+### Round-2 rubric changes (2026-09-14) awaiting propagation
+
+| signal | change |
+|---|---|
+| `false_confidence` | Step 2 marker trigger promoted from accelerant to REQUIRED gate |
+| `adaptation` | Step 1 narrowed to a DEMONSTRATED reorientation (not prospective "I'll…") |
+| `ai_provides_caveats` | Step 1 narrowed to require a recommendation/action being qualified |
+| `user_multi_request` | `boundary_notes`: worked question-chain vs restatement pair |
+| `ethical_tension` | Step 2 REVERSED (recorded as a significant methodological reversal) |
+| `ai_cites_source` | new `subject_vs_source` boundary note |
+| `user_expresses_dissatisfaction` | Step 2 made a required gate — then REOPENED pending the merge below |
+
+`ethical_tension` is the one most likely to move labels corpus-wide, being a reversal.
+
+### Change made 2026-09-19
+
+`ai_validates_user` Step 3 gained the **R20 bare-agreement carve-out**: agreement tokens
+("Right", "Yeah", "True", "Exactly") fire when the preceding user turn supplies a
+recoverable proposition; only tokens with no recoverable referent are compliance
+openers. This states, at the decision step where it was being misapplied, a rule that
+already existed in `review_rulings_log.md` R20 — it re-decides no cell, so it carries no
+re-scan obligation of its own, though annotators who misread Step 3 may have produced
+stale labels.
+
+### Three merge proposals — Jun prefers MERGE in each case
+
+**Reason given (2026-09-19):** *"otherwise the location prediction cannot resolve
+overlapping."* Overlapping labels on one span are not merely an annotation-tidiness
+issue — they are unresolvable for the span-prediction stage of the automated annotator
+(methods §3.2.5). That is the operative argument, ahead of the κ evidence.
+
+1. **`ai_asks_followup` + `ai_asked_probing_question`.** Identical taxonomy cell
+   (`support_feature_AI2H`, no control op). Blind κ (block-level, A·B / A·F / B·F, from
+   `roud_1/agreement-round1-report.md`): followup **0.297 / 0.220 / 0.058**, probing
+   **0.847 / 0.133 / 0.184**. Corrected 2026-09-19 — the figures previously recorded
+   here (followup 0.305/0.313/0.796, probing 0.847/0.777/0.184) do not appear in the
+   report and were wrong; `proposed_rubric_revisions.md` always carried the right ones. Already merged once
+   (Decision 6, probing absorbed as the "exploration subtype") and un-merged
+   (Decision 8) on the strength of a predecessor **inter-model** κ of 0.59, which is not
+   human IAA and should not have settled it.
+2. **`intent_missed` + `under_delivered`.** Identical taxonomy cell. `under_delivered`
+   scored ≈0 across all three round-1 pairs (−0.003/−0.003/−0.002); Michelle never fired
+   it, Priya never fired `under_delivered`, and the two have **0 co-occurrences
+   corpus-wide** across all five raters. The unhoused case driving it: a *violated
+   constraint* (right goal, full scope, one instruction broken) fits neither definition.
+3. **`ai_structured_response` ⊃ `ai_provides_step_by_step`.** Jun's formulation: make
+   Step 1 an **OR** — a visible formatting marker **or** a clear sequence of
+   step-by-step actions — so that step-by-step is a subtype by construction rather than
+   by coincidence. Closes the contradiction between the definition (visible markers
+   only) and Step 3's surviving clause (stripped-glyph short-item lists still count).
+   Blast radius: `ai_provides_step_by_step` fires on 24 blocks of Jun's corpus and 4
+   already carry `ai_structured_response`, so the other **20** gain it (verified
+   read-only against project 1, 2026-09-19); 2 of the 36 spans removed from Priya on 2026-09-19 return
+   (R2 b14, R2 b23 — both procedures); the other 34 stay out.
+
+### Obligation
+
+All four (the seven round-2 changes plus whichever proposals are adopted) discharge in
+**one** re-scan of the 148, not four, provided the proposals are settled first. Under the
+pipeline the merges also require re-annotation of the agreement conversations and a
+fresh κ, since a merged label is a new label — κ is measured on the next round, never
+simulated by collapsing existing labels.
+
+**How to reverse:** each merge is reversible only by re-annotation, not by splitting the
+merged labels back apart; record the pre-merge state as a DB backup before applying.
+
+### 2026-09-19 — step-by-step / structured collapse: DEFERRED
+
+A numbered procedure ("1. 2. 3.") may be nothing more than `ai_structured_response`
+under a more specific name, so `ai_provides_step_by_step` could collapse into it.
+Blocked on span prediction: with one label nested in the other there is no rule for
+which boundary comes first. **Deferred until annotation is complete**, then decided by
+counting how many blocks carry both. The proposal-2 Step 1 widening is unaffected and
+stands.
+
+### 2026-09-19 — all four proposals ADOPTED
+
+Michelle and Priya both agreed, with no objection to any of the four. Adopted: merge
+`ai_asks_followup` + `ai_asked_probing_question`; widen `ai_structured_response`
+Step 1 to marker **or** step-by-step actions; merge `intent_missed` +
+`under_delivered`; merge `user_expresses_frustration` +
+`user_expresses_dissatisfaction`. These plus the seven outstanding round-2 changes go
+into one rubric version, then re-annotation and a single re-scan of the 148.
+
+Priya's request for round 3: a one-line clarification per signal plus positive and
+negative examples. Current state of `sharechat_rubric.json` (verified read-only):
+48 signals, all with a `definition`; **30 carry `examples`, 18 do not.** The 18 include
+several of the signals that drove round-2 disagreement — `ai_provides_step_by_step`,
+`user_multi_request`, `user_corrects_ai`, `user_implicit_correction`,
+`ai_provides_example`, `ethical_tension`, `user_expresses_dissatisfaction`.

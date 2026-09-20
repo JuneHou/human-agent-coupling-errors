@@ -53,6 +53,7 @@ RATER_BY_PROJECT = {1: "A", 2: "B", 3: "F"}
 RATERS = ["A", "B", "F"]
 PAIRS = list(combinations(RATERS, 2))  # AB, AF, BF
 RATER_USER_ID_R1 = {"A": 1, "B": 2, "F": 3}  # htx_user.id per round-1 rater
+ROUND1_CONV_MAP = ANNOT_DIR / "agreement_set_convid_map.csv"
 SPAN_TEXT_LIMIT = 160
 
 # Round 2 (2026-09-14): Jun ("A") vs Michelle ("M"). Unlike round 1's one
@@ -67,6 +68,15 @@ RATERS_R2 = ["A", "M"]
 RATER_USER_ID_R2 = {"A": 1, "M": 5}
 ROUND2_DIR = OUT_DIR.parent / "round_2"          # .../Rubric_agree/round_2/
 ROUND2_CONV_MAP = ROUND2_DIR / "agreement_set_round2.csv"
+
+# Priya (2026-09-19): same 10-conversation round-2 set, project 4 instead of
+# project 5. Only a subset is completed at any given time, so --priya reads
+# ROUND2_PRIYA_CONV_MAP (a hand-kept subset of ROUND2_CONV_MAP's rows,
+# regenerated as she finishes more) rather than the full 10.
+RATER_BY_PROJECT_PRIYA = {1: "A", 4: "P"}
+RATERS_PRIYA = ["A", "P"]
+RATER_USER_ID_PRIYA = {"A": 1, "P": 4}
+ROUND2_PRIYA_CONV_MAP = ROUND2_DIR / "agreement_set_round2_priya_done.csv"
 
 
 def load_conv_map(path=None):
@@ -653,6 +663,10 @@ def main():
     ap.add_argument("--round2", action="store_true",
                     help="compute round-2 agreement (Jun 'A' vs Michelle 'M', "
                          "projects 1+5) instead of round-1's three-way A/B/F")
+    ap.add_argument("--priya", action="store_true",
+                    help="compute round-2 agreement (Jun 'A' vs Priya 'P', "
+                         "projects 1+4) restricted to whichever conversations "
+                         "in agreement_set_round2_priya_done.csv are complete")
     ap.add_argument("--out-suffix", default="",
                     help="appended to round-2 output filenames (e.g. _before/"
                          "_after) for comparing agreement across DB snapshots "
@@ -661,10 +675,41 @@ def main():
                     help="print every round-2 disagreement cell for SIGNAL with "
                          "full untruncated context and the rubric's decision_steps "
                          "+ boundary_notes (read-only; no CSVs written)")
+    ap.add_argument("--priya-review", metavar="SIGNAL",
+                    help="same as --round2-review but for Jun 'A' vs Priya 'P' "
+                         "on whichever conversations she's completed")
+    ap.add_argument("--priya-review3", metavar="SIGNAL",
+                    help="three-way Jun 'A' / Michelle 'M' / Priya 'P' packet "
+                         "(projects 1/5/4) for SIGNAL on the round-2 set -- shows "
+                         "Michelle's vote beside each Jun-vs-Priya cell")
+    ap.add_argument("--round1-review", metavar="SIGNAL",
+                    help="same as --round2-review but for round-1's three-way "
+                         "Jun/B/F (projects 1/2/3) on the frozen C1-C10 set")
     args = ap.parse_args()
 
     if args.round2_review:
         review_packet(args.round2_review, db_path=args.db)
+        return
+
+    if args.priya_review3:
+        review_packet(args.priya_review3, db_path=args.db, raters=["A", "M", "P"],
+                      rater_by_project={1: "A", 5: "M", 4: "P"},
+                      rater_user_id={"A": 1, "M": 5, "P": 4},
+                      conv_map_path=ROUND2_PRIYA_CONV_MAP)
+        return
+
+    if args.round1_review:
+        review_packet(args.round1_review, db_path=args.db, raters=RATERS,
+                      rater_by_project=RATER_BY_PROJECT,
+                      rater_user_id=RATER_USER_ID_R1,
+                      conv_map_path=ROUND1_CONV_MAP)
+        return
+
+    if args.priya_review:
+        review_packet(args.priya_review, db_path=args.db, raters=RATERS_PRIYA,
+                      rater_by_project=RATER_BY_PROJECT_PRIYA,
+                      rater_user_id=RATER_USER_ID_PRIYA,
+                      conv_map_path=ROUND2_PRIYA_CONV_MAP)
         return
 
     if args.draw_round2 is not None:
@@ -677,6 +722,12 @@ def main():
         compute_agreement(args.db, RATERS_R2, RATER_BY_PROJECT_R2,
                           RATER_USER_ID_R2, ROUND2_CONV_MAP, ROUND2_DIR,
                           f"agreement_round2{args.out_suffix}")
+        return
+
+    if args.priya:
+        compute_agreement(args.db, RATERS_PRIYA, RATER_BY_PROJECT_PRIYA,
+                          RATER_USER_ID_PRIYA, ROUND2_PRIYA_CONV_MAP,
+                          ROUND2_DIR, f"agreement_priya_partial{args.out_suffix}")
         return
 
     compute_agreement(args.db, RATERS, RATER_BY_PROJECT, RATER_USER_ID_R1,
