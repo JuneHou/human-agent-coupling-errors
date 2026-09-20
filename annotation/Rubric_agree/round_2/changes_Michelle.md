@@ -156,3 +156,15 @@ are now spelled out in the rubric and in the annotation prompt, so this should b
 correction rather than something you need to remember to route around by hand going forward.
 
 — Jun
+
+---
+
+## Correction to Pattern 8 (2026-09-20)
+
+Pattern 8 cites "change the water to 3000kg" as a mistaken premise that does not fire
+`user_provides_invalid_input`. Jun reversed that on 19 September when Priya's fire was
+adopted, and confirmed it on 20 September: a wrong unit or magnitude the AI has to repair
+before it can act is malformed input and fires on the human turn (R2 b9). The AI's silent
+repair is labelled separately on its own turn as `problem_ignored` (b11); the two are on
+different turns and are not a double count. The rubric's Step 3 now says so. Your task
+768 b9 carries the label. The typo example in Pattern 8 ("balance potch") is unchanged.

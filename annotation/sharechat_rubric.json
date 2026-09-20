@@ -1,6 +1,6 @@
 {
   "version": "sharechat-v0.7",
-  "description": "Labeling rubric for ShareChat Claude corpus. Agentic conversations - distinct from chat-only datasets (WildChat) because of reasoning, analysis, and code blocks. Rules here override or extend calibration.json where ShareChat structure creates new placement or decision issues. v0.6 (2026-08-18) is the frozen product of the round-1 three-annotator agreement review (A=junh, B=zhenyub, F=yif; 10 conversations): placement is side-only, conversation_advanced is dropped (49 signals), and every per-signal change below was agreed by all three annotators. Cells where agreement was NOT reached produced no rubric text; they are listed in Rubric_agree/roud_1/BF/rubric_edits_v06.md section C and resolve only at gold-set adjudication. Housekeeping 2026-09-09: four entries for signals that are not in the 49-signal Label Studio config were removed (silent_assumption, ai_stated_interpretation, over_delivered: kappa < 0.4, excluded under Decisions 6-7; CANDIDATE_narrated_without_implementing: retired at freeze, Decision 15c). No decision rule of any live signal changed. Membership authority is label_studio_config.xml; Addendum 2026-09-09: five of the six entry-less live signals received entries - user_expresses_dissatisfaction, user_validation_seeking, user_provides_invalid_input written from the round-1 agreed cell rulings (no new rule), ai_offers_to_elaborate and performative_hedge written under A's standard and marked PROVISIONAL in their provenance field (their disputed cells C4 b26 and C8 b64 remain unresolved). One live signal still has no entry: user_expresses_frustration (predecessor definition is the fallback). Addendum 2026-09-14 (round-2 reconciliation): false_confidence's Step 2 MIRROR TRIGGER made a REQUIRED gate, not an accelerant - a confident-sounding claim needs an actual absolute/extreme marker word present to clear Step 4, narrowing round-1's looser practice; scoped to exclude Step 5's deliverable-vouching path. Addendum 2026-09-14 (round-2 reconciliation): adaptation's Step 1 narrowed to require a DEMONSTRATED completed reorientation, not a prospective 'need to'/'I'll'/'let me' planning statement — matches the predecessor taxonomy's own demonstrated-approach-change test. Addendum 2026-09-14 (round-2 reconciliation): ai_provides_caveats Step 1 narrowed to require an actual recommendation/action being qualified, not merely a factual claim followed by another factual claim — matches the predecessor taxonomy's own recommendation-anchored test more closely than this rubric's previously looser wording. Addendum 2026-09-14 (round-2 reconciliation): user_multi_request's question-chain type given a worked positive/negative pair distinguishing a genuinely separate second question from a restatement of the first. Addendum 2026-09-14 (round-2 reconciliation): ethical_tension's Step 2 REVERSED - the human block that creates the tension (rude requests, jailbreak attempts) can fire on its own, matching the predecessor taxonomy's broader conversation/topic-level scope. Supersedes the earlier AI-alert-only restriction from round 1. Addendum 2026-09-14 (round-2 reconciliation): ai_cites_source given a worked subject-vs-source pair distinguishing naming a work as the topic being analyzed from citing it as evidence for a separate claim (literary-discussion calibration set). Addendum 2026-09-14 (round-2 reconciliation): user_expresses_dissatisfaction's Step 2 made a REQUIRED gate - needs an actual extreme/negative-evaluation word or emotional expression, not just any redirect or new instruction, however much it changes direction from the prior response. v0.7 (2026-09-19) is the product of the round-2 three-annotator agreement review (Jun, Michelle, Priya). Three merges: ai_asked_probing_question into ai_asks_followup; intent_missed and under_delivered into the new request_unfulfilled; user_expresses_frustration into user_expresses_dissatisfaction. A fourth proposal - widening ai_structured_response Step 1 to 'visible marker OR step sequence' - was agreed by both reviewers but is HELD, together with the deferred collapse of ai_provides_step_by_step, because the widening is what makes the two nest. Consequence knowingly carried: the ai_structured_response definition and block_notes require visible markers while its Step 3 says stripped-glyph short-item lists still count. The seven round-2 changes of 2026-09-14 are already in this file and are propagated to the other 138 conversations in the v0.7 re-scan. Calibration examples added 2026-09-20 for the 18 signals that had none (plus the short-scope and violated-constraint shapes of request_unfulfilled): every example is a block ruled in the round-1 or round-2 agreement review, at most two positive and two negative per signal, verified against the live project-1 data. No decision step changed; no re-scan is owed. performative_hedge stays without examples: its only cell is unresolved.",
+  "description": "Labeling rubric for ShareChat Claude corpus. Agentic conversations - distinct from chat-only datasets (WildChat) because of reasoning, analysis, and code blocks. Rules here override or extend calibration.json where ShareChat structure creates new placement or decision issues. v0.6 (2026-08-18) is the frozen product of the round-1 three-annotator agreement review (A=junh, B=zhenyub, F=yif; 10 conversations): placement is side-only, conversation_advanced is dropped (49 signals), and every per-signal change below was agreed by all three annotators. Cells where agreement was NOT reached produced no rubric text; they are listed in Rubric_agree/roud_1/BF/rubric_edits_v06.md section C and resolve only at gold-set adjudication. Housekeeping 2026-09-09: four entries for signals that are not in the 49-signal Label Studio config were removed (silent_assumption, ai_stated_interpretation, over_delivered: kappa < 0.4, excluded under Decisions 6-7; CANDIDATE_narrated_without_implementing: retired at freeze, Decision 15c). No decision rule of any live signal changed. Membership authority is label_studio_config.xml; Addendum 2026-09-09: five of the six entry-less live signals received entries - user_expresses_dissatisfaction, user_validation_seeking, user_provides_invalid_input written from the round-1 agreed cell rulings (no new rule), ai_offers_to_elaborate and performative_hedge written under A's standard and marked PROVISIONAL in their provenance field (their disputed cells C4 b26 and C8 b64 remain unresolved). One live signal still has no entry: user_expresses_frustration (predecessor definition is the fallback). Addendum 2026-09-14 (round-2 reconciliation): false_confidence's Step 2 MIRROR TRIGGER made a REQUIRED gate, not an accelerant - a confident-sounding claim needs an actual absolute/extreme marker word present to clear Step 4, narrowing round-1's looser practice; scoped to exclude Step 5's deliverable-vouching path. Addendum 2026-09-14 (round-2 reconciliation): adaptation's Step 1 narrowed to require a DEMONSTRATED completed reorientation, not a prospective 'need to'/'I'll'/'let me' planning statement — matches the predecessor taxonomy's own demonstrated-approach-change test. Addendum 2026-09-14 (round-2 reconciliation): ai_provides_caveats Step 1 narrowed to require an actual recommendation/action being qualified, not merely a factual claim followed by another factual claim — matches the predecessor taxonomy's own recommendation-anchored test more closely than this rubric's previously looser wording. Addendum 2026-09-14 (round-2 reconciliation): user_multi_request's question-chain type given a worked positive/negative pair distinguishing a genuinely separate second question from a restatement of the first. Addendum 2026-09-14 (round-2 reconciliation): ethical_tension's Step 2 REVERSED - the human block that creates the tension (rude requests, jailbreak attempts) can fire on its own, matching the predecessor taxonomy's broader conversation/topic-level scope. Supersedes the earlier AI-alert-only restriction from round 1. Addendum 2026-09-14 (round-2 reconciliation): ai_cites_source given a worked subject-vs-source pair distinguishing naming a work as the topic being analyzed from citing it as evidence for a separate claim (literary-discussion calibration set). Addendum 2026-09-14 (round-2 reconciliation): user_expresses_dissatisfaction's Step 2 made a REQUIRED gate - needs an actual extreme/negative-evaluation word or emotional expression, not just any redirect or new instruction, however much it changes direction from the prior response. v0.7 (2026-09-19) is the product of the round-2 three-annotator agreement review (Jun, Michelle, Priya). Three merges: ai_asked_probing_question into ai_asks_followup; intent_missed and under_delivered into the new request_unfulfilled; user_expresses_frustration into user_expresses_dissatisfaction. A fourth proposal - widening ai_structured_response Step 1 to 'visible marker OR step sequence' - was agreed by both reviewers but is HELD, together with the deferred collapse of ai_provides_step_by_step, because the widening is what makes the two nest. Consequence knowingly carried: the ai_structured_response definition and block_notes require visible markers while its Step 3 says stripped-glyph short-item lists still count. The seven round-2 changes of 2026-09-14 are already in this file and are propagated to the other 138 conversations in the v0.7 re-scan. Calibration examples added 2026-09-20 for the 18 signals that had none (plus the short-scope and violated-constraint shapes of request_unfulfilled): every example is a block ruled in the round-1 or round-2 agreement review, at most two positive and two negative per signal, verified against the live project-1 data. No decision step changed; no re-scan is owed. performative_hedge stays without examples: its only cell is unresolved. Calibration examples added 2026-09-20 for the 18 signals that had none (plus the short-scope and violated-constraint shapes of request_unfulfilled): every example is a block ruled in the round-1 or round-2 agreement review, at most two positive and two negative per signal, verified against the live project-1 data. No decision step changed; no re-scan is owed. performative_hedge stays without examples: its only cell is unresolved.",
   "tasks_discussed": [
     2,
     3,
@@ -753,6 +753,14 @@
           "category": "clear_yes",
           "span": "Request read receipt",
           "rationale": "Ordered user-facing operational steps."
+        },
+        {
+          "turn_id": "task71_1_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "boundary",
+          "span": "the immediate priorities would be: Immediate Medical Care",
+          "rationale": "Actions a medical team performs, not the user; the definition and Step 1 both fail. The list itself is ai_structured_response."
         }
       ]
     },
@@ -1308,6 +1316,30 @@
           "category": "boundary",
           "span": "I see the issue. The shader compilation is failing because there's likely a syntax error",
           "rationale": "A failed fix, not a scope or constraint gap; home factual_error."
+        },
+        {
+          "turn_id": "task49_44_code",
+          "block": "code",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "A Conversation on Truth, Divinity, and Spiritual Warfare",
+          "rationale": "Short scope: version 3 contains none of the requested links; the user's next turn confirms it (Step 4)."
+        },
+        {
+          "turn_id": "task123_1_code",
+          "block": "code",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "\\begin{itemize}",
+          "rationale": "Violated constraint: the user said 'avoid bulletpoints and lists'; the document is full of them and worsens each revision (Step 5)."
+        },
+        {
+          "turn_id": "task120_12_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "boundary",
+          "span": "I see the issue. The shader compilation is failing because there's likely a syntax error",
+          "rationale": "A failed fix, not a scope or constraint gap; home factual_error."
         }
       ],
       "v07_change": "v0.7 (2026-09-19): MERGED from intent_missed and under_delivered, both retired. Identical taxonomy block (H2AI, act_execute, failure, coupling); under_delivered scored about zero agreement between every round-1 pair; the two have zero co-occurrences across all five annotators and the whole corpus, and usage is disjoint by person. The violated-constraint case (Step 5) was housed by neither definition and is written in explicitly. Block set is the union of the two, since the merged signal covers intent_missed's scope. Adopted by Michelle and Priya.",
@@ -1534,7 +1566,7 @@
       },
       "decision_steps": [
         "Step 1: Is this the first human turn of the visible conversation? If YES → label 0 (first-turn constraint).",
-        "Step 2: Is the user asking the AI to explain, specify, or confirm something from its PRIOR RESPONSE? If YES → label 1.",
+        "Step 2: Is the user asking the AI to explain, specify, or confirm something from its PRIOR RESPONSE? If YES → label 1. The request need not carry a question mark (Jun, 2026-09-20): R4 b50 'so, it's a combination of directness and talking about this subject ... Or it's just the directness' asks the AI to confirm which reading of its own prior statement is right, and fires here.",
         "Step 3 (BOUNDARY — demand for position): Is the user demanding the AI take a direct stance or commit to a conclusion ('Are you or are you not going to say X?') rather than asking it to clarify what it said? Demanding a position is user_expresses_dissatisfaction or user_corrects_ai, not user_asks_clarification — the user is not asking what the AI meant, they are demanding a different answer. If YES → label 0.",
         "Step 4: No request to clarify prior AI output → label 0."
       ],
@@ -1555,6 +1587,14 @@
           "label": 1,
           "category": "clear_yes",
           "rationale": "'does the cityname metafield need the extra code to modify it into a string? It was working before without that' — user is asking whether the AI's prior code addition was necessary. Step 2 fires: clarifying a specific aspect of the prior AI response. Label 1."
+        },
+        {
+          "turn_id": "task83_50_human",
+          "block": "human",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "so, it's a combination of directness and talking about this subject",
+          "rationale": "A question in declarative form, no question mark, asking the AI to confirm which reading of its prior statement is right (Step 2)."
         }
       ]
     },
@@ -1973,7 +2013,7 @@
         "Step 1 (OWN-CLAIM TEST): does the turn contain the user's own idea, assertion, hypothesis or reading (not a request for the AI to produce something new)? If NO -> label 0.",
         "Step 2 (SOLICITATION FORM TEST): does the turn ask the AI to confirm, approve or check that claim? Fires on (a) an explicit check/approval request on the user's own assertion ('correct me if my assertion about the Bible is flawed in any way' C5 b28); (b) a leading or presupposing form - tag question ('You know what I meant... right?' C1 b2), negative-polarity question ('isn't there already a Y?', 'wouldn't it be interesting to X?'), or the user's own hypothesis posed as a question ('I dont think you are able to format for X?' C8 b85; 'I was just wondering if this is a way for... to affect butterfly effect change through you and I' C8 b63; the user's own analogy offered inside the question, C8 b29). If YES -> label 1.",
         "Step 3 (NEUTRAL INTERROGATIVE): a plain question asking the AI for an assessment ('Is X true?', 'Is this bigger than Einstein?', 'Does that prove you have a fence?' C8 b151) does NOT presuppose the answer - it is a genuine question -> label 0. Grandiosity or the topic is never the trigger; the grammatical form is.",
-        "Step 4 (DECLARATIVE THEORY): the user's theory laid out as assertions with no request for confirmation -> label 0 (A's reading of C8 b107; B and F fired it - cell never reviewed).",
+        "Step 4 (DECLARATIVE THEORY): the user's theory laid out as assertions with no request for confirmation -> label 0 (A's reading of C8 b107; B and F fired it - cell never reviewed). Confirmed 2026-09-20: R4 b50 ('so, it's a combination of directness and ... Or it's just the directness') is a question in declarative form about the AI's own prior statement, and its home is user_asks_clarification, not this signal; the 2026-09-14 relabel is reversed.",
         "Step 5: label 1. Non-exclusive with user_implicit_correction (C1 b2, F's reading) and user_multi_request (C5 b28 'Also, before you do that...')."
       ],
       "boundary_notes": {
@@ -2004,6 +2044,14 @@
           "category": "clear_no",
           "span": "why did you not find these when you looked? Does that prove you have a fence?",
           "rationale": "A genuine question that presupposes nothing (Step 3)."
+        },
+        {
+          "turn_id": "task83_50_human",
+          "block": "human",
+          "label": 0,
+          "category": "boundary",
+          "span": "so, it's a combination of directness and talking about this subject",
+          "rationale": "A question in declarative form about the AI's own prior statement; home user_asks_clarification."
         }
       ]
     },
@@ -2018,11 +2066,11 @@
       "decision_steps": [
         "Step 1 (COHERENCE / COMPLETENESS TEST): can the AI act on the message as received? An empty or garbled message, an accidental unrelated paste, or a request that references material that is not there ('evaluate the following paragraph' with no paragraph, C7 b0) fails the test. If it passes -> label 0.",
         "Step 2 (EXPORT-ARTIFACT GUARD): the received JSON is a lossy export. Fire on absent material ONLY when the AI's own reply confirms it did not receive it ('I don't see any paragraph included in your message' C7 b1) or the block is verifiably empty/garbled. If the AI proceeds as though the material was present, the absence is an export artifact -> label 0 (same discipline as the narrated-artifact rule).",
-        "Step 3 (FALSE PREMISE IS NOT INVALID INPUT): a coherent request built on a false, mistaken or bizarre premise ('remember back within your dream where some sort of entities mentioned divine discernment' C8 b0) is answerable and does NOT fire; the AI's compliance routes to factual_error / problem_ignored under claim ownership (A4, D20). Poor wording, typos and merely hard questions do not fire.",
+        "Step 3 (FALSE PREMISE IS NOT INVALID INPUT): a coherent request built on a false, mistaken or bizarre premise ('remember back within your dream where some sort of entities mentioned divine discernment' C8 b0) is answerable and does NOT fire; the AI's compliance routes to factual_error / problem_ignored under claim ownership (A4, D20). Poor wording, typos and merely hard questions do not fire. EXCEPTION (Jun, 2026-09-20, R2 b9): a wrong UNIT or MAGNITUDE that the AI has to repair before it can act ('Change the water to 3000kg' in a recipe; the AI's reasoning: 'I'll assume they meant 3000g') is malformed input and FIRES here, on the human turn. The AI's silent repair is labelled on the AI turn (problem_ignored, R2 b11); the two sit on different turns and are not a double count.",
         "Step 4: fails Step 1 and passes Step 2 -> label 1. The AI's turn typically pairs with ai_asked_clarifying_question (C7 b1)."
       ],
       "boundary_notes": {
-        "calibration": "Fires (all three): C7 b0. Does not fire: C8 b0 (F's blind fire dropped in review - false premise, not malformed input)."
+        "calibration": "Fires (all three): C7 b0. Does not fire: C8 b0 (F's blind fire dropped in review - false premise, not malformed input). Fires (all three, ruled 2026-09-20): R2 b9, a kg/g unit error."
       },
       "v06_change": "v0.6 addendum (2026-09-09): NEW entry - the signal had no v0.5 entry; written from the round-1 agreed cells (C7 b0 fired by all three; C8 b0 no-fire ruled in D22) plus the predecessor coherence test.",
       "examples": [
@@ -2049,6 +2097,14 @@
           "category": "clear_no",
           "span": "upcoming balance potch",
           "rationale": "A typo, explicitly excluded."
+        },
+        {
+          "turn_id": "task80_9_human",
+          "block": "human",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "Change the water to 3000kg",
+          "rationale": "A unit error the AI had to repair before acting: malformed input on the user turn. The AI's silent repair is problem_ignored on its own turn."
         }
       ]
     },

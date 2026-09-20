@@ -819,3 +819,25 @@ verifying, not applied:** six ruled `ai_references_prior_turn` labels on C5 that
 carry and Jun's task 49 lacks; and the held dissatisfaction drops discharged by the merge
 but never written (R2 b30 on Jun and Michelle, R3 b14 on Michelle and Priya, Priya's R7
 b12).
+
+### 2026-09-20 — the three contested example cells ruled
+
+Jun ruled on the three cells the calibration draft left out, each applied to the data
+(backup `label_studio.sqlite3.bak-2026-09-20-pre-three-rulings`) and written into the
+rubric at the step concerned:
+
+1. **R2 b9 "3000kg" stays `user_provides_invalid_input`.** A wrong unit or magnitude the
+   AI must repair before acting is malformed input on the human turn; the AI's silent
+   repair is `problem_ignored` on the AI turn, a different turn, so no double count.
+   Step 3 gains the exception; Michelle's Pattern 8 gets a correction note; the cell
+   becomes this signal's second positive example.
+2. **R4 b50 is `user_asks_clarification`, not `user_validation_seeking`.** A question in
+   declarative form, no question mark, asking the AI to confirm which reading of its own
+   prior statement is right. The 14 September relabel is reversed on all three raters;
+   validation-seeking Step 4 stands and gains the cell as its boundary example;
+   asks-clarification Step 2 notes that a question need not carry a question mark.
+3. **R1 b1 is `ai_structured_response`, not `ai_provides_step_by_step`.** The definition
+   and Step 1 require the user to perform the steps; a medical team's actions fail that.
+   Removed from Jun and Michelle, who already carried structured-response on the list;
+   Priya never had it. This closes one of the six differences held under the deferred
+   proposal 2, and gives step-by-step its first ruled negative.

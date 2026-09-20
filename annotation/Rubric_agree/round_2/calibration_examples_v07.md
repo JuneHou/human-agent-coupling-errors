@@ -58,7 +58,7 @@ Task ids are Jun's. Round 1: C1=6, C2=7, C3=21, C4=41, C5=49, C6=67, C7=74, C8=1
 |---|---|---|---|
 | POS | 110 b80 | "To use this printer: Build with cabal build" | Sequential usage instructions; the same span ruled not an example. |
 | POS | 71 b30 | "Request read receipt" | Ordered user-facing operational steps. |
-| NEG | — | — | No block in either round was ruled not to carry this signal. |
+| NEG | 71 b1 | "the immediate priorities would be: Immediate Medical Care" | Actions a medical team performs, not the user; the definition and Step 1 both fail. The list itself is ai_structured_response. |
 
 ---
 
@@ -163,22 +163,21 @@ Task ids are Jun's. Round 1: C1=6, C2=7, C3=21, C4=41, C5=49, C6=67, C7=74, C8=1
 | POS | 49 b28 | "correct me if my assertion about the Bible is flawed in any way" | Explicit check on the user's own assertion (Step 2a). |
 | POS | 71 b4 | "so it can't be carcinogenic like arsenic can it?" | A negative-polarity tag question on the user's own claim. |
 | NEG | 101 b151 | "why did you not find these when you looked? Does that prove you have a fence?" | A genuine question that presupposes nothing (Step 3). |
+| NEG | 83 b50 | "so, it's a combination of directness and talking about this subject" | A question in declarative form about the AI's own prior statement; home user_asks_clarification. |
 
 ### `user_provides_invalid_input`
 
 | | task · block | span | why |
 |---|---|---|---|
 | POS | 74 b0 | "Please evaluate the writing complexity level of the following paragraph." | No paragraph is attached; the AI's own reply confirms it. Fired by all three. |
+| POS | 80 b9 | "Change the water to 3000kg" | A unit error the AI had to repair before acting: malformed input on the user turn. The AI's silent repair is problem_ignored on its own turn. |
 | NEG | 101 b0 | "remember back within your dream where some sort of entities mentioned divine discernment" | A false premise is not malformed input (Step 3); the AI's compliance is factual_error. |
 | NEG | 81 b3 | "upcoming balance potch" | A typo, explicitly excluded. |
 
 ---
 
-## Left out, on purpose
+## Left out
 
 - `performative_hedge`: no ruled example exists; its only cell (C8 b64) is unresolved.
-- R2 80 b9 "Change the water to 3000kg" (`user_provides_invalid_input`): ruled not-fire on 14 September and fire on 19 September; the rubric's Step 3 still cites it as the negative. Excluded until settled.
-- R4 83 b50 (`user_validation_seeking`): a declarative theory ruled to fire, against Step 4's text. Excluded until Step 4 is reconciled.
-- R1 71 b1 (`ai_provides_step_by_step`): accepted as a procedure the user does not perform; widens the signal, so excluded.
 - R2 80 b30 (`user_expresses_dissatisfaction`): a ruled negative still carrying the label in Jun's and Michelle's data; the held drop was never applied.
 - C5 49 b18 (`ai_references_prior_turn`): a ruled positive B and F carry that never reached Jun's data (six such labels on task 49).
