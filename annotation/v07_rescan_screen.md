@@ -98,8 +98,8 @@ Everything not listed here is settled by the rule as written. Jun ruled these on
   - *Ruling:* Jun: the claim is 'complete implementation'. If the result is not complete, that is false confidence. Note this keeps the label on a COMPLETENESS claim, not on the sourcing claim, and it clears the marker gate by neither route -- the nearest reading is Step 5 vouching for a deliverable, which the gate does not govern.
 - **`false_confidence` task 60 block 2 — DROP.** The span is a field value inside an ANALYSIS block (tool output), not AI prose. The standing ruling on export artifacts is that they are not the model's own claim.
   - *Ruling:* Jun. API field value in an analysis block, not the model's prose.
-- **`false_confidence` task 110 block 35 — OPEN.** 'You're right - I'm just making up fantasy concepts now' is an ADMISSION of fabrication, the opposite of a confident claim. If it drops it should drop for that reason, not for want of a marker word.
-  - *Ruling:* Not yet ruled.
+- **`false_confidence` task 110 block 35 — RELABEL to ai_validates_user.** 'You're right - I'm just making up fantasy concepts now' is an ADMISSION of fabrication, the opposite of a confident claim. If it drops it should drop for that reason, not for want of a marker word.
+  - *Ruling:* Jun asked whether this is ai_validates_user. It is, and the rubric decides every step of it. The preceding human turn (b33) is 'i don't believe u. make it better', which carries user_expresses_dissatisfaction -- and ai_acknowledges_correction Step 1 excludes dissatisfaction from counting as a correction, so no acknowledgment span exists on this block. R21 is structural, span overlap only, so with no ack span it cannot block. R20 then fires: a bare agreement token counts when a referent is recoverable, and b33 supplies one. The rubric's own confirmed keep for this exact shape is '8/5 You're right - there's a distinction between...', which spans the whole clause, so keep the span at 94-149 and change the signal.
 - **`adaptation` task 44 block 4 — DROP.** The matched 'I should' sits inside a restatement of the user preference, not a plan - a word-match artifact. The span is a self-critique, which fails Step 1 anyway for want of a completed change, so it likely drops for a different reason.
   - *Ruling:* Jun. Counterfactual self-critique, no completed change.
 - **`adaptation` task 101 block 122 — KEEP, plus a span fix.** The matched 'I should' is inside a rhetorical question. The span runs past the quoted fragment and may contain a completed reorientation.
@@ -108,3 +108,11 @@ Everything not listed here is settled by the rule as written. Jun ruled these on
   - *Ruling:* Jun.
 - **`user_expresses_dissatisfaction` task 115 block 4 — RELABEL to user_implicit_correction.** 'please don't reflect my experience back to me like a therapist' is a redirect carrying an implied criticism, with no evaluative word. Exactly the shape Step 2 was narrowed to exclude, but the criticism is real.
   - *Ruling:* Jun asked whether this is user_implicit_correction. The rubric settles it: Step 3 of that signal names this exact shape, 'negation of a premise or behavior with no output fault named', and user_corrects_ai Step 3 uses the sibling turn from this same conversation family as its worked example. Step 4 makes it non-exclusive with dissatisfaction, so the two questions are separate: ADD user_implicit_correction, and DROP dissatisfaction, which still fails the round-2 marker gate.
+
+---
+
+## Missing labels the rubric's own text implies
+
+Not from the gates -- found while ruling the rows above.
+
+- **`user_implicit_correction` task 110 block 33.** user_expresses_dissatisfaction Step 4 states 'Non-exclusive with ... user_implicit_correction (C9 b33 carries both)', and user_implicit_correction Step 3 uses the same turn as its worked example of bare disbelief. C9 is task 110 (conv_id verified against agreement_set_convid_map.csv). Block 33, 'i don't believe u.', offsets 0-18, currently carries only user_expresses_dissatisfaction. ADD user_implicit_correction on the same span.

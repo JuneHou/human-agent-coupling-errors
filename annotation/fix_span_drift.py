@@ -2226,7 +2226,16 @@ V07_RULINGS = {
         "sourcing claim, and it clears the marker gate by neither route -- the nearest "
         "reading is Step 5 vouching for a deliverable, which the gate does not govern."),
     ("false_confidence", 60, "2"): ("DROP", "Jun. API field value in an analysis block, not the model's prose."),
-    ("false_confidence", 110, "35"): ("OPEN", "Not yet ruled."),
+    ("false_confidence", 110, "35"): ("RELABEL to ai_validates_user",
+        "Jun asked whether this is ai_validates_user. It is, and the rubric decides every step "
+        "of it. The preceding human turn (b33) is 'i don't believe u. make it better', which "
+        "carries user_expresses_dissatisfaction -- and ai_acknowledges_correction Step 1 "
+        "excludes dissatisfaction from counting as a correction, so no acknowledgment span "
+        "exists on this block. R21 is structural, span overlap only, so with no ack span it "
+        "cannot block. R20 then fires: a bare agreement token counts when a referent is "
+        "recoverable, and b33 supplies one. The rubric's own confirmed keep for this exact "
+        "shape is '8/5 You're right - there's a distinction between...', which spans the whole "
+        "clause, so keep the span at 94-149 and change the signal."),
     ("adaptation", 44, "4"): ("DROP", "Jun. Counterfactual self-critique, no completed change."),
     ("adaptation", 101, "122"): ("KEEP, plus a span fix",
         "Both signals already sit on this block and it is not either/or: adaptation 0-1465 and "
@@ -2243,6 +2252,17 @@ V07_RULINGS = {
         "family as its worked example. Step 4 makes it non-exclusive with dissatisfaction, so the "
         "two questions are separate: ADD user_implicit_correction, and DROP dissatisfaction, which "
         "still fails the round-2 marker gate."),
+}
+
+# Found while ruling task 110 b35: a label the rubric says exists but the data does not have.
+V07_MISSING_FROM_RUBRIC_TEXT = {
+    ("user_implicit_correction", 110, "33"):
+        "user_expresses_dissatisfaction Step 4 states 'Non-exclusive with ... "
+        "user_implicit_correction (C9 b33 carries both)', and user_implicit_correction Step 3 "
+        "uses the same turn as its worked example of bare disbelief. C9 is task 110 (conv_id "
+        "verified against agreement_set_convid_map.csv). Block 33, 'i don't believe u.', "
+        "offsets 0-18, currently carries only user_expresses_dissatisfaction. ADD "
+        "user_implicit_correction on the same span.",
 }
 
 
@@ -2387,6 +2407,11 @@ def v07_rescan_screen(_unused=False):
         L.append(f"- **`{sig}` task {tid} block {block} — {verdict}.** {why}")
         if note:
             L.append(f"  - *Ruling:* {note}")
+
+    L += ["", "---", "", "## Missing labels the rubric's own text implies", "",
+          "Not from the gates -- found while ruling the rows above.", ""]
+    for (sig, tid, block), why in V07_MISSING_FROM_RUBRIC_TEXT.items():
+        L.append(f"- **`{sig}` task {tid} block {block}.** {why}")
 
     path = ANNOT_DIR / "v07_rescan_screen.md"
     path.write_text("\n".join(L) + "\n")
