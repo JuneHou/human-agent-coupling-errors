@@ -2,8 +2,20 @@
 
 Both agreement reviews are finished. Across the three of us, **43 disagreements
 remain out of the ten conversations, and every single one falls under one of the four
-questions below.** There is no residue: no block is unexamined, and none is waiting on
-anything other than these four decisions.
+questions below.** No block is unexamined, and none is waiting on anything other than
+these four decisions.
+
+> **Update, 2026-09-19 — after your replies.** You both agreed to all four. Questions 1,
+> 3 and 4 are adopted and go into rubric v0.7. **Question 2 is held**, not adopted,
+> although you agreed to it. Widening the `ai_structured_response` entry test is what
+> makes `ai_provides_step_by_step` sit inside it, and that nesting is the span-prediction
+> problem behind the separate decision to leave the two signals alone for now. Applying
+> the widening would take the blocks carrying both from 4 to 24 in Jun's corpus, which
+> multiplies the case that decision is about. Both halves wait until annotation is
+> finished and the blocks can be counted.
+>
+> So the six differences under question 2 stay open: 757 b24/b26/b28, 757 b1/b30 and
+> 764 b2. The other 37 close.
 
 | question | differences |
 |---|---|
@@ -82,6 +94,10 @@ read the sentence correctly. (Your third disputed block, 775 b2, is settled: the
 ---
 
 ## 2. `ai_structured_response` Step 1 → visible marker **OR** clear step-by-step actions
+
+> **HELD, 2026-09-19.** Not adopted, for the reason in the update at the top of this
+> document. Step 1 stays markers-only in v0.7. The section below is the proposal as it
+> was put to you, kept as the record of what was argued.
 
 **This is not a merge.** `ai_provides_step_by_step` and `ai_structured_response` both
 stay. What changes is the entry test of `ai_structured_response`, so that a procedure

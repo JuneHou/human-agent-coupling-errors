@@ -693,17 +693,35 @@ A numbered procedure ("1. 2. 3.") may be nothing more than `ai_structured_respon
 under a more specific name, so `ai_provides_step_by_step` could collapse into it.
 Blocked on span prediction: with one label nested in the other there is no rule for
 which boundary comes first. **Deferred until annotation is complete**, then decided by
-counting how many blocks carry both. The proposal-2 Step 1 widening is unaffected and
-stands.
+counting how many blocks carry both.
 
-### 2026-09-19 — all four proposals ADOPTED
+**Superseded the same day.** This entry first said the proposal-2 Step 1 widening was
+unaffected and stood. Jun reversed that: widening `ai_structured_response` Step 1 to
+"marker **or** step sequence" is precisely what makes `ai_provides_step_by_step` nest
+inside it, taking the nested-pair count in project 1 from 4 to 24. It multiplies the
+case the deferral is about, so **both halves of question 2 are deferred together**.
 
-Michelle and Priya both agreed, with no objection to any of the four. Adopted: merge
-`ai_asks_followup` + `ai_asked_probing_question`; widen `ai_structured_response`
-Step 1 to marker **or** step-by-step actions; merge `intent_missed` +
-`under_delivered`; merge `user_expresses_frustration` +
+### 2026-09-19 — three proposals adopted, one deferred; v0.7 cut
+
+Michelle and Priya both agreed, with no objection to any of the four. Jun then withdrew
+proposal 2 for the reason recorded above.
+
+**Into v0.7:** merge `ai_asks_followup` + `ai_asked_probing_question`; merge
+`intent_missed` + `under_delivered`; merge `user_expresses_frustration` +
 `user_expresses_dissatisfaction`. These plus the seven outstanding round-2 changes go
 into one rubric version, then re-annotation and a single re-scan of the 148.
+
+**Held:** `ai_structured_response` Step 1 stays markers-only.
+
+Three consequences of holding it, recorded so they are not lost. (a) Six differences
+stay open — 757 b24/b26/b28, 757 b1/b30, 764 b2. (b) `proposed_rubric_revisions.md`
+claimed all 43 differences resolved with zero residue; that claim is now false and the
+document has been corrected. Michelle and Priya agreed to something that is being held,
+so both need telling. (c) The rubric knowingly carries an internal contradiction: the
+`ai_structured_response` definition and `block_notes.ai` require visible markers while
+Step 3 says stripped-glyph short-item lists still count. Practice follows the strict
+reading — it is what removed 36 of Priya's fires — and the contradiction is carried, not
+fixed.
 
 Priya's request for round 3: a one-line clarification per signal plus positive and
 negative examples. Current state of `sharechat_rubric.json` (verified read-only):

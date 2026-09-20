@@ -21,8 +21,8 @@ If you are here to compute inter-annotator agreement (κ), a few rules override 
 - **Open only your assigned project** — round 1: `ShareChat-Agreement-B` / `ShareChat-Agreement-F`; round 2: `round-2-B` / `round-2-F`. Do **not** open the other annotator's project or the lead's project (`ShareChat-Test`).
 - **Annotate independently and blind** — no discussion with the other annotators or the lead until everyone has submitted. Do not look at anyone else's labels.
 - **Complete all conversations** in your project (do not skip any).
-- Use the **same signal rules below**; the authoritative decision source is `sharechat_rubric.json` (**v0.6**, frozen 2026-08-18) — follow each signal's `decision_steps`. The one-page summary of what changed in v0.6, and the block that forced each change, is `Rubric_agree/roud_1/BF/rubric_edits_v06.md`.
-- **v0.6 headline rules**: placement is **side-only** (AI-side signals may sit on ANY AI-authored block — ai, reasoning, code, analysis; user-side signals on human blocks); `conversation_advanced` is **dropped** (49 signals — unlabeled means the conversation advanced); within a block label **every occurrence** (consecutive exhibiting sentences = one span, separated occurrences = separate labels).
+- Use the **same signal rules below**; the authoritative decision source is `sharechat_rubric.json` (**v0.7**, cut 2026-09-19) — follow each signal's `decision_steps`. The one-page summary of what changed in v0.7, and the block that forced each change, is `Rubric_agree/round_2/rubric_edits_v07.md`; the v0.6 page it builds on is `Rubric_agree/roud_1/BF/rubric_edits_v06.md`.
+- **v0.6 headline rules**: placement is **side-only** (AI-side signals may sit on ANY AI-authored block — ai, reasoning, code, analysis; user-side signals on human blocks); `conversation_advanced` is **dropped** (46 signals after the v0.7 merges — unlabeled means the conversation advanced); within a block label **every occurrence** (consecutive exhibiting sentences = one span, separated occurrences = separate labels).
 
 ---
 
@@ -190,7 +190,7 @@ Does not fire when the user explicitly requested critique/limitations. Label `co
    Paper: arXiv:2603.15423, Appendix C.3
 3. **Boundary rulings** — the round-1 agreement review, one line per rule with the
    block that forced it:
-   `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/Rubric_agree/roud_1/BF/rubric_edits_v06.md`
+   `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/Rubric_agree/round_2/rubric_edits_v07.md`
 4. **Signal decisions log** — boundary rulings from earlier annotation sessions:
    `/data/wang/junh/githubs/human-agent-coupling-errors/docs/methodology/signal-decisions.md`
 5. Still unsure — mark it, add a TextArea note, ping Jun
@@ -202,8 +202,8 @@ Does not fire when the user explicitly requested critique/limitations. Label `co
 |                           | Path                                                                                                        |
 | ---------------------------| -------------------------------------------------------------------------------------------------------------|
 | This guide                | `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/ANNOTATION_GUIDE.md`                        |
-| **Signal rubric (v0.6)**  | `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/sharechat_rubric.json`                      |
-| **Boundary rules (v0.6)** | `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/Rubric_agree/roud_1/BF/rubric_edits_v06.md` |
+| **Signal rubric (v0.7)**  | `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/sharechat_rubric.json`                      |
+| **Boundary rules (v0.7)** | `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/Rubric_agree/round_2/rubric_edits_v07.md` |
 | Label Studio config       | `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/label_studio_config.xml`                    |
 | Label Studio data         | `/data/wang/junh/label-studio-data/`                                                                        |
 | GitHub repo               | `https://github.com/JuneHou/human-agent-coupling-errors`                                                    |
@@ -215,14 +215,14 @@ Does not fire when the user explicitly requested critique/limitations. Label `co
 
   Read before labeling:
   1. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/sharechat_rubric.json
-     — decision rules + placement rules (authoritative; v0.6)
-  2. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/Rubric_agree/roud_1/BF/rubric_edits_v06.md
-     — the v0.6 boundary rules in one page (A1–A7 + per-signal lines), each with the
+     — decision rules + placement rules (authoritative; v0.7)
+  2. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/Rubric_agree/round_2/rubric_edits_v07.md
+     — the v0.7 boundary rules in one page (A1–A7 + per-signal lines), each with the
        block that forced it
   3. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/ANNOTATION_GUIDE.md
      — signal list, block rules, episode/span rules
   4. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/label_studio_config.xml
-     — the complete allow-list (49 signals); label nothing absent from it
+     — the complete allow-list (46 signals); label nothing absent from it
 
   Method: for each candidate signal, follow its rubric `decision_steps` in order and stop
   at the first step that resolves it — walk every step, never skip ahead on impression

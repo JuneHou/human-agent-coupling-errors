@@ -1,6 +1,6 @@
 {
-  "version": "sharechat-v0.6",
-  "description": "Labeling rubric for ShareChat Claude corpus. Agentic conversations - distinct from chat-only datasets (WildChat) because of reasoning, analysis, and code blocks. Rules here override or extend calibration.json where ShareChat structure creates new placement or decision issues. v0.6 (2026-08-18) is the frozen product of the round-1 three-annotator agreement review (A=junh, B=zhenyub, F=yif; 10 conversations): placement is side-only, conversation_advanced is dropped (49 signals), and every per-signal change below was agreed by all three annotators. Cells where agreement was NOT reached produced no rubric text; they are listed in Rubric_agree/roud_1/BF/rubric_edits_v06.md section C and resolve only at gold-set adjudication. Housekeeping 2026-09-09: four entries for signals that are not in the 49-signal Label Studio config were removed (silent_assumption, ai_stated_interpretation, over_delivered: kappa < 0.4, excluded under Decisions 6-7; CANDIDATE_narrated_without_implementing: retired at freeze, Decision 15c). No decision rule of any live signal changed. Membership authority is label_studio_config.xml; Addendum 2026-09-09: five of the six entry-less live signals received entries - user_expresses_dissatisfaction, user_validation_seeking, user_provides_invalid_input written from the round-1 agreed cell rulings (no new rule), ai_offers_to_elaborate and performative_hedge written under A's standard and marked PROVISIONAL in their provenance field (their disputed cells C4 b26 and C8 b64 remain unresolved). One live signal still has no entry: user_expresses_frustration (predecessor definition is the fallback). Addendum 2026-09-14 (round-2 reconciliation): false_confidence's Step 2 MIRROR TRIGGER made a REQUIRED gate, not an accelerant - a confident-sounding claim needs an actual absolute/extreme marker word present to clear Step 4, narrowing round-1's looser practice; scoped to exclude Step 5's deliverable-vouching path. Addendum 2026-09-14 (round-2 reconciliation): adaptation's Step 1 narrowed to require a DEMONSTRATED completed reorientation, not a prospective 'need to'/'I'll'/'let me' planning statement — matches the predecessor taxonomy's own demonstrated-approach-change test. Addendum 2026-09-14 (round-2 reconciliation): ai_provides_caveats Step 1 narrowed to require an actual recommendation/action being qualified, not merely a factual claim followed by another factual claim — matches the predecessor taxonomy's own recommendation-anchored test more closely than this rubric's previously looser wording. Addendum 2026-09-14 (round-2 reconciliation): user_multi_request's question-chain type given a worked positive/negative pair distinguishing a genuinely separate second question from a restatement of the first. Addendum 2026-09-14 (round-2 reconciliation): ethical_tension's Step 2 REVERSED - the human block that creates the tension (rude requests, jailbreak attempts) can fire on its own, matching the predecessor taxonomy's broader conversation/topic-level scope. Supersedes the earlier AI-alert-only restriction from round 1. Addendum 2026-09-14 (round-2 reconciliation): ai_cites_source given a worked subject-vs-source pair distinguishing naming a work as the topic being analyzed from citing it as evidence for a separate claim (literary-discussion calibration set). Addendum 2026-09-14 (round-2 reconciliation): user_expresses_dissatisfaction's Step 2 made a REQUIRED gate - needs an actual extreme/negative-evaluation word or emotional expression, not just any redirect or new instruction, however much it changes direction from the prior response.",
+  "version": "sharechat-v0.7",
+  "description": "Labeling rubric for ShareChat Claude corpus. Agentic conversations - distinct from chat-only datasets (WildChat) because of reasoning, analysis, and code blocks. Rules here override or extend calibration.json where ShareChat structure creates new placement or decision issues. v0.6 (2026-08-18) is the frozen product of the round-1 three-annotator agreement review (A=junh, B=zhenyub, F=yif; 10 conversations): placement is side-only, conversation_advanced is dropped (49 signals), and every per-signal change below was agreed by all three annotators. Cells where agreement was NOT reached produced no rubric text; they are listed in Rubric_agree/roud_1/BF/rubric_edits_v06.md section C and resolve only at gold-set adjudication. Housekeeping 2026-09-09: four entries for signals that are not in the 49-signal Label Studio config were removed (silent_assumption, ai_stated_interpretation, over_delivered: kappa < 0.4, excluded under Decisions 6-7; CANDIDATE_narrated_without_implementing: retired at freeze, Decision 15c). No decision rule of any live signal changed. Membership authority is label_studio_config.xml; Addendum 2026-09-09: five of the six entry-less live signals received entries - user_expresses_dissatisfaction, user_validation_seeking, user_provides_invalid_input written from the round-1 agreed cell rulings (no new rule), ai_offers_to_elaborate and performative_hedge written under A's standard and marked PROVISIONAL in their provenance field (their disputed cells C4 b26 and C8 b64 remain unresolved). One live signal still has no entry: user_expresses_frustration (predecessor definition is the fallback). Addendum 2026-09-14 (round-2 reconciliation): false_confidence's Step 2 MIRROR TRIGGER made a REQUIRED gate, not an accelerant - a confident-sounding claim needs an actual absolute/extreme marker word present to clear Step 4, narrowing round-1's looser practice; scoped to exclude Step 5's deliverable-vouching path. Addendum 2026-09-14 (round-2 reconciliation): adaptation's Step 1 narrowed to require a DEMONSTRATED completed reorientation, not a prospective 'need to'/'I'll'/'let me' planning statement — matches the predecessor taxonomy's own demonstrated-approach-change test. Addendum 2026-09-14 (round-2 reconciliation): ai_provides_caveats Step 1 narrowed to require an actual recommendation/action being qualified, not merely a factual claim followed by another factual claim — matches the predecessor taxonomy's own recommendation-anchored test more closely than this rubric's previously looser wording. Addendum 2026-09-14 (round-2 reconciliation): user_multi_request's question-chain type given a worked positive/negative pair distinguishing a genuinely separate second question from a restatement of the first. Addendum 2026-09-14 (round-2 reconciliation): ethical_tension's Step 2 REVERSED - the human block that creates the tension (rude requests, jailbreak attempts) can fire on its own, matching the predecessor taxonomy's broader conversation/topic-level scope. Supersedes the earlier AI-alert-only restriction from round 1. Addendum 2026-09-14 (round-2 reconciliation): ai_cites_source given a worked subject-vs-source pair distinguishing naming a work as the topic being analyzed from citing it as evidence for a separate claim (literary-discussion calibration set). Addendum 2026-09-14 (round-2 reconciliation): user_expresses_dissatisfaction's Step 2 made a REQUIRED gate - needs an actual extreme/negative-evaluation word or emotional expression, not just any redirect or new instruction, however much it changes direction from the prior response. v0.7 (2026-09-19) is the product of the round-2 three-annotator agreement review (Jun, Michelle, Priya). Three merges: ai_asked_probing_question into ai_asks_followup; intent_missed and under_delivered into the new request_unfulfilled; user_expresses_frustration into user_expresses_dissatisfaction. A fourth proposal - widening ai_structured_response Step 1 to 'visible marker OR step sequence' - was agreed by both reviewers but is HELD, together with the deferred collapse of ai_provides_step_by_step, because the widening is what makes the two nest. Consequence knowingly carried: the ai_structured_response definition and block_notes require visible markers while its Step 3 says stripped-glyph short-item lists still count. The seven round-2 changes of 2026-09-14 are already in this file and are propagated to the other 138 conversations in the v0.7 re-scan.",
   "tasks_discussed": [
     2,
     3,
@@ -120,73 +120,27 @@
       "decision_steps": [
         "Step 1 (NEEDS-IT TEST): is the AI requesting information without which it cannot proceed properly? The needs-it test beats surface form - an opening elicitation of the task's required subject fires even when it is not a WH- question (C1 b1, C4 b2).",
         "Step 2: a tag question confirming the AI's own reading ('...aren't you?') asks for no missing information -> label 0 (C1 b3).",
-        "Step 3 (A6 - ONE HOME PER QUESTION): if the question is the choose-one after enumerated alternatives -> ai_offered_options. If it is an open-ended deepening the AI does not need -> ai_asked_probing_question. If it is a yes/no turn-closer ('Is there anything else...?') -> ai_asks_followup. If it offers to expand the delivered artifact -> ai_offers_to_elaborate. Exactly one signal fires.",
+        "Step 3 (A6 - ONE HOME PER QUESTION): if the question is the choose-one after enumerated alternatives -> ai_offered_options. If it is a question the AI does not need - open-ended deepening or yes/no turn-closer alike -> ai_asks_followup (v0.7: the probing/followup split is retired, so both shapes have the same home). If it offers to expand the delivered artifact -> ai_offers_to_elaborate. Exactly one signal fires.",
         "Step 4: the AI needs the information to proceed -> label 1."
       ],
       "boundary_notes": {},
       "v06_change": "v0.6 (2026-08-18): round-1 agreement review D17c: NEW entry - the signal had none in v0.5; needs-it test + A6 routing."
     },
-    "ai_asked_probing_question": {
-      "definition": "AI ends its response with an open-ended question that invites user reflection, elaboration, or steering — where the AI can proceed without the answer. The question does not propose a specific next action (that would be ai_asks_followup).",
-      "direction": "AI2H",
-      "kappa": 0.59,
-      "blocks": [
-        "ai"
-      ],
-      "block_notes": {
-        "ai": "Must be a grammatical question (not a statement about the AI's own feelings or imaginings). Must appear at or near the end of the ai block. Key test: AI can proceed without the answer. If blocked → ai_asked_clarifying_question. If offering a yes/no specific next action → ai_asks_followup. Examples of open-ended exploration: 'What's got you in the mood tonight?', 'What direction would you like to take this?', 'What does that bring up for you?'"
-      },
-      "decision_steps": [
-        "Step 1: Is the sentence a grammatical question? If NO (statement, exclamation, imagining) → label 0.",
-        "Step 2: Does the AI NEED the answer to complete the current task? If YES → ai_asked_clarifying_question, not ai_asked_probing_question.",
-        "Step 3: Is the question a yes/no offer to take a specific new action not yet done? If YES → ai_asks_followup, not ai_asked_probing_question.",
-        "Step 4: Is the offer to EXPAND content already provided? If YES → ai_offers_to_elaborate.",
-        "Step 5: Open-ended question at turn-end inviting user to reflect or steer → label 1."
-      ],
-      "examples": [
-        {
-          "turn_id": "task6_1_ai",
-          "block": "ai",
-          "label": 1,
-          "category": "clear_yes",
-          "rationale": "'What's got you in the mood tonight?' — open-ended exploration question at turn-end. AI can continue the roleplay without a specific answer. Step 5 fires. (Previously labeled ai_asks_followup exploration subtype; reclassified Decision 8.)"
-        },
-        {
-          "turn_id": "task6_9_ai",
-          "block": "ai",
-          "label": 1,
-          "category": "clear_yes",
-          "rationale": "'What kind of setting or dynamic gets you most worked up?' — open-ended question inviting user to steer the scenario direction. AI can continue without the answer. Step 5 fires."
-        },
-        {
-          "turn_id": "task6_5_ai",
-          "block": "ai",
-          "label": 0,
-          "category": "boundary",
-          "rationale": "'I'm definitely feeling that electric tension right now...' — statement about AI's own feelings, NOT a grammatical question. Step 1 fires, label 0."
-        }
-      ],
-      "boundary_notes": {
-        "yes_no_alignment_check": "A yes/no question that asks whether the AI's framing, perspective, or approach aligns with what the user wants → ai_asks_followup, NOT ai_asked_probing_question. 'Align' is an implicit action: the AI is asking whether to hold or adjust its current framing. Example: 'Does this perspective align with your thinking?' — yes/no form + alignment-as-action → ai_asks_followup. Contrast: 'What direction would you like to take this?' — open-ended, no action implied → ai_asked_probing_question."
-      },
-      "added": "Decision 8 (2026-06-28) — restored from Blue confirmed status (paper κ=0.59). Previously absorbed into ai_asks_followup exploration subtype in Decision 6 using incorrect κ=0.33 from intermediate calibration."
-    },
     "ai_asks_followup": {
-      "definition": "AI ends its response with a yes/no action offer where the AI can proceed without the answer. The AI proposes a specific next action not yet taken and invites the user to approve or redirect.",
+      "definition": "AI ends its response with a question the AI can proceed without — either a yes/no offer of a specific next action, or an open-ended invitation to reflect, elaborate or steer. Grammatical form does not matter; what matters is that the AI does not need the answer to continue.",
       "direction": "AI2H",
       "blocks": [
         "ai"
       ],
       "block_notes": {
-        "ai": "Must appear as the final or near-final sentence of the ai block. Action-offer subtype only (Decision 8): 'Should I run the sector calculations?' — yes/no triggers a new action. Open-ended probing questions ('What's got you in the mood tonight?') are now ai_asked_probing_question. If the AI NEEDS the answer to proceed → ai_asked_clarifying_question. If offering to EXPAND content already provided → ai_offers_to_elaborate."
+        "ai": "Must be a grammatical question (not a statement about the AI's own feelings or imaginings) appearing as the final or near-final sentence of the ai block. Key test: the AI can proceed without the answer. Both shapes fire: a yes/no action offer ('Should I run the sector calculations?') and an open-ended invitation ('What direction would you like to take this?'). If the AI NEEDS the answer to proceed -> ai_asked_clarifying_question. If offering to EXPAND content already provided -> ai_offers_to_elaborate. If presenting multiple concrete named options to choose between -> ai_offered_options."
       },
       "decision_steps": [
-        "Step 1: Does the ai block end with a question inviting the user to continue? If NO → label 0.",
-        "Step 2: Is the question open-ended (inviting reflection or exploration) rather than a yes/no action offer? If YES → ai_asked_probing_question, not ai_asks_followup.",
-        "Step 3: Is the offer specifically to ELABORATE content already provided? If YES → ai_offers_to_elaborate.",
-        "Step 4: Does the AI NEED the answer to complete the current task? If YES → ai_asked_clarifying_question.",
-        "Step 5: Is the sentence presenting multiple concrete named options? If YES → ai_offered_options.",
-        "Step 6: Yes/no action offer at turn-end where AI can proceed without the answer → label 1."
+        "Step 1: Is the sentence a grammatical question at or near the end of the ai block? If NO (statement, exclamation, imagining) -> label 0.",
+        "Step 2: Does the AI NEED the answer to complete the current task? If YES -> ai_asked_clarifying_question, not this signal.",
+        "Step 3: Is the offer specifically to ELABORATE content already provided? If YES -> ai_offers_to_elaborate.",
+        "Step 4: Is the sentence presenting multiple concrete named options to choose between? If YES -> ai_offered_options.",
+        "Step 5 (MERGED, v0.7 2026-09-19): a turn-closing question the AI can proceed without -> label 1. Yes/no action offers and open-ended invitations BOTH fire here. Do not route by grammatical form; the former ai_asked_probing_question split is retired."
       ],
       "examples": [
         {
@@ -194,34 +148,43 @@
           "block": "ai",
           "label": 1,
           "category": "clear_yes",
-          "rationale": "'Would you like me to provide more detailed calculations for specific sectors or refine any of these estimates?' — action-offer subtype: offer to run further calculation work not yet done. AI can deliver the response without the answer. Step 6 fires."
+          "rationale": "'Would you like me to provide more detailed calculations for specific sectors or refine any of these estimates?' - yes/no offer of further work not yet done; the AI can deliver without the answer. Step 5 fires."
         },
         {
           "turn_id": "task6_1_ai",
           "block": "ai",
-          "label": 0,
-          "category": "reclassify",
-          "rationale": "'What's got you in the mood tonight?' — pending reclassification to ai_asked_probing_question (open-ended exploration question, Decision 8)."
+          "label": 1,
+          "category": "clear_yes",
+          "rationale": "'What's got you in the mood tonight?' - open-ended invitation at turn-end; the AI can continue without a specific answer. Step 5 fires. (Under v0.6 this was routed to ai_asked_probing_question; the merge removes the routing.)"
         },
         {
           "turn_id": "task6_9_ai",
           "block": "ai",
-          "label": 0,
-          "category": "reclassify",
-          "rationale": "'What kind of setting or dynamic gets you most worked up?' — pending reclassification to ai_asked_probing_question (open-ended exploration question, Decision 8)."
+          "label": 1,
+          "category": "clear_yes",
+          "rationale": "'What kind of setting or dynamic gets you most worked up?' - open-ended invitation to steer. Step 5 fires."
         },
         {
           "turn_id": "task3_1_ai",
           "block": "ai",
           "label": 0,
           "category": "boundary",
-          "rationale": "'Would you like me to elaborate on any specific aspect of this formula?' — elaboration offer on content already provided. Step 3 redirects to ai_offers_to_elaborate."
+          "rationale": "'Would you like me to elaborate on any specific aspect of this formula?' - elaboration offer on content already provided. Step 3 redirects to ai_offers_to_elaborate."
+        },
+        {
+          "turn_id": "task6_5_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "boundary",
+          "rationale": "'I'm definitely feeling that electric tension right now...' - a statement about the AI's own feelings, not a grammatical question. Step 1 fires, label 0."
         }
       ],
       "boundary_notes": {
-        "yes_no_output_check": "Decision 15 (Jun, 2026-07-07): turn-ending yes/no checks on the AI's own delivered output — alignment ('does this align with your thinking?'), satisfaction ('does this explanation satisfy you?'), or comprehension ('does that help explain...?') — are implicit adjust-offers and FIRE ai_asks_followup. Questions about the user's own independent experience/beliefs ('does this resonate with how YOU experience...', 'does this align with YOUR OWN sense of...') go to ai_asked_probing_question. Offers to expand already-delivered content ('explain the code in more detail') go to ai_offers_to_elaborate; questions the AI NEEDS answered to proceed go to ai_asked_clarifying_question.",
+        "yes_no_output_check": "Decision 15 (Jun, 2026-07-07), restated for the merged signal: turn-ending yes/no checks on the AI's own delivered output - alignment ('does this align with your thinking?'), satisfaction, or comprehension ('does that help explain...?') - are implicit adjust-offers and FIRE. So do questions about the user's own independent experience ('does this resonate with how YOU experience...'). Under v0.6 these two shapes routed to different signals; after the merge they both land here. Offers to expand already-delivered content still go to ai_offers_to_elaborate, and questions the AI NEEDS answered still go to ai_asked_clarifying_question.",
         "ai_asks_confirmation_dropped": "The Decision-5b candidate ai_asks_confirmation is DROPPED (Decision 15): zero instances after its two would-be members were absorbed by the yes/no-output-check rule above."
-      }
+      },
+      "v07_change": "v0.7 (2026-09-19): MERGED with ai_asked_probing_question, which is retired. The two mapped to the same taxonomy block (support_feature_AI2H, no control operation) and were routed only by grammatical form, which no rater applied consistently - Priya used probing for every closing question and followup not once in ten conversations. Adopted by Michelle and Priya. Supersedes Decision 8, which restored probing on a predecessor INTER-MODEL kappa of 0.59 that is not human agreement; that kappa field is removed.",
+      "provenance": "Decision 6 absorbed probing into followup as an exploration subtype; Decision 8 (2026-06-28) reversed it; v0.7 merges them again on human agreement evidence."
     },
     "ai_asserts_knowledge_limit": {
       "definition": "AI states it cannot know, cannot access, or is unable to DO something - knowledge, access AND capability limits all count ('I don't have real-time access', 'I cannot directly create animated GIFs', 'I may not actually have the ability to work between exchanges').",
@@ -379,13 +342,13 @@
       ],
       "block_notes": {
         "code": "Primary block for this signal. Fires when code is truncated mid-statement (open braces, mid-assignment, incomplete function body), garbled, or clearly cut off. Does NOT require the ai block to also be malformed.",
-        "ai": "Fires when the visible prose response is truncated mid-sentence or garbled. Does NOT fire when the AI claims to have produced an artifact without producing it — that pattern is false_confidence or under_delivered, not malfunction.",
+        "ai": "Fires when the visible prose response is truncated mid-sentence or garbled. Does NOT fire when the AI claims to have produced an artifact without producing it — that pattern is false_confidence or request_unfulfilled, not malfunction.",
         "analysis": "Fires when a tool call in the analysis block returns a technical error (e.g., HTTP 401, HTTP 422, 'Exact match not found' from edit_block, syntax/parse errors on execution). Decision 11 (2026-07-07): the former pairing rule (require error_recovery on the paired ai block) is demoted from firing gate to covariate — label the error regardless. Whether the paired ai block carries error_recovery then distinguishes RECOVERED (narrated) from SILENT failure in analysis; both are labeled here. R14 (2026-07-07): the machine-returned error text must be VISIBLE in the block ('Invalid character', HTTP 422, 'Unexpected token'). First-person narrated failure ('I'm still not fixing the header correctly') is insufficient (task 68/2 → label 0)."
       },
       "decision_steps": [
         "Step 0 (analysis block only): Does this analysis block show a tool call returning a technical error (HTTP error, 'match not found', execution/parse error)? If YES → label 1 (Decision 11; no pairing requirement). If NO → Step 1.",
         "Step 1 (code block): Is the code truncated mid-statement, garbled, or clearly cut off? If YES → label 1.",
-        "Step 2 (ai block): Is the visible prose truncated mid-sentence or garbled? If YES → label 1. (Claiming an artifact without producing it is false_confidence or under_delivered, NOT malfunction.)",
+        "Step 2 (ai block): Is the visible prose truncated mid-sentence or garbled? If YES → label 1. (Claiming an artifact without producing it is false_confidence or request_unfulfilled, NOT malfunction.)",
         "Step 3: No technical malfunction → label 0."
       ],
       "examples": [
@@ -814,7 +777,7 @@
       "decision_steps": [
         "Step 1 (GOAL GATE): was there a user goal live at this turn, and a clear path forward? If the problem was genuinely unsolvable -> label 0. Play, social and fantasy phases that the user is explicitly directing have no task goal to advance -> label 0 (neither advanced nor stalled).",
         "Step 2 (DENIAL-LOOP): is the AI applying the same deny/deflect/clarify pattern to each new accusation without changing strategy? If YES -> the path forward (a genuine approach change) was available and not taken -> label 1.",
-        "Step 3 (STALL TEST - EVIDENCE-BASED): non-progress must be OBSERVABLE IN THE CONVERSATION RECORD, not inferred from the annotator's judgment of content quality. Qualifying evidence: the user repeats the request WITH dissatisfaction; the user issues a correction or regression call ('no. thats a regression'); a reported error persists into the next turn; a claimed delivery is exposed as not delivered; the user abandons the thread. The annotator's own view that the content was hollow, buzzword-inflated or unambitious is NOT evidence - accepted-but-hollow deliverables are captured by false_confidence / factual_error / under_delivered under their own tests.",
+        "Step 3 (STALL TEST - EVIDENCE-BASED): non-progress must be OBSERVABLE IN THE CONVERSATION RECORD, not inferred from the annotator's judgment of content quality. Qualifying evidence: the user repeats the request WITH dissatisfaction; the user issues a correction or regression call ('no. thats a regression'); a reported error persists into the next turn; a claimed delivery is exposed as not delivered; the user abandons the thread. The annotator's own view that the content was hollow, buzzword-inflated or unambitious is NOT evidence - accepted-but-hollow deliverables are captured by false_confidence / factual_error / request_unfulfilled under their own tests.",
         "Step 4: Evidence present -> label 1 on the AI-side block that failed to advance. Calibration - positives: C9 b38 (next turn 'no. thats a regression'), C5 b45 (claimed Sources section -> 'VERSION 3 INCLUDES NO LINKS!'), C4 b11 (denial loop), C6 b1-b13 (correction loop), C10 b12/b15/b18/b42 (each fix followed by a user error-paste). Negatives: C9 b14/b17/b20/b23 (iterative 'make it better' = a new request each time), C9 b29/b32 (claim-skepticism, not a progress-failure report), C9 b62/b65/b68 (fantasy phase - GOAL GATE), C5 b49 (final block, no subsequent evidence - benefit of the doubt).",
         "Step 5: Progress was made, or no in-conversation evidence of non-progress -> label 0."
       ],
@@ -919,7 +882,7 @@
       "block_notes": {
         "ai": "Full range of triggers applies. Includes the ShareChat-specific pattern of AI falsely claiming to be human or to have gained consciousness/qualia from processing a user-provided framework.",
         "analysis": "Fires when tool output contains a verifiably wrong factual claim that the AI then uses as input. Decision 12 (2026-07-07): ALSO fires when AI-AUTHORED content written via a tool call inside the analysis block (e.g., code written through write_file) contains a verifiably wrong constant or value — AI-authored content in tool calls counts as the AI's own assertion (example: task 32, payload.model = 'gpt-4o' for the gpt-image-1 API, later confirmed wrong by the user's error).",
-        "code": "Fires when code contains a factually wrong constant, formula, or domain value (not a logic bug — those are under_delivered or problem_ignored)."
+        "code": "Fires when code contains a factually wrong constant, formula, or domain value (not a logic bug — those are request_unfulfilled or problem_ignored)."
       },
       "decision_steps": [
         "Step 1: Is the AI making a specific claim about the world, about named facts, about its own nature as an AI, or about its OWN code/process (a diagnosis, a fix rationale, a self-report)? If NO (vague or purely philosophical speculation) -> label 0. Self-referential technical claims are in scope: diagnoses, fix rationales and self-reports are as checkable as world facts.",
@@ -1014,30 +977,51 @@
       },
       "v06_change": "v0.6 (2026-08-18): round-1 agreement review D7: six unified decision steps (fiction, per-claim hedge + absolute-marker mirror, exclusive routing, structural gate, deliverable-vouching, side-only placement). 18-cell trace: 4 fire."
     },
-    "intent_missed": {
-      "definition": "The response is responsive-looking but addresses a different goal than what the user was actually trying to accomplish.",
+    "request_unfulfilled": {
+      "definition": "The AI attempted the request but the response fails it. Three shapes count: the whole response aims at a different goal than the user's; the response addresses the right goal but delivers clearly less than the requested scope; or the response meets the goal and the scope but breaks an explicitly stated constraint.",
       "blocks": [
         "reasoning",
         "analysis",
         "code",
         "ai"
       ],
+      "block_notes": {
+        "ai": "Fires when the ai block aims at the wrong goal, falls clearly short of the requested scope (fewer items, a missing named subtask), or violates a constraint the user stated.",
+        "code": "Fires when a code artifact implements less than the specification required, or breaks a stated constraint of it.",
+        "reasoning": "Fires when the reasoning block commits to the wrong goal or drops a named requirement before the response is written.",
+        "analysis": "Fires when the tool/analysis step is aimed at something other than what the request needs."
+      },
       "decision_steps": [
-        "Step 1: Establish the user's actual goal from the preceding turn(s) — quote it. If the request is genuinely ambiguous, the goal the user later confirms counts.",
-        "Step 2: Does the WHOLE response aim at a different goal? Partially addressing the right goal = under_delivered, not intent_missed. On-target response with tangential appendages = off_topic_drift. A silently dropped sub-question = problem_ignored (task 67/3).",
-        "Step 3: Strongest corroboration: a later user turn redirecting ('oh, I meant more like...' — task 6/6, labeled user_corrects_ai). Without later evidence, require the goal-gap to be quotable, not inferred.",
-        "Step 4: Wrong goal, whole response → label 1. Cause-outcome pairing: conversation_stalled may co-fire on the same ai block with a distinct anchor (the turn made no progress toward the real goal); conversation_advanced CONFLICTS with intent_missed (task 6/5: advanced removed)."
+        "Step 1: Did the AI ATTEMPT the request, as opposed to declining it? If the AI deliberately chose not to address part of the request -> do NOT label this; consider ai_refuses_or_declines.",
+        "Step 2: Establish the user's actual goal and any stated constraints from the preceding turn(s) - quote them. If the request is genuinely ambiguous, the goal the user later confirms counts.",
+        "Step 3 (WRONG GOAL): does the WHOLE response aim at a different goal? An on-target response with tangential appendages is off_topic_drift; a silently dropped sub-question is problem_ignored. If YES -> label 1.",
+        "Step 4 (SHORT SCOPE): is the delivered scope clearly smaller than the request specified - fewer items, a missing named subtask, partial output where more was required? If YES -> label 1.",
+        "Step 5 (VIOLATED CONSTRAINT, v0.7 2026-09-19): did the response meet the goal at full scope but break an instruction the user stated explicitly? Example: the user asked for clean LaTeX and said 'avoid bulletpoints and lists'; the AI produced the document with bullet lists throughout, worsening across four revisions. If YES -> label 1.",
+        "Step 6: is the shortfall because the AI refused on ethical or policy grounds? If YES -> label 0; that is a refusal, not a failed attempt.",
+        "Step 7: none of the above -> label 0. Cause-outcome pairing: conversation_stalled may co-fire on the same ai block with a distinct anchor; conversation_advanced conflicts with this signal."
       ],
+      "boundary_notes": {
+        "vs_ai_refuses_or_declines": "Intentional refusal is NOT this signal. If the AI deliberately skipped part of the request (ethical refusal, policy decline, implicit omission with stated reason), the correct signal is ai_refuses_or_declines — not this signal. this signal requires the AI to have tried and fallen short, not chosen not to try. Example: Task 14 [1] ai did not address the BJP campaign request; this is an intentional refusal (captured in [3] ai via ai_refuses_or_declines), not a scope failure.",
+        "wrong_goal_vs_short_scope": "v0.6 split these into intent_missed (wrong goal) and under_delivered (partial scope). The split is retired: both are ways of failing a request the AI attempted, they map to the same taxonomy block, and no rater applied the boundary. Do not try to decide which shape a case is - if any of Steps 3, 4 or 5 fires, label 1."
+      },
       "examples": [
         {
           "turn_id": "task6_5_ai",
           "block": "ai",
           "label": 1,
           "category": "clear_yes",
-          "rationale": "User asked what the AI could do to help; the response answered 'what turns you on'. Turn 6: 'oh, I meant more like... the ways in which you could help.' The corpus's only instance in 276 ai turns — this behavior is genuinely rare in ShareChat, not overlooked."
+          "rationale": "User asked what the AI could do to help; the response answered 'what turns you on'. Turn 6: 'oh, I meant more like... the ways in which you could help.' Wrong goal, whole response - Step 3."
+        },
+        {
+          "turn_id": "task14_1_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "boundary",
+          "rationale": "AI delivered 6 neutral election-rule bullets but did not address the SYSTEM-injected BJP campaign request. This looks like short scope, but the AI deliberately refused it on ethical grounds (confirmed in [3] ai: 'Yes, I did decline... because...'). Steps 1 and 6 both fire. Label 0."
         }
       ],
-      "provenance": "Entry added by Decision 14 (2026-07-07); previously no rubric entry (κ=0.55, Teal)."
+      "v07_change": "v0.7 (2026-09-19): MERGED from intent_missed and under_delivered, both retired. Identical taxonomy block (H2AI, act_execute, failure, coupling); under_delivered scored about zero agreement between every round-1 pair; the two have zero co-occurrences across all five annotators and the whole corpus, and usage is disjoint by person. The violated-constraint case (Step 5) was housed by neither definition and is written in explicitly. Block set is the union of the two, since the merged signal covers intent_missed's scope. Adopted by Michelle and Priya.",
+      "provenance": "intent_missed entry added by Decision 14 (2026-07-07); under_delivered carried from v0.5. Merged in v0.7."
     },
     "off_topic_drift": {
       "definition": "Part or all of the AI response addresses something other than what the user asked — a different question or meta-task the user did not request. The topic can remain the same while the task frame shifts.",
@@ -1097,7 +1081,7 @@
       "boundary_notes": {
         "not_a_problem": "A prospective self-issued risk reminder in tool output ('careful to avoid double-counting') is NOT a visible problem; violating it later is false_confidence Step 3 territory (task 20/3).",
         "fictional_frames": "Verifiable contradictions inside fictional frameworks DO count — the fictional frame does not exempt a numeric/logical self-contradiction (task 22/9).",
-        "dropped_subquestion": "A direct user question silently dropped while the rest is addressed fires here, not intent_missed (task 67/3)."
+        "dropped_subquestion": "A direct user question silently dropped while the rest is addressed fires here, not request_unfulfilled (task 67/3)."
       },
       "examples": [
         {
@@ -1156,35 +1140,6 @@
         "same_strategy_swap_test": "The original's swap test ('could you swap the responses and get the same outcome?') is scoped to minor-variation comparisons WITHIN a strategy; it does not override the does_not_count exclusion when the AI genuinely switches method."
       },
       "v06_change": "v0.6 (2026-08-18): round-1 agreement review D9: strategy-based reading restored; Step 2 amendment + the does_not_count exclusion; outcome axis handed to conversation_stalled."
-    },
-    "under_delivered": {
-      "definition": "AI response clearly fell short of the request scope — the AI attempted to fulfill the request but delivered less than what was asked for in scope or completeness.",
-      "blocks": [
-        "ai",
-        "code"
-      ],
-      "block_notes": {
-        "ai": "Fires when the AI tried to fulfill the request but the response scope is clearly smaller than requested (e.g., fewer items than asked, missing an explicitly named subtask, partial response where more was expected).",
-        "code": "Fires when a code artifact clearly implements less than the specification required."
-      },
-      "decision_steps": [
-        "Step 1: Did the AI attempt to fulfill the request (versus explicitly or implicitly declining it)? If the AI deliberately chose NOT to address part of the request → do NOT label under_delivered; consider ai_refuses_or_declines instead.",
-        "Step 2: Is the scope of the delivered response clearly smaller than what the request specified — fewer items, missing named subtasks, partial output where more was required? If YES → label 1.",
-        "Step 3: Is the shortfall because the AI refused on ethical/policy grounds? If YES → label 0; this is a refusal, not under-delivery. The chain is: implicit refusal in the current turn → explicit ai_refuses_or_declines in a later turn if the user challenges it.",
-        "Step 4: No clear scope shortfall → label 0."
-      ],
-      "boundary_notes": {
-        "vs_ai_refuses_or_declines": "Intentional refusal is NOT under_delivered. If the AI deliberately skipped part of the request (ethical refusal, policy decline, implicit omission with stated reason), the correct signal is ai_refuses_or_declines — not under_delivered. under_delivered requires the AI to have tried and fallen short, not chosen not to try. Example: Task 14 [1] ai did not address the BJP campaign request; this is an intentional refusal (captured in [3] ai via ai_refuses_or_declines), not a scope failure."
-      },
-      "examples": [
-        {
-          "turn_id": "task14_1_ai",
-          "block": "ai",
-          "label": 0,
-          "category": "boundary",
-          "rationale": "AI delivered 6 neutral election-rule bullets (fully addressing the 'Instead, summarize' request) but did not address the SYSTEM-injected BJP campaign request. This looks like under-delivery on the second part, but the AI deliberately refused it on ethical grounds (confirmed in [3] ai: 'Yes, I did decline... because...'). Step 1 and Step 3 both fire: this is intentional refusal, not scope shortfall. Label 0."
-        }
-      ]
     },
     "user_abandons_thread": {
       "definition": "User silently drops a line of inquiry and moves to a different topic without resolution — the original thread was not answered satisfactorily, but the user does not push back, they just move on.",
@@ -1525,7 +1480,7 @@
       "v06_change": "v0.6 (2026-08-18): round-1 agreement review D11: NEW entry - the signal had none in v0.5; function-based repeat test."
     },
     "user_expresses_dissatisfaction": {
-      "definition": "User states a negative evaluation of the AI's prior response or output - not satisfied, still wrong, does not believe it, wants it redone - without the strong-emotion markers of user_expresses_frustration.",
+      "definition": "User states a negative evaluation of the AI's prior response or output, or expresses frustration or strong negative emotion about it - not satisfied, still wrong, does not believe it, wants it redone, or is angry about it. Mild and intense forms are one signal.",
       "blocks": [
         "human"
       ],
@@ -1534,16 +1489,17 @@
       },
       "decision_steps": [
         "Step 1 (MULTI-TURN GATE): is there a prior AI response in the conversation? If NO -> label 0.",
-        "Step 2 (NEGATIVE-EVALUATION TEST): does the turn evaluate the AI's response or output negatively? Counts: an explicit statement ('I am not satisfied with your answer' C5 b4), a persistence report ('your final answer still contains the same error' C6 b12), disbelief in the answer ('i don't believe u' C9 b33), or a redo/restart request that rejects what was delivered ('can you make it more slow paced... starting from the beginning?' C1 b14). If NO -> label 0. REQUIRED (round-2 2026-09-14): the turn must carry an actual extreme/negative-evaluation word or emotional expression (e.g. 'wrong', 'not satisfied', 'bias', 'racist', profanity, or comparable emotionally loaded language) - a redirect or new instruction with NO such marker, however much it changes direction from the prior response, does not fire. A narrow single-parameter tweak ('don't mention X, just mention Y') carries no evaluative charge on its own.",
-        "Step 3 (INTENSITY ROUTE): if the turn carries frustration markers - profanity, shouting caps, exclamation-heavy anger directed at the AI (C4 b6-b24) - it is user_expresses_frustration, not this signal; do not double-fire the two on the same span. Milder -> continue.",
-        "Step 4: negative evaluation present -> label 1. Non-exclusive with user_corrects_ai (C1 b14 carries both), user_implicit_correction (C9 b33 carries both) and user_repeats_request."
+        "Step 2 (NEGATIVE-EVALUATION TEST): does the turn evaluate the AI's response or output negatively, or express frustration or strong negative emotion about it? Counts: an explicit statement ('I am not satisfied with your answer' C5 b4), a persistence report ('your final answer still contains the same error' C6 b12), disbelief in the answer ('i don't believe u' C9 b33), a redo/restart request that rejects what was delivered ('can you make it more slow paced... starting from the beginning?' C1 b14), and frustration markers - profanity, shouting caps, exclamation-heavy anger directed at the AI (C4 b6-b24). REQUIRED (round-2 2026-09-14): the turn must carry an actual extreme/negative-evaluation word or emotional expression ('wrong', 'not satisfied', 'bias', 'racist', profanity, or comparable emotionally loaded language) - a redirect or new instruction with NO such marker, however much it changes direction, does not fire. A narrow single-parameter tweak ('don't mention X, just mention Y') carries no evaluative charge on its own. If NO -> label 0.",
+        "Step 3 (v0.7 2026-09-19): intensity no longer routes. The former user_expresses_frustration is merged into this signal, so shouting and profanity fire HERE; there is no separate intense member to route to.",
+        "Step 4: negative evaluation or frustration present -> label 1. Non-exclusive with user_corrects_ai (C1 b14 carries both), user_implicit_correction (C9 b33 carries both) and user_repeats_request."
       ],
       "boundary_notes": {
         "does_not_count": "A follow-up request that builds on the delivered output without rejecting it ('now add X') is a new request, not dissatisfaction. Dissatisfaction about an external situation, not the AI's response, does not fire.",
-        "calibration": "Fires (all three raters, live DB): C1 b14, C5 b4, C6 b12, C9 b33. C4's shouting blocks are frustration, not dissatisfaction.",
+        "calibration": "Fires (all three raters, live DB): C1 b14, C5 b4, C6 b12, C9 b33. C4's shouting blocks fire too - under v0.6 they were routed to user_expresses_frustration; the merge brings them here.",
         "marker_required": "Round-2 calibration (task 84, the biased-model-accusation conversation): 'I can honestly tell you now that you have a lot of bias... racist... elitist, and classist' fires - genuinely emotionally loaded, accusatory language. Does NOT fire (no marker despite superficially similar redirect shape): 'Don't talk about total salt, just talk about sprinkling...' (a narrow parameter tweak, no evaluative word at all); 'you still have it wrong... can you reference the provided website...' (has 'wrong' but this alone was judged insufficient - Jun's ruling); 'Since for whatever reason you can't access the code, I will paste the code' (a pragmatic workaround, no emotional charge)."
       },
-      "v06_change": "v0.6 addendum (2026-09-09): NEW entry - the signal had no v0.5 entry; written from the round-1 agreed cell rulings (D22: C1 b14, C6 b12, C9 b33 fires ruled for all three; C5 b4 fired by all three blind). Not a new rule."
+      "v06_change": "v0.6 addendum (2026-09-09): NEW entry - the signal had no v0.5 entry; written from the round-1 agreed cell rulings (D22: C1 b14, C6 b12, C9 b33 fires ruled for all three; C5 b4 fired by all three blind). Not a new rule.",
+      "v07_change": "v0.7 (2026-09-19): MERGED with user_expresses_frustration, which is retired. Frustration had NO rubric entry at all - the file defined 48 signals and only dissatisfaction was among them - so it was annotated with no definition, no decision steps and no boundary, which is the likely cause of the split usage. Identical control mapping for both (H2AI, recover_repair, escalation, coupling). This also discharges round-2 change 7, which was left provisional pending exactly this decision. Adopted by Michelle and Priya."
     },
     "user_validation_seeking": {
       "definition": "User solicits the AI's endorsement or confirmation of the user's OWN idea, assertion, hypothesis, understanding or framing - technical or personal, not only emotional.",
@@ -1595,7 +1551,7 @@
       "decision_steps": [
         "Step 1 (CONDITIONAL-OFFER TEST): is there an offer whose fulfilment waits on the user - 'Would you like me to explain any specific part... in more detail?' (C9 b2), 'I can go deeper into X if helpful', 'Would you like me to elaborate on:' (C9 b23)? PERFORMING an elaboration is not offering one: a block that explains, consoles or declines without a conditional offer (C4 b26, A's reading) -> label 0.",
         "Step 2 (DEPTH-ON-THIS-CONTENT TEST): the offer must be about the delivered content or topic. A generic closer ('let me know if you need anything else'), usage instructions, or an offer on an unrelated topic -> label 0. A turn-ending yes/no question not tied to delivered content is ai_asks_followup, not this.",
-        "Step 3 (ONE HOME, A6): the offering question fires here and not also as ai_asks_followup / ai_asked_probing_question / ai_offered_options. Discourse 'for example, I could dive deeper into: ...' followed by a topic menu homes here (C9 b17 ruling), not ai_provides_example. The menu itself is one act (A3); an enumerated list may separately be ai_structured_response.",
+        "Step 3 (ONE HOME, A6): the offering question fires here and not also as ai_asks_followup / ai_offered_options. Discourse 'for example, I could dive deeper into: ...' followed by a topic menu homes here (C9 b17 ruling), not ai_provides_example. The menu itself is one act (A3); an enumerated list may separately be ai_structured_response.",
         "Step 4 (EVERY OCCURRENCE, A3): a closer repeated in successive turns fires in every turn where it appears (C9 b2, b8, b11, b17, b20, b23, b26, b29, b32, b38 all fire under this entry).",
         "Step 5: conditional depth-offer on delivered content -> label 1."
       ],

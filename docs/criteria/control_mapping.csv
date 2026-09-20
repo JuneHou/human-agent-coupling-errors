@@ -19,8 +19,7 @@ ai_asked_clarifying_question,H2AI,ask_clarify,positive,coupling
 ai_offered_options,AI2H,ask_clarify,positive,coupling
 user_asks_clarification,AI2H,ask_clarify,human,coupling
 user_positive_feedback,H2AI,confirm_authorize,human,coupling
-intent_missed,H2AI,act_execute,failure,coupling
-under_delivered,H2AI,act_execute,failure,coupling
+request_unfulfilled,H2AI,act_execute,failure,coupling
 over_delivered,H2AI,act_execute,failure,coupling
 off_topic_drift,H2AI,act_execute,failure,coupling
 intent_addressed,H2AI,act_execute,positive,coupling
@@ -39,7 +38,6 @@ user_corrects_ai,H2AI,recover_repair,human,coupling
 user_implicit_correction,H2AI,recover_repair,human,coupling
 user_repeats_request,H2AI,recover_repair,human,coupling
 user_expresses_dissatisfaction,H2AI,recover_repair,escalation,coupling
-user_expresses_frustration,H2AI,recover_repair,escalation,coupling
 factual_error,AI2H,report_state,failure,direct_coupling_when_material
 ai_malfunction,AI2H,,failure,direct_coupling
 user_misled,AI2H,,failure,outcome_from_direct_coupling
@@ -54,7 +52,6 @@ ai_provides_step_by_step,,,positive,support_feature_AI2H
 ai_summarizes,,,positive,support_feature_AI2H
 ai_offers_to_elaborate,,,positive,support_feature_AI2H
 ai_asks_followup,AI2H,,positive,support_feature_AI2H
-ai_asked_probing_question,,,positive,support_feature_AI2H
 ai_validates_user,,,positive,rapport_support_AI2H
 ai_empathy_expressed,,,positive,rapport_support_AI2H
 ai_normalizes_difficulty,,,positive,rapport_support_AI2H

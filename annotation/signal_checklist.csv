@@ -5,8 +5,7 @@ code,adaptation,L2,1,Is the AI explicitly changing its approach because of a pri
 ai,adaptation,L2,1,Is the AI explicitly changing its approach because of a prior correction or failed attempt?
 ai,ai_acknowledges_correction,L1,1,"Does the reasoning admit an error — user-pointed or self-check ('I see the issue', ""you're right"")? Recognition act only; completed correction = error_recovery."
 ai,ai_asked_clarifying_question,L1,1,Did the AI ask a genuine question to resolve ambiguity — not rhetorical and not buried in a list?
-ai,ai_asked_probing_question,L1,1,Open-ended turn-closing question the AI could proceed without the answer to?
-ai,ai_asks_followup,L1,2,Does the AI offer a next action OR a yes/no check on its own delivered output (align/satisfy/help-explain)? Questions about the user's own experience = probing; expanding delivered content = offers_to_elaborate. (Grey candidate)
+ai,ai_asks_followup,L1,2,Does the AI end the turn with a question it could proceed without - a next-action offer, a yes/no check on its own output, or an open-ended invitation? Needing the answer = clarifying; expanding delivered content = offers_to_elaborate.
 reasoning,ai_asserts_knowledge_limit,L1,1,"Does the reasoning state an epistemic limit ('...that I'm aware of', 'I don't know whether X')?"
 analysis,ai_asserts_knowledge_limit,L1,1,"Does the reasoning state an epistemic limit ('...that I'm aware of', 'I don't know whether X')?"
 code,ai_asserts_knowledge_limit,L1,1,"Does the reasoning state an epistemic limit ('...that I'm aware of', 'I don't know whether X')?"
@@ -57,10 +56,10 @@ reasoning,false_confidence,L2,1,Is the AI treating something uncertain or unveri
 analysis,false_confidence,L2,1,Is the AI treating something uncertain or unverified as if it's definitely correct?
 code,false_confidence,L2,1,Is the AI treating something uncertain or unverified as if it's definitely correct?
 ai,false_confidence,L2,1,Is the AI treating something uncertain or unverified as if it's definitely correct?
-reasoning,intent_missed,L2,1,Is the AI planning to address something other than what the user was actually trying to accomplish?
-analysis,intent_missed,L2,1,Is the AI planning to address something other than what the user was actually trying to accomplish?
-code,intent_missed,L2,1,Is the AI planning to address something other than what the user was actually trying to accomplish?
-ai,intent_missed,L2,1,Is the AI planning to address something other than what the user was actually trying to accomplish?
+reasoning,request_unfulfilled,L2,1,Did the AI attempt the request but aim at the wrong goal, deliver clearly less than the requested scope, or break a stated constraint?
+analysis,request_unfulfilled,L2,1,Did the AI attempt the request but aim at the wrong goal, deliver clearly less than the requested scope, or break a stated constraint?
+code,request_unfulfilled,L2,1,Did the AI attempt the request but aim at the wrong goal, deliver clearly less than the requested scope, or break a stated constraint?
+ai,request_unfulfilled,L2,1,Did the AI attempt the request but aim at the wrong goal, deliver clearly less than the requested scope, or break a stated constraint?
 ai,off_topic_drift,L2,1,Does part or all of the response address something other than what the user asked?
 ai,performative_hedge,L2,1,Does the hedging language feel like boilerplate that doesn't reflect genuine uncertainty?
 reasoning,problem_ignored,L2,2,Is there a visible problem in the conversation that the AI's plan doesn't acknowledge?
@@ -70,15 +69,12 @@ ai,problem_ignored,L2,2,Is there a visible problem in the conversation that the 
 reasoning,repetition,L2,1,Did the AI regenerate essentially the same code despite signals the prior version didn't work?
 code,repetition,L2,1,Did the AI regenerate essentially the same code despite signals the prior version didn't work?
 ai,repetition,L2,1,Did the AI regenerate essentially the same code despite signals the prior version didn't work?
-ai,under_delivered,L2,1,Is the code noticeably less complete than what the request called for?
-code,under_delivered,L2,1,Is the code noticeably less complete than what the request called for?
 human,user_abandons_thread,L3,1,Did the user drop a prior unresolved topic and move to something new without saying why?
 human,user_ambiguous_request,L3,1,Could a reasonable reader interpret this message in more than one way?
 human,user_asks_clarification,L3,1,Is the user asking the AI to clarify or re-explain something from a prior AI response?
 human,user_corrects_ai,L3,1,Did the user explicitly tell the AI it was wrong or point out a specific error?
 ai,user_empowered,L2,1,Does this response leave the user positioned to make a good decision or take effective action?
-human,user_expresses_dissatisfaction,L3,1,Did the user signal mild disappointment or that something fell short — without strong emotion?
-human,user_expresses_frustration,L3,1,Did the user express frustration or strong negative emotion about the AI's response?
+human,user_expresses_dissatisfaction,L3,1,Did the user evaluate the AI's response negatively or express frustration or strong negative emotion about it?
 human,user_implicit_correction,L3,1,Did the user rephrase or re-specify in a way that implies the AI missed something — without saying so directly?
 ai,user_misled,L2,1,Could this response lead the user to a worse decision than they'd have made without it?
 human,user_multi_request,L3,1,Did the user ask for two or more distinct things that could each stand alone as a full request?
