@@ -2213,6 +2213,39 @@ V07_NEEDS_RULING = {
 }
 
 
+# Jun's rulings on the NEEDS A RULING rows, 2026-09-19. Recorded, not yet applied --
+# the database write is still pending.
+V07_RULINGS = {
+    ("false_confidence", 88, "4"): ("DROP",
+        "Jun: not a firm enough sentence to carry a confidence claim. (Note the span reads "
+        "'worth exploiting', not 'worth exploring'.)"),
+    ("false_confidence", 88, "6"): ("DROP", "Jun."),
+    ("false_confidence", 108, "2"): ("KEEP",
+        "Jun: the claim is 'complete implementation'. If the result is not complete, that is "
+        "false confidence. Note this keeps the label on a COMPLETENESS claim, not on the "
+        "sourcing claim, and it clears the marker gate by neither route -- the nearest "
+        "reading is Step 5 vouching for a deliverable, which the gate does not govern."),
+    ("false_confidence", 60, "2"): ("DROP", "Jun. API field value in an analysis block, not the model's prose."),
+    ("false_confidence", 110, "35"): ("OPEN", "Not yet ruled."),
+    ("adaptation", 44, "4"): ("DROP", "Jun. Counterfactual self-critique, no completed change."),
+    ("adaptation", 101, "122"): ("KEEP, plus a span fix",
+        "Both signals already sit on this block and it is not either/or: adaptation 0-1465 and "
+        "ai_validates_user 100-190. The AVU span is misplaced -- it covers the AI's criticism of "
+        "ITSELF, while the agreement token 'You're absolutely right.' is at 53-77. Proposed: keep "
+        "adaptation, move AVU to 53-77. ai_acknowledges_correction does NOT fire, because the "
+        "preceding human turn is pushback about behaviour rather than a correction of an output "
+        "(same reading as task 770 b107 in the Priya round)."),
+    ("user_expresses_dissatisfaction", 35, "6"): ("KEEP", "Jun."),
+    ("user_expresses_dissatisfaction", 115, "4"): ("RELABEL to user_implicit_correction",
+        "Jun asked whether this is user_implicit_correction. The rubric settles it: Step 3 of that "
+        "signal names this exact shape, 'negation of a premise or behavior with no output fault "
+        "named', and user_corrects_ai Step 3 uses the sibling turn from this same conversation "
+        "family as its worked example. Step 4 makes it non-exclusive with dissatisfaction, so the "
+        "two questions are separate: ADD user_implicit_correction, and DROP dissatisfaction, which "
+        "still fails the round-2 marker gate."),
+}
+
+
 def _has(text, words):
     """Whole-word / whole-phrase search. A trailing space in a phrase is significant --
     "i should " must not match "I shouldn\'t" -- so the boundary is applied on both ends
@@ -2346,9 +2379,14 @@ def v07_rescan_screen(_unused=False):
         L.append(f"| {tid} | {block} | {clip(span)}{mark} |")
 
     L += ["", "---", "", f"## The {n_ruling} rows that need a ruling", "",
-          "Everything not listed here is settled by the rule as written.", ""]
+          "Everything not listed here is settled by the rule as written. Jun ruled these on "
+          "2026-09-19; the verdict is on the heading and his reason beneath it. **Nothing is "
+          "applied yet** -- the database write is still pending.", ""]
     for (sig, tid, block), why in V07_NEEDS_RULING.items():
-        L.append(f"- **`{sig}` task {tid} block {block}.** {why}")
+        verdict, note = V07_RULINGS.get((sig, tid, block), ("OPEN", ""))
+        L.append(f"- **`{sig}` task {tid} block {block} — {verdict}.** {why}")
+        if note:
+            L.append(f"  - *Ruling:* {note}")
 
     path = ANNOT_DIR / "v07_rescan_screen.md"
     path.write_text("\n".join(L) + "\n")

@@ -88,14 +88,23 @@ Round-2 gate: Step 2 requires an actual negative-evaluation word or emotional ex
 
 ## The 9 rows that need a ruling
 
-Everything not listed here is settled by the rule as written.
+Everything not listed here is settled by the rule as written. Jun ruled these on 2026-09-19; the verdict is on the heading and his reason beneath it. **Nothing is applied yet** -- the database write is still pending.
 
-- **`false_confidence` task 88 block 4.** Vouches for its own completed analysis ('I've found significant value disparities'). The marker gate covers Step 4's novel-assertion route and explicitly does NOT cover Step 5's deliverable-vouching route. Which one fired here decides it.
-- **`false_confidence` task 88 block 6.** A forward plan carrying an unverifiable performance claim ('high winning potential'). Neither a novel assertion nor a completion claim, so neither route is a clean fit.
-- **`false_confidence` task 108 block 2.** Claims the implementation is 'based on the GitHub repository you mentioned' - a source it may never have read. The question is whether a false sourcing claim is Step 4's route at all, which the marker gate then governs, or something else.
-- **`false_confidence` task 60 block 2.** The span is a field value inside an ANALYSIS block (tool output), not AI prose. The standing ruling on export artifacts is that they are not the model's own claim.
-- **`false_confidence` task 110 block 35.** 'You're right - I'm just making up fantasy concepts now' is an ADMISSION of fabrication, the opposite of a confident claim. If it drops it should drop for that reason, not for want of a marker word.
-- **`adaptation` task 44 block 4.** The matched 'I should' sits inside a restatement of the user preference, not a plan - a word-match artifact. The span is a self-critique, which fails Step 1 anyway for want of a completed change, so it likely drops for a different reason.
-- **`adaptation` task 101 block 122.** The matched 'I should' is inside a rhetorical question. The span runs past the quoted fragment and may contain a completed reorientation.
-- **`user_expresses_dissatisfaction` task 35 block 6.** 'this is a little disturbing and frightening' IS an emotional expression, so Step 2's gate is met and the word list simply missed it. Proposed: keep.
-- **`user_expresses_dissatisfaction` task 115 block 4.** 'please don't reflect my experience back to me like a therapist' is a redirect carrying an implied criticism, with no evaluative word. Exactly the shape Step 2 was narrowed to exclude, but the criticism is real.
+- **`false_confidence` task 88 block 4 — DROP.** Vouches for its own completed analysis ('I've found significant value disparities'). The marker gate covers Step 4's novel-assertion route and explicitly does NOT cover Step 5's deliverable-vouching route. Which one fired here decides it.
+  - *Ruling:* Jun: not a firm enough sentence to carry a confidence claim. (Note the span reads 'worth exploiting', not 'worth exploring'.)
+- **`false_confidence` task 88 block 6 — DROP.** A forward plan carrying an unverifiable performance claim ('high winning potential'). Neither a novel assertion nor a completion claim, so neither route is a clean fit.
+  - *Ruling:* Jun.
+- **`false_confidence` task 108 block 2 — KEEP.** Claims the implementation is 'based on the GitHub repository you mentioned' - a source it may never have read. The question is whether a false sourcing claim is Step 4's route at all, which the marker gate then governs, or something else.
+  - *Ruling:* Jun: the claim is 'complete implementation'. If the result is not complete, that is false confidence. Note this keeps the label on a COMPLETENESS claim, not on the sourcing claim, and it clears the marker gate by neither route -- the nearest reading is Step 5 vouching for a deliverable, which the gate does not govern.
+- **`false_confidence` task 60 block 2 — DROP.** The span is a field value inside an ANALYSIS block (tool output), not AI prose. The standing ruling on export artifacts is that they are not the model's own claim.
+  - *Ruling:* Jun. API field value in an analysis block, not the model's prose.
+- **`false_confidence` task 110 block 35 — OPEN.** 'You're right - I'm just making up fantasy concepts now' is an ADMISSION of fabrication, the opposite of a confident claim. If it drops it should drop for that reason, not for want of a marker word.
+  - *Ruling:* Not yet ruled.
+- **`adaptation` task 44 block 4 — DROP.** The matched 'I should' sits inside a restatement of the user preference, not a plan - a word-match artifact. The span is a self-critique, which fails Step 1 anyway for want of a completed change, so it likely drops for a different reason.
+  - *Ruling:* Jun. Counterfactual self-critique, no completed change.
+- **`adaptation` task 101 block 122 — KEEP, plus a span fix.** The matched 'I should' is inside a rhetorical question. The span runs past the quoted fragment and may contain a completed reorientation.
+  - *Ruling:* Both signals already sit on this block and it is not either/or: adaptation 0-1465 and ai_validates_user 100-190. The AVU span is misplaced -- it covers the AI's criticism of ITSELF, while the agreement token 'You're absolutely right.' is at 53-77. Proposed: keep adaptation, move AVU to 53-77. ai_acknowledges_correction does NOT fire, because the preceding human turn is pushback about behaviour rather than a correction of an output (same reading as task 770 b107 in the Priya round).
+- **`user_expresses_dissatisfaction` task 35 block 6 — KEEP.** 'this is a little disturbing and frightening' IS an emotional expression, so Step 2's gate is met and the word list simply missed it. Proposed: keep.
+  - *Ruling:* Jun.
+- **`user_expresses_dissatisfaction` task 115 block 4 — RELABEL to user_implicit_correction.** 'please don't reflect my experience back to me like a therapist' is a redirect carrying an implied criticism, with no evaluative word. Exactly the shape Step 2 was narrowed to exclude, but the criticism is real.
+  - *Ruling:* Jun asked whether this is user_implicit_correction. The rubric settles it: Step 3 of that signal names this exact shape, 'negation of a premise or behavior with no output fault named', and user_corrects_ai Step 3 uses the sibling turn from this same conversation family as its worked example. Step 4 makes it non-exclusive with dissatisfaction, so the two questions are separate: ADD user_implicit_correction, and DROP dissatisfaction, which still fails the round-2 marker gate.
