@@ -785,3 +785,17 @@ exist in the pool but not in the draw (`ai_normalizes_difficulty` and `off_topic
 one pool conversation each; `user_multi_request`, four). Four fire nowhere in the pool at
 all and therefore cannot be measured in round 3 under any selection:
 `performative_hedge`, `repetition`, `user_abandons_thread`, `user_provides_invalid_input`.
+
+### 2026-09-20 — calibration examples for the 18 example-less signals: no re-scan
+
+Priya asked for a one-line clarification and a positive and a negative example per signal
+for round 3. Eighteen signals carry no `examples` entry. Jun's rulings: the examples are
+**summarised from the two rounds of adjudicated review**, not newly judged, since every
+one of the 18 has rulings there (16 in at least two of the three review records; only
+`ai_refuses_or_declines` and `performative_hedge` in round 1 alone). Adding examples
+alters no decision step, so it is calibration, **not a rubric change, and owes no
+re-scan**. Merged signals must carry examples from both halves: `request_unfulfilled`
+lacks its short-scope and violated-constraint positives, and
+`user_expresses_dissatisfaction` needs both the mild-marker and the profanity/shouting
+shapes. Examples are drawn only from the round-1 and round-2 sets, so none can come from
+a round-3 conversation. Nothing is written until the examples have been discussed.
