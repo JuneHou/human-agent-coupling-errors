@@ -226,9 +226,14 @@ Does not fire when the user explicitly requested critique/limitations. Label `co
 
   Method: for each candidate signal, follow its rubric `decision_steps` in order and stop
   at the first step that resolves it — walk every step, never skip ahead on impression
-  alone. Check `boundary_notes` / `does_not_count` too: the sharpest test often lives
-  there, not in `decision_steps`. Quote the literal step text you relied on, not just its
-  number. No rubric entry -> use the fallback definition conservatively
+  alone. Read each step to its end; its exception may sit in a second clause. When a step
+  names a context (the prior turn, a later turn, another label on this block), read it
+  first. Check what is already on the block: two signals share a span only where the
+  rubric says non-exclusive. A marker list names a class; synonyms count. Decide from the
+  steps. Go to `boundary_notes` and `examples` only after the steps, when a step's answer
+  is unclear, when two signals compete for one span, or when the span boundary is
+  unclear: find the closest ruled block and follow its ruling, including how far the span
+  reaches. Quote the literal step text you relied on, not just its number. No rubric entry -> use the fallback definition conservatively
   (https://github.com/bigspinai/bigspin-invisible-failure-archetypes →
   taxonomy-tagging-code/taxonomy.json). Verify any count or calculation yourself before
   labeling `factual_error` or `false_confidence`.
@@ -245,6 +250,7 @@ Does not fire when the user explicitly requested critique/limitations. Label `co
 
   Output — fired signals only (label:1), one row per evidence episode:
   Signal | Block | Span: "..." | Step fired (quote the step text, not just its number)
+  | Excluded: signal, step — only when a competing signal was rejected
   When unsure: label 0, leave a note for Jun. Do not guess.
 
   The task JSON follows.
