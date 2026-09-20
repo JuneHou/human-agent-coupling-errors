@@ -799,3 +799,23 @@ lacks its short-scope and violated-constraint positives, and
 `user_expresses_dissatisfaction` needs both the mild-marker and the profanity/shouting
 shapes. Examples are drawn only from the round-1 and round-2 sets, so none can come from
 a round-3 conversation. Nothing is written until the examples have been discussed.
+
+### 2026-09-20 — calibration examples written into v0.7
+
+Jun reviewed the draft and approved with three changes: no one-line clarifications, no
+closing paragraphs, at most two positive and two negative per signal, chosen for being
+most representative or most confusing, to keep the file short for the AI annotator.
+Written into `sharechat_rubric.json` `examples[]` for 17 of the 18 signals, plus the
+short-scope and violated-constraint positives for `request_unfulfilled`; 63 rows, every
+one a block ruled in round 1 or round 2 and verified against Jun's live data. No decision
+step changed; no re-scan owed. `performative_hedge` stays without examples. The same
+table is `Rubric_agree/round_2/calibration_examples_v07.md`.
+
+**Left out on purpose, each awaiting a ruling:** R2 b9 "3000kg" (ruled both ways five
+days apart; the rubric's Step 3 still cites it as the negative); R4 b50 (a declarative
+theory ruled to fire against `user_validation_seeking` Step 4); R1 b1 (widens
+step-by-step to procedures the user does not perform). **Two data gaps found while
+verifying, not applied:** six ruled `ai_references_prior_turn` labels on C5 that B and F
+carry and Jun's task 49 lacks; and the held dissatisfaction drops discharged by the merge
+but never written (R2 b30 on Jun and Michelle, R3 b14 on Michelle and Priya, Priya's R7
+b12).

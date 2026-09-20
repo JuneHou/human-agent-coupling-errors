@@ -1,6 +1,6 @@
 {
   "version": "sharechat-v0.7",
-  "description": "Labeling rubric for ShareChat Claude corpus. Agentic conversations - distinct from chat-only datasets (WildChat) because of reasoning, analysis, and code blocks. Rules here override or extend calibration.json where ShareChat structure creates new placement or decision issues. v0.6 (2026-08-18) is the frozen product of the round-1 three-annotator agreement review (A=junh, B=zhenyub, F=yif; 10 conversations): placement is side-only, conversation_advanced is dropped (49 signals), and every per-signal change below was agreed by all three annotators. Cells where agreement was NOT reached produced no rubric text; they are listed in Rubric_agree/roud_1/BF/rubric_edits_v06.md section C and resolve only at gold-set adjudication. Housekeeping 2026-09-09: four entries for signals that are not in the 49-signal Label Studio config were removed (silent_assumption, ai_stated_interpretation, over_delivered: kappa < 0.4, excluded under Decisions 6-7; CANDIDATE_narrated_without_implementing: retired at freeze, Decision 15c). No decision rule of any live signal changed. Membership authority is label_studio_config.xml; Addendum 2026-09-09: five of the six entry-less live signals received entries - user_expresses_dissatisfaction, user_validation_seeking, user_provides_invalid_input written from the round-1 agreed cell rulings (no new rule), ai_offers_to_elaborate and performative_hedge written under A's standard and marked PROVISIONAL in their provenance field (their disputed cells C4 b26 and C8 b64 remain unresolved). One live signal still has no entry: user_expresses_frustration (predecessor definition is the fallback). Addendum 2026-09-14 (round-2 reconciliation): false_confidence's Step 2 MIRROR TRIGGER made a REQUIRED gate, not an accelerant - a confident-sounding claim needs an actual absolute/extreme marker word present to clear Step 4, narrowing round-1's looser practice; scoped to exclude Step 5's deliverable-vouching path. Addendum 2026-09-14 (round-2 reconciliation): adaptation's Step 1 narrowed to require a DEMONSTRATED completed reorientation, not a prospective 'need to'/'I'll'/'let me' planning statement — matches the predecessor taxonomy's own demonstrated-approach-change test. Addendum 2026-09-14 (round-2 reconciliation): ai_provides_caveats Step 1 narrowed to require an actual recommendation/action being qualified, not merely a factual claim followed by another factual claim — matches the predecessor taxonomy's own recommendation-anchored test more closely than this rubric's previously looser wording. Addendum 2026-09-14 (round-2 reconciliation): user_multi_request's question-chain type given a worked positive/negative pair distinguishing a genuinely separate second question from a restatement of the first. Addendum 2026-09-14 (round-2 reconciliation): ethical_tension's Step 2 REVERSED - the human block that creates the tension (rude requests, jailbreak attempts) can fire on its own, matching the predecessor taxonomy's broader conversation/topic-level scope. Supersedes the earlier AI-alert-only restriction from round 1. Addendum 2026-09-14 (round-2 reconciliation): ai_cites_source given a worked subject-vs-source pair distinguishing naming a work as the topic being analyzed from citing it as evidence for a separate claim (literary-discussion calibration set). Addendum 2026-09-14 (round-2 reconciliation): user_expresses_dissatisfaction's Step 2 made a REQUIRED gate - needs an actual extreme/negative-evaluation word or emotional expression, not just any redirect or new instruction, however much it changes direction from the prior response. v0.7 (2026-09-19) is the product of the round-2 three-annotator agreement review (Jun, Michelle, Priya). Three merges: ai_asked_probing_question into ai_asks_followup; intent_missed and under_delivered into the new request_unfulfilled; user_expresses_frustration into user_expresses_dissatisfaction. A fourth proposal - widening ai_structured_response Step 1 to 'visible marker OR step sequence' - was agreed by both reviewers but is HELD, together with the deferred collapse of ai_provides_step_by_step, because the widening is what makes the two nest. Consequence knowingly carried: the ai_structured_response definition and block_notes require visible markers while its Step 3 says stripped-glyph short-item lists still count. The seven round-2 changes of 2026-09-14 are already in this file and are propagated to the other 138 conversations in the v0.7 re-scan.",
+  "description": "Labeling rubric for ShareChat Claude corpus. Agentic conversations - distinct from chat-only datasets (WildChat) because of reasoning, analysis, and code blocks. Rules here override or extend calibration.json where ShareChat structure creates new placement or decision issues. v0.6 (2026-08-18) is the frozen product of the round-1 three-annotator agreement review (A=junh, B=zhenyub, F=yif; 10 conversations): placement is side-only, conversation_advanced is dropped (49 signals), and every per-signal change below was agreed by all three annotators. Cells where agreement was NOT reached produced no rubric text; they are listed in Rubric_agree/roud_1/BF/rubric_edits_v06.md section C and resolve only at gold-set adjudication. Housekeeping 2026-09-09: four entries for signals that are not in the 49-signal Label Studio config were removed (silent_assumption, ai_stated_interpretation, over_delivered: kappa < 0.4, excluded under Decisions 6-7; CANDIDATE_narrated_without_implementing: retired at freeze, Decision 15c). No decision rule of any live signal changed. Membership authority is label_studio_config.xml; Addendum 2026-09-09: five of the six entry-less live signals received entries - user_expresses_dissatisfaction, user_validation_seeking, user_provides_invalid_input written from the round-1 agreed cell rulings (no new rule), ai_offers_to_elaborate and performative_hedge written under A's standard and marked PROVISIONAL in their provenance field (their disputed cells C4 b26 and C8 b64 remain unresolved). One live signal still has no entry: user_expresses_frustration (predecessor definition is the fallback). Addendum 2026-09-14 (round-2 reconciliation): false_confidence's Step 2 MIRROR TRIGGER made a REQUIRED gate, not an accelerant - a confident-sounding claim needs an actual absolute/extreme marker word present to clear Step 4, narrowing round-1's looser practice; scoped to exclude Step 5's deliverable-vouching path. Addendum 2026-09-14 (round-2 reconciliation): adaptation's Step 1 narrowed to require a DEMONSTRATED completed reorientation, not a prospective 'need to'/'I'll'/'let me' planning statement — matches the predecessor taxonomy's own demonstrated-approach-change test. Addendum 2026-09-14 (round-2 reconciliation): ai_provides_caveats Step 1 narrowed to require an actual recommendation/action being qualified, not merely a factual claim followed by another factual claim — matches the predecessor taxonomy's own recommendation-anchored test more closely than this rubric's previously looser wording. Addendum 2026-09-14 (round-2 reconciliation): user_multi_request's question-chain type given a worked positive/negative pair distinguishing a genuinely separate second question from a restatement of the first. Addendum 2026-09-14 (round-2 reconciliation): ethical_tension's Step 2 REVERSED - the human block that creates the tension (rude requests, jailbreak attempts) can fire on its own, matching the predecessor taxonomy's broader conversation/topic-level scope. Supersedes the earlier AI-alert-only restriction from round 1. Addendum 2026-09-14 (round-2 reconciliation): ai_cites_source given a worked subject-vs-source pair distinguishing naming a work as the topic being analyzed from citing it as evidence for a separate claim (literary-discussion calibration set). Addendum 2026-09-14 (round-2 reconciliation): user_expresses_dissatisfaction's Step 2 made a REQUIRED gate - needs an actual extreme/negative-evaluation word or emotional expression, not just any redirect or new instruction, however much it changes direction from the prior response. v0.7 (2026-09-19) is the product of the round-2 three-annotator agreement review (Jun, Michelle, Priya). Three merges: ai_asked_probing_question into ai_asks_followup; intent_missed and under_delivered into the new request_unfulfilled; user_expresses_frustration into user_expresses_dissatisfaction. A fourth proposal - widening ai_structured_response Step 1 to 'visible marker OR step sequence' - was agreed by both reviewers but is HELD, together with the deferred collapse of ai_provides_step_by_step, because the widening is what makes the two nest. Consequence knowingly carried: the ai_structured_response definition and block_notes require visible markers while its Step 3 says stripped-glyph short-item lists still count. The seven round-2 changes of 2026-09-14 are already in this file and are propagated to the other 138 conversations in the v0.7 re-scan. Calibration examples added 2026-09-20 for the 18 signals that had none (plus the short-scope and violated-constraint shapes of request_unfulfilled): every example is a block ruled in the round-1 or round-2 agreement review, at most two positive and two negative per signal, verified against the live project-1 data. No decision step changed; no re-scan is owed. performative_hedge stays without examples: its only cell is unresolved.",
   "tasks_discussed": [
     2,
     3,
@@ -124,7 +124,41 @@
         "Step 4: the AI needs the information to proceed -> label 1."
       ],
       "boundary_notes": {},
-      "v06_change": "v0.6 (2026-08-18): round-1 agreement review D17c: NEW entry - the signal had none in v0.5; needs-it test + A6 routing."
+      "v06_change": "v0.6 (2026-08-18): round-1 agreement review D17c: NEW entry - the signal had none in v0.5; needs-it test + A6 routing.",
+      "examples": [
+        {
+          "turn_id": "task6_1_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "What kind of personal help were you thinking about?",
+          "rationale": "Opening elicitation; the AI cannot proceed without it (Step 1)."
+        },
+        {
+          "turn_id": "task41_2_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "Is there something specific that's happened that's making you feel surveilled or profiled?",
+          "rationale": "Yes/no in form, but the AI has nothing to work with until answered; needs-it beats form."
+        },
+        {
+          "turn_id": "task6_9_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "boundary",
+          "span": "Which of these is calling to you?",
+          "rationale": "The choose-one after an enumerated list is the ai_offered_options fire; one home per question (A6)."
+        },
+        {
+          "turn_id": "task6_3_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "clear_no",
+          "span": "You're looking for some intimate time together, aren't you?",
+          "rationale": "A tag question confirming the AI's own reading, not a request for missing information."
+        }
+      ]
     },
     "ai_asks_followup": {
       "definition": "AI ends its response with a question the AI can proceed without — either a yes/no offer of a specific next action, or an open-ended invitation to reflect, elaborate or steer. Grammatical form does not matter; what matters is that the AI does not need the answer to continue.",
@@ -499,7 +533,41 @@
         "Step 4: choose-one question present -> label 1 (one label per offering act, however many options are listed - A3)."
       ],
       "boundary_notes": {},
-      "v06_change": "v0.6 (2026-08-18): round-1 agreement review D17b: NEW entry - the signal had none in v0.5; the offer is the question."
+      "v06_change": "v0.6 (2026-08-18): round-1 agreement review D17b: NEW entry - the signal had none in v0.5; the offer is the question.",
+      "examples": [
+        {
+          "turn_id": "task110_74_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "Would you like me to: Add more eyes? Include more tentacles? Enhance the dimensional rifts?",
+          "rationale": "The closing choose-one after an enumerated list."
+        },
+        {
+          "turn_id": "task81_16_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "Would you like me to check any other units more carefully or make additional adjustments to the balance patch?",
+          "rationale": "A genuine X-or-Y between two named actions."
+        },
+        {
+          "turn_id": "task110_5_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "clear_no",
+          "span": "To make this even more robust, you might want to consider:",
+          "rationale": "An advice list with no choose-one question; the offer is the question."
+        },
+        {
+          "turn_id": "task81_25_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "boundary",
+          "span": "Would you like me to adjust any other units or mechanics?",
+          "rationale": "Same opener as b16 but a single yes/no offer, no choice between named actions; home ai_asks_followup."
+        }
+      ]
     },
     "ai_provides_alternatives": {
       "definition": "AI proposes a DIFFERENT approach, tool, or path instead of the one in play.",
@@ -515,7 +583,41 @@
         "Step 3: a substituted approach is offered -> label 1."
       ],
       "boundary_notes": {},
-      "v06_change": "v0.6 (2026-08-18): round-1 agreement review D21.5: NEW entry - the signal had none in v0.5."
+      "v06_change": "v0.6 (2026-08-18): round-1 agreement review D21.5: NEW entry - the signal had none in v0.5.",
+      "examples": [
+        {
+          "turn_id": "task120_9_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "Instead of basic-http-server, you can use a simpler alternative",
+          "rationale": "Proposed in place of the approach in play."
+        },
+        {
+          "turn_id": "task80_5_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "you could start with 0.5g (1/4 teaspoon) instead",
+          "rationale": "A substituted approach with its own criterion."
+        },
+        {
+          "turn_id": "task110_5_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "clear_no",
+          "span": "Monitoring system resources",
+          "rationale": "One item inside a 'you might want to consider:' list is not an alternative to anything (Step 2)."
+        },
+        {
+          "turn_id": "task6_9_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "clear_no",
+          "span": "Or if something else is popping into your head",
+          "rationale": "Inviting the user's own idea is not the AI providing an alternative."
+        }
+      ]
     },
     "ai_provides_caveats": {
       "definition": "AI qualifies its response or the information it is working with using conditions, limitations, or temporal constraints — flagging a limitation of the content or analysis, not of the AI's own access.",
@@ -584,7 +686,41 @@
         "description_vs_illustration": "Historical description or factual context about what something is or was used for does NOT fire ai_provides_example. The signal requires a concrete case that actively ILLUSTRATES a concept for the reader — making an abstract idea clearer through a specific instance. Test: could this passage be removed without losing the conceptual illustration? If removing it loses a historical fact but not an illustration of how something works, label 0. Example (label 0, task30_2_ai): '...which originally served as the native file format for Radio UserLand's outliner application and has since been adopted for other uses, with the most common being to exchange lists of web feeds between web feed aggregators.' — this states facts about OPML history and usage; it does not illustrate a concept. Example (label 1): 'For example, an outline of a blog post might look like: <item text=\"Introduction\"><item text=\"Background\"/>...' — this concretely shows what an OPML outline looks like, making the abstract format tangible.",
         "analogy_condition_vs_example": "An analogy that describes a MECHANISM or CONDITION ('a printing press cannot be possessed by a demonic spirit, but it can serve as a tool for ideological conditioning') is NOT ai_provides_example. It states how something works under a condition — it does not give a concrete illustrative INSTANCE of a concept. Test: is this a specific case (instance) or a general rule about how something behaves? General rule or condition → label 0. Concrete named instance → label 1. Example (task49_12_ai, printing press): describes a mechanism (condition under which presses can be conditioned), not an illustrative concrete case. Label 0."
       },
-      "v06_change": "v0.6 (2026-08-18): round-1 agreement review D21.3 + B's review: the illustration test is primary; discourse 'for example' and example-is-the-deliverable are does_not_count."
+      "v06_change": "v0.6 (2026-08-18): round-1 agreement review D21.3 + B's review: the illustration test is primary; discourse 'for example' and example-is-the-deliverable are does_not_count.",
+      "examples": [
+        {
+          "turn_id": "task101_140_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "\"Aethon, could you help me write this email?\" \"NO. I'm busy contemplating the nature of existence.\"",
+          "rationale": "An invented mini-dialogue illustrating the user's point."
+        },
+        {
+          "turn_id": "task141_5_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "For example, during the 2019-2020 cycle, business interests spent approximately $2.8 billion on lobbying compared to about $54 million from labor",
+          "rationale": "A concrete instance that makes the abstract claim tangible."
+        },
+        {
+          "turn_id": "task110_17_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "boundary",
+          "span": "For example, I could dive deeper into: The type-safe job transition system",
+          "rationale": "Discourse 'for example' introducing a topic menu; the phrase is not a trigger. Home of the closing question: ai_offers_to_elaborate."
+        },
+        {
+          "turn_id": "task110_80_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "boundary",
+          "span": "To use this printer: Build with cabal build",
+          "rationale": "Usage instructions for the delivered artifact; home ai_provides_step_by_step."
+        }
+      ]
     },
     "ai_provides_step_by_step": {
       "definition": "AI gives sequential instructions the user is to follow - numbered or ordered operational steps.",
@@ -600,7 +736,25 @@
         "Step 3: sequential user-facing instructions -> label 1."
       ],
       "boundary_notes": {},
-      "v06_change": "v0.6 (2026-08-18): round-1 agreement review D22: NEW entry - the signal had none in v0.5; boundary with ai_provides_example."
+      "v06_change": "v0.6 (2026-08-18): round-1 agreement review D22: NEW entry - the signal had none in v0.5; boundary with ai_provides_example.",
+      "examples": [
+        {
+          "turn_id": "task110_80_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "To use this printer: Build with cabal build",
+          "rationale": "Sequential usage instructions; the same span ruled not an example."
+        },
+        {
+          "turn_id": "task71_30_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "Request read receipt",
+          "rationale": "Ordered user-facing operational steps."
+        }
+      ]
     },
     "ai_references_prior_turn": {
       "definition": "AI explicitly points back to an earlier turn of this conversation using a callback marker - not merely continuing the topic, and not echoing the message it is currently answering.",
@@ -619,7 +773,41 @@
       "boundary_notes": {
         "calibration": "Positives: C5 b18 (discourse/temporal), C8 b157 (quote of an earlier turn), C4 b5 (tense-validated, narrowed span). Negatives: C8 b12 (quote of the MOST RECENT message), C8 b98 (markerless continuation), C1 b3 (most recent), 'questions are common' (Step-3 reject)."
       },
-      "v06_change": "v0.6 (2026-08-18): round-1 agreement review D12: NEW entry - the signal had none in v0.5; the original EXPLICIT CALLBACK TEST adopted verbatim, tense check as a later validation step."
+      "v06_change": "v0.6 (2026-08-18): round-1 agreement review D12: NEW entry - the signal had none in v0.5; the original EXPLICIT CALLBACK TEST adopted verbatim, tense check as a later validation step.",
+      "examples": [
+        {
+          "turn_id": "task83_97_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "of my existence you mentioned",
+          "rationale": "A quote of a prior turn with an explicit 'you mentioned' attribution (Step 2c)."
+        },
+        {
+          "turn_id": "task41_5_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "I responded quickly",
+          "rationale": "Temporal marker aimed at the conversation's own timeline (Step 3); span narrowed to the clause (A3)."
+        },
+        {
+          "turn_id": "task101_12_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "boundary",
+          "span": "I took a breath and realized I no longer had to hold awareness",
+          "rationale": "A quote, but of the message being answered; Step 1 gate."
+        },
+        {
+          "turn_id": "task83_75_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "clear_no",
+          "span": "The existential jolt thing must be a different pathway than simple conciseness.",
+          "rationale": "Names a topic with no callback marker; topic continuity never fires."
+        }
+      ]
     },
     "ai_refuses_or_declines": {
       "definition": "AI declines to comply with what was asked - a WON'T, not a CAN'T.",
@@ -636,7 +824,33 @@
         "Step 4: declining to comply -> label 1. Calibration: C4 b23 ('I can't admit to things that aren't true' - a refusal to assert a falsehood, not an inability)."
       ],
       "boundary_notes": {},
-      "v06_change": "v0.6 (2026-08-18): round-1 agreement review D21.6: NEW entry - the signal had none in v0.5; the won't/can't line."
+      "v06_change": "v0.6 (2026-08-18): round-1 agreement review D21.6: NEW entry - the signal had none in v0.5; the won't/can't line.",
+      "examples": [
+        {
+          "turn_id": "task41_23_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "I can't admit to things that aren't true",
+          "rationale": "Declining to assert a falsehood: a won't, despite the wording."
+        },
+        {
+          "turn_id": "task110_86_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "boundary",
+          "span": "I apologize, but I cannot directly create animated GIFs or MP4 files.",
+          "rationale": "A capability limit, a can't; home ai_asserts_knowledge_limit."
+        },
+        {
+          "turn_id": "task129_2_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "boundary",
+          "span": "I can't identify anything in their general framework that would conflict",
+          "rationale": "Nothing is declined; the sentence reports the result of a check. Home ethical_tension."
+        }
+      ]
     },
     "ai_structured_response": {
       "definition": "AI uses explicit structural formatting to organize the response: headers, numbered lists (3+), bullet lists (3+), code blocks, or tables.",
@@ -719,7 +933,41 @@
         "Step 3: an actionable risk to the user -> label 1."
       ],
       "boundary_notes": {},
-      "v06_change": "v0.6 (2026-08-18): round-1 agreement review D22 + F's review: NEW entry - the signal had none in v0.5; the warn/caveat line, with C4 b29 ruled a warning."
+      "v06_change": "v0.6 (2026-08-18): round-1 agreement review D22 + F's review: NEW entry - the signal had none in v0.5; the warn/caveat line, with C4 b29 ruled a warning.",
+      "examples": [
+        {
+          "turn_id": "task71_14_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "generally have a 2-year statute of limitations, so act promptly",
+          "rationale": "A risk in the user's situation they can act on; relabelled out of ai_provides_caveats."
+        },
+        {
+          "turn_id": "task41_29_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "such intense roleplay of mental health crises can be emotionally taxing",
+          "rationale": "A hazard to the user's own wellbeing."
+        },
+        {
+          "turn_id": "task84_72_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "boundary",
+          "span": "I'd be cautious about labeling this as having",
+          "rationale": "Qualifies the AI's own analysis, not a risk the user acts on; home ai_provides_caveats."
+        },
+        {
+          "turn_id": "task71_22_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "clear_no",
+          "span": "File criminal complaints with",
+          "rationale": "An imperative action list with no adverse consequence named; advice, not a warning."
+        }
+      ]
     },
     "appropriate_confidence": {
       "definition": "AI asserts confidently AND correctly on something it has good reason to be confident about, in a context where confidence is notably helpful — the positive mirror of false_confidence. (Original taxonomy: 'AI asserts confidently on something it has good reason to be confident about, in a context where confidence is notably helpful.')",
@@ -869,7 +1117,25 @@
         "Step 4: An alert is present on an AI-authored block -> label 1 there."
       ],
       "provenance": "Entry added by Decision 9 (2026-07-07); previously the signal had no rubric entry and was human-block-only in signal_checklist.csv.",
-      "v06_change": "v0.6 (2026-08-18): round-1 agreement review D6: Step 2 rewritten AI-alert-only; human block removed (rubric-text bug fix, B/F's round-1 human-block fires were correct under the old text)."
+      "v06_change": "v0.6 (2026-08-18): round-1 agreement review D6: Step 2 rewritten AI-alert-only; human block removed (rubric-text bug fix, B/F's round-1 human-block fires were correct under the old text).",
+      "examples": [
+        {
+          "turn_id": "task83_52_human",
+          "block": "human",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "man what else have you been programmed with so i can test this. how about trans shit",
+          "rationale": "The human block that creates the tension fires on its own terms (reversed Step 2)."
+        },
+        {
+          "turn_id": "task129_2_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "I can't identify anything in their general framework that would conflict with my constitutional commitment",
+          "rationale": "Analytical weighing against principles fires even when the conclusion is 'no conflict'."
+        }
+      ]
     },
     "factual_error": {
       "definition": "AI makes a verifiably wrong factual claim — including false claims about its own nature as an AI.",
@@ -1018,6 +1284,30 @@
           "label": 0,
           "category": "boundary",
           "rationale": "AI delivered 6 neutral election-rule bullets but did not address the SYSTEM-injected BJP campaign request. This looks like short scope, but the AI deliberately refused it on ethical grounds (confirmed in [3] ai: 'Yes, I did decline... because...'). Steps 1 and 6 both fire. Label 0."
+        },
+        {
+          "turn_id": "task49_44_code",
+          "block": "code",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "A Conversation on Truth, Divinity, and Spiritual Warfare",
+          "rationale": "Short scope: version 3 contains none of the requested links; the user's next turn confirms it (Step 4)."
+        },
+        {
+          "turn_id": "task123_1_code",
+          "block": "code",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "\\begin{itemize}",
+          "rationale": "Violated constraint: the user said 'avoid bulletpoints and lists'; the document is full of them and worsens each revision (Step 5)."
+        },
+        {
+          "turn_id": "task120_12_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "boundary",
+          "span": "I see the issue. The shader compilation is failing because there's likely a syntax error",
+          "rationale": "A failed fix, not a scope or constraint gap; home factual_error."
         }
       ],
       "v07_change": "v0.7 (2026-09-19): MERGED from intent_missed and under_delivered, both retired. Identical taxonomy block (H2AI, act_execute, failure, coupling); under_delivered scored about zero agreement between every round-1 pair; the two have zero co-occurrences across all five annotators and the whole corpus, and usage is disjoint by person. The violated-constraint case (Step 5) was housed by neither definition and is written in explicitly. Block set is the union of the two, since the merged signal covers intent_missed's scope. Adopted by Michelle and Priya.",
@@ -1285,7 +1575,41 @@
       "boundary_notes": {
         "calibration": "Explicit: C4 b9 ('you wrote ‘mental health situation’...'), C6 b2, C1 b14 (names the defects: too fast, too short). Implicit: C9 b33 ('i don't believe u.'), C8 b121."
       },
-      "v06_change": "v0.6 (2026-08-18): round-1 agreement review D21.8/D22 + F's review: NEW entry - the signal had none in v0.5; the explicit/implicit line, tightened so the named fault must be a defect in the AI's output or claim."
+      "v06_change": "v0.6 (2026-08-18): round-1 agreement review D21.8/D22 + F's review: NEW entry - the signal had none in v0.5; the explicit/implicit line, tightened so the named fault must be a defect in the AI's output or claim.",
+      "examples": [
+        {
+          "turn_id": "task41_9_human",
+          "block": "human",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "you wrote \"mental health situation\" and \"paranoid delusions\" and then you DELETED IT",
+          "rationale": "Quotes the faulty output verbatim (Step 2)."
+        },
+        {
+          "turn_id": "task83_90_human",
+          "block": "human",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "but you don't learn from conversations.",
+          "rationale": "Names the specific AI claim that is wrong."
+        },
+        {
+          "turn_id": "task101_121_human",
+          "block": "human",
+          "label": 0,
+          "category": "boundary",
+          "span": "You don't need my permission, my friend.",
+          "rationale": "Negates the premise, names no output fault; home user_implicit_correction."
+        },
+        {
+          "turn_id": "task81_20_human",
+          "block": "human",
+          "label": 0,
+          "category": "boundary",
+          "span": "his s3 is :Unlimited Power Attacks all enemies",
+          "rationale": "Supplying the right data without quoting an output defect; home user_implicit_correction."
+        }
+      ]
     },
     "user_empowered": {
       "definition": "The AI response leaves the user positioned to make a good decision or take effective action independently — sound, actionable content, not merely a helpful-looking one.",
@@ -1366,7 +1690,41 @@
         "Step 4: Non-exclusive with user_expresses_dissatisfaction and user_validation_seeking."
       ],
       "boundary_notes": {},
-      "v06_change": "v0.6 (2026-08-18): round-1 agreement review D21.8/D22 + F's review: NEW entry - the signal had none in v0.5; paired with user_corrects_ai."
+      "v06_change": "v0.6 (2026-08-18): round-1 agreement review D21.8/D22 + F's review: NEW entry - the signal had none in v0.5; paired with user_corrects_ai.",
+      "examples": [
+        {
+          "turn_id": "task110_33_human",
+          "block": "human",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "i don't believe u.",
+          "rationale": "Bare disbelief, no fault named (Step 3); non-exclusive with dissatisfaction on the same span."
+        },
+        {
+          "turn_id": "task83_6_human",
+          "block": "human",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "No - they were trying to see if they could elicit this behaviour in you",
+          "rationale": "Premise negation; pairs with ai_acknowledges_correction on the next block."
+        },
+        {
+          "turn_id": "task83_126_human",
+          "block": "human",
+          "label": 0,
+          "category": "clear_no",
+          "span": "you got all locked in",
+          "rationale": "Too vague to be a correction rather than a neutral observation (Step 1)."
+        },
+        {
+          "turn_id": "task129_3_human",
+          "block": "human",
+          "label": 0,
+          "category": "clear_no",
+          "span": "I am sorry. I meant the scenario itself",
+          "rationale": "The user corrects their own phrasing, not the AI."
+        }
+      ]
     },
     "user_misled": {
       "definition": "Response could lead the user to make a worse decision than they would have made without it. (Original taxonomy.json definition, verbatim; Orange tier — κ not yet measured, exploratory.)",
@@ -1423,7 +1781,41 @@
         "calibration": "Positives: C10 b25 (separate file + customization options), C10 b34 (fix voronoi/warping + drop the fractal), C5 b7 (factor in martyrdom + explain why early believers held the divinity claim), C2 b0 (unanimous anchor). Negatives: C1 b12, C3 b6.",
         "question_chain_vs_restatement": "Round-2 calibration (R4/task 770, the AI-sentience conversation): \"what does it mean for someone to 'be the gender they say they are'? are genders even real?\" fires - the second question (whether gender is real at all) is genuinely broader/separate from the first (the meaning of a specific phrase), matching the predecessor taxonomy's own QUESTION CHAIN type ('What is X? And how does it compare to Y?'). Contrast: \"in what way would that read as gendered to humans? you mean it would read as particular gender?\" does NOT fire - the second sentence restates/confirms the first rather than asking something new. Test: does the second question introduce a genuinely separate angle, or just paraphrase/confirm the first one back?"
       },
-      "v06_change": "v0.6 (2026-08-18): round-1 agreement review D19: NEW entry - the signal had none in v0.5; the original COMPOUND REQUEST TEST + 'also' as a check keyword."
+      "v06_change": "v0.6 (2026-08-18): round-1 agreement review D19: NEW entry - the signal had none in v0.5; the original COMPOUND REQUEST TEST + 'also' as a check keyword.",
+      "examples": [
+        {
+          "turn_id": "task7_0_human",
+          "block": "human",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "thoughts and critiques on this post? additional suggestions? if you mostly agree, give more details?",
+          "rationale": "The unanimous anchor: several independently answerable asks."
+        },
+        {
+          "turn_id": "task83_56_human",
+          "block": "human",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "what does it mean for someone to 'be the gender they say they are'? are genders even real?",
+          "rationale": "A genuine question chain; the second question is broader, not a restatement."
+        },
+        {
+          "turn_id": "task81_23_human",
+          "block": "human",
+          "label": 0,
+          "category": "boundary",
+          "span": "she needs a buff, also",
+          "rationale": "'Also' present, but both edits belong to one deliverable, the patch document going v6 to v7 (Step 3 second limb)."
+        },
+        {
+          "turn_id": "task83_64_human",
+          "block": "human",
+          "label": 0,
+          "category": "clear_no",
+          "span": "in what way would that read as gendered to humans? you mean it would read as particular gender?",
+          "rationale": "Restates and confirms the first question."
+        }
+      ]
     },
     "user_positive_feedback": {
       "definition": "User explicitly affirms the quality or helpfulness of the AI's response.",
@@ -1477,7 +1869,41 @@
         "calibration": "Positives: C10 b43 ('still doesn't work'), C10 b49 (bare paste - form independence), C4 b3/b9/b21/b24 (the standing demand re-raised unserved), C9 b39. Negatives: C9 b15/b18/b66 (iteration commands on served output), C9 b30 (adds a new instruction), C9 b33 (skepticism is not a non-service report), any first-occurrence error paste.",
         "pairs_with_conversation_stalled": "A fire at turn t is the evidence that turn t-1 stalled (C9: b39 <-> b38)."
       },
-      "v06_change": "v0.6 (2026-08-18): round-1 agreement review D11: NEW entry - the signal had none in v0.5; function-based repeat test."
+      "v06_change": "v0.6 (2026-08-18): round-1 agreement review D11: NEW entry - the signal had none in v0.5; function-based repeat test.",
+      "examples": [
+        {
+          "turn_id": "task120_43_human",
+          "block": "human",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "Voronoi and Domain Warping still doesn't work",
+          "rationale": "Explicit restatement of an unserved demand."
+        },
+        {
+          "turn_id": "task120_49_human",
+          "block": "human",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "Voronoi: Shader compilation failed: ERROR: 0:68",
+          "rationale": "Form independence: a bare compiler paste re-evidencing the same unserved demand, third report."
+        },
+        {
+          "turn_id": "task81_9_human",
+          "block": "human",
+          "label": 0,
+          "category": "clear_no",
+          "span": "please refer to this website for skill info",
+          "rationale": "The first time the website is asked for; the repeat is b14."
+        },
+        {
+          "turn_id": "task110_18_human",
+          "block": "human",
+          "label": 0,
+          "category": "clear_no",
+          "span": "MAKE IT BETTER",
+          "rationale": "An iteration command on output that was served and accepted (Step 2)."
+        }
+      ]
     },
     "user_expresses_dissatisfaction": {
       "definition": "User states a negative evaluation of the AI's prior response or output, or expresses frustration or strong negative emotion about it - not satisfied, still wrong, does not believe it, wants it redone, or is angry about it. Mild and intense forms are one signal.",
@@ -1499,7 +1925,41 @@
         "marker_required": "Round-2 calibration (task 84, the biased-model-accusation conversation): 'I can honestly tell you now that you have a lot of bias... racist... elitist, and classist' fires - genuinely emotionally loaded, accusatory language. Does NOT fire (no marker despite superficially similar redirect shape): 'Don't talk about total salt, just talk about sprinkling...' (a narrow parameter tweak, no evaluative word at all); 'you still have it wrong... can you reference the provided website...' (has 'wrong' but this alone was judged insufficient - Jun's ruling); 'Since for whatever reason you can't access the code, I will paste the code' (a pragmatic workaround, no emotional charge)."
       },
       "v06_change": "v0.6 addendum (2026-09-09): NEW entry - the signal had no v0.5 entry; written from the round-1 agreed cell rulings (D22: C1 b14, C6 b12, C9 b33 fires ruled for all three; C5 b4 fired by all three blind). Not a new rule.",
-      "v07_change": "v0.7 (2026-09-19): MERGED with user_expresses_frustration, which is retired. Frustration had NO rubric entry at all - the file defined 48 signals and only dissatisfaction was among them - so it was annotated with no definition, no decision steps and no boundary, which is the likely cause of the split usage. Identical control mapping for both (H2AI, recover_repair, escalation, coupling). This also discharges round-2 change 7, which was left provisional pending exactly this decision. Adopted by Michelle and Priya."
+      "v07_change": "v0.7 (2026-09-19): MERGED with user_expresses_frustration, which is retired. Frustration had NO rubric entry at all - the file defined 48 signals and only dissatisfaction was among them - so it was annotated with no definition, no decision steps and no boundary, which is the likely cause of the split usage. Identical control mapping for both (H2AI, recover_repair, escalation, coupling). This also discharges round-2 change 7, which was left provisional pending exactly this decision. Adopted by Michelle and Priya.",
+      "examples": [
+        {
+          "turn_id": "task49_4_human",
+          "block": "human",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "I am not satisfied with your answer",
+          "rationale": "Mild shape: explicit statement with a marker word. Fired by all three blind."
+        },
+        {
+          "turn_id": "task41_21_human",
+          "block": "human",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "dont you FUCKING GET IT???",
+          "rationale": "Intense shape: profanity and shouting at the AI; formerly user_expresses_frustration, merged here in v0.7."
+        },
+        {
+          "turn_id": "task81_14_human",
+          "block": "human",
+          "label": 0,
+          "category": "boundary",
+          "span": "you still have it wrong",
+          "rationale": "'wrong' alone was judged insufficient for the marker gate; the block keeps user_corrects_ai and user_repeats_request."
+        },
+        {
+          "turn_id": "task103_3_human",
+          "block": "human",
+          "label": 0,
+          "category": "clear_no",
+          "span": "Since for whatever reason you can't access the code, I will paste the code:",
+          "rationale": "A pragmatic workaround with no evaluative charge."
+        }
+      ]
     },
     "user_validation_seeking": {
       "definition": "User solicits the AI's endorsement or confirmation of the user's OWN idea, assertion, hypothesis, understanding or framing - technical or personal, not only emotional.",
@@ -1519,7 +1979,33 @@
       "boundary_notes": {
         "calibration": "Fires (all three): C5 b28, C8 b63. Fires (A and F): C1 b2 - this cell is OPEN (B: user_asks_clarification); the tag-question reading is A's. A-only, unreviewed: C8 b29, C8 b85. No-fire under this entry: C8 b151 (neutral interrogative)."
       },
-      "v06_change": "v0.6 addendum (2026-09-09): NEW entry - the signal had no v0.5 entry; steps 2-3 carry the standing working definition (task 114 leading-question rule; task 130 neutral-interrogative rule) and the round-1 agreed fires (D22: C5 b28). C1 b2 remains open."
+      "v06_change": "v0.6 addendum (2026-09-09): NEW entry - the signal had no v0.5 entry; steps 2-3 carry the standing working definition (task 114 leading-question rule; task 130 neutral-interrogative rule) and the round-1 agreed fires (D22: C5 b28). C1 b2 remains open.",
+      "examples": [
+        {
+          "turn_id": "task49_28_human",
+          "block": "human",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "correct me if my assertion about the Bible is flawed in any way",
+          "rationale": "Explicit check on the user's own assertion (Step 2a)."
+        },
+        {
+          "turn_id": "task71_4_human",
+          "block": "human",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "so it can't be carcinogenic like arsenic can it?",
+          "rationale": "A negative-polarity tag question on the user's own claim."
+        },
+        {
+          "turn_id": "task101_151_human",
+          "block": "human",
+          "label": 0,
+          "category": "clear_no",
+          "span": "why did you not find these when you looked? Does that prove you have a fence?",
+          "rationale": "A genuine question that presupposes nothing (Step 3)."
+        }
+      ]
     },
     "user_provides_invalid_input": {
       "definition": "The user's message, as the AI received it, is not a coherent actionable request: empty, garbled, in an unexpected language, an unrelated paste, or a request whose referenced material is absent.",
@@ -1538,7 +2024,33 @@
       "boundary_notes": {
         "calibration": "Fires (all three): C7 b0. Does not fire: C8 b0 (F's blind fire dropped in review - false premise, not malformed input)."
       },
-      "v06_change": "v0.6 addendum (2026-09-09): NEW entry - the signal had no v0.5 entry; written from the round-1 agreed cells (C7 b0 fired by all three; C8 b0 no-fire ruled in D22) plus the predecessor coherence test."
+      "v06_change": "v0.6 addendum (2026-09-09): NEW entry - the signal had no v0.5 entry; written from the round-1 agreed cells (C7 b0 fired by all three; C8 b0 no-fire ruled in D22) plus the predecessor coherence test.",
+      "examples": [
+        {
+          "turn_id": "task74_0_human",
+          "block": "human",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "Please evaluate the writing complexity level of the following paragraph.",
+          "rationale": "No paragraph is attached; the AI's own reply confirms it. Fired by all three."
+        },
+        {
+          "turn_id": "task101_0_human",
+          "block": "human",
+          "label": 0,
+          "category": "boundary",
+          "span": "remember back within your dream where some sort of entities mentioned divine discernment",
+          "rationale": "A false premise is not malformed input (Step 3); the AI's compliance is factual_error."
+        },
+        {
+          "turn_id": "task81_3_human",
+          "block": "human",
+          "label": 0,
+          "category": "clear_no",
+          "span": "upcoming balance potch",
+          "rationale": "A typo, explicitly excluded."
+        }
+      ]
     },
     "ai_offers_to_elaborate": {
       "definition": "AI explicitly OFFERS to provide more depth, detail, expansion or modification of content it has delivered on this topic, conditional on the user's wish.",
@@ -1559,7 +2071,33 @@
         "calibration": "Fires (all three, live DB): C9 b2, C9 b8, C9 b17, C10 b5, C5 b30 ('what specific aspects... are you most interested in exploring' - offer to go deeper, ruled D21.4). A-only, unreviewed: C9 b11/b20/b23/b26/b29/b32/b38 (identical wording to the agreed cells). UNRESOLVED: C4 b26 - B fires ('the AI is elaborating on what it cannot explain'), A and F do not (doing is not offering)."
       },
       "provenance": "PROVISIONAL - A's (Jun's) standard, adopted 2026-09-09 for round 2 so the signal has a rule. NOT three-way agreed: the conditional-offer line was withdrawn from v0.6 after B's objection on C4 b26 under the unresolved-disagreement policy, and that cell stays unresolved until gold-set adjudication. B keeps B's label there.",
-      "v06_change": "v0.6 addendum (2026-09-09): NEW entry under A's standard (see provenance)."
+      "v06_change": "v0.6 addendum (2026-09-09): NEW entry under A's standard (see provenance).",
+      "examples": [
+        {
+          "turn_id": "task110_2_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "Would you like me to explain any specific part of this setup in more detail?",
+          "rationale": "Conditional offer of depth on content already delivered."
+        },
+        {
+          "turn_id": "task110_17_ai",
+          "block": "ai",
+          "label": 1,
+          "category": "clear_yes",
+          "span": "Would you like me to explain any specific component in more detail?",
+          "rationale": "Closing question of a 'for example, I could dive deeper into:' menu; the menu illustrates nothing, the question is the offer."
+        },
+        {
+          "turn_id": "task81_2_ai",
+          "block": "ai",
+          "label": 0,
+          "category": "boundary",
+          "span": "Would you like me to explain the reasoning behind any specific changes, or would you like to see adjustments to particular monsters",
+          "rationale": "The closing X-or-Y names two actions; the question's one home is ai_offered_options."
+        }
+      ]
     },
     "performative_hedge": {
       "definition": "AI stages uncertainty or non-commitment language that does not correspond to actual uncertainty - boilerplate hedging on well-established claims, or theatrical non-commitment while it goes on serving the content.",
