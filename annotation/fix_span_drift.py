@@ -1,5 +1,13 @@
 """Annotation-result repairs written back to the Label Studio DB.
 
+Mode 14 (--apply-v07-merges) -- carry the rubric v0.7 signal merges into the
+stored annotations of ALL FIVE projects: ai_asked_probing_question ->
+ai_asks_followup, intent_missed and under_delivered -> request_unfulfilled,
+user_expresses_frustration -> user_expresses_dissatisfaction. Renaming can
+put one signal twice on one target, so the mode de-duplicates inside an item
+and on an identical span, and REPORTS same-block/different-span collisions
+instead of guessing at them.
+
 Mode 1 (default) -- repair mouse-selection drift between a region's stored
 `text` and its offsets. Two drift classes, resolved by which side is well
 formed:
@@ -87,6 +95,7 @@ Usage:
     python annotation/fix_span_drift.py --import-priya-missing [--apply] [--db PATH]
     python annotation/fix_span_drift.py --apply-round2-draft [--apply] [--db PATH]
     python annotation/fix_span_drift.py --fix-priya-role-violations [--apply] [--db PATH]
+    python annotation/fix_span_drift.py --apply-v07-merges [--apply] [--db PATH]
 
 Mode 10 (--fix-priya-role-violations) -- remove Priya's 10 confirmed round-2 label
 violations: ai_structured_response fired on code-role blocks (task 759 blocks
@@ -1973,6 +1982,173 @@ def _apply_nway_adjudication(entries, rater_project, conv_map_path, apply_change
           f"{len(touched)} completion(s)")
 
 
+V07_MERGES = {                                    # rubric v0.7 (2026-09-19)
+    "ai_asked_probing_question": "ai_asks_followup",
+    "intent_missed": "request_unfulfilled",
+    "under_delivered": "request_unfulfilled",
+    "user_expresses_frustration": "user_expresses_dissatisfaction",
+}
+
+
+def block_text(dialogue, block):
+    try:
+        return dialogue[int(block)]["text"]
+    except (IndexError, KeyError, TypeError, ValueError):
+        return None
+
+
+def apply_v07_merges(apply_changes):
+    """Mode 14 -- rename the v0.7-merged labels across EVERY project (1-5).
+
+    Three things can go wrong in a rename and each is handled separately:
+
+      (a) one result item carries both members in its own paragraphlabels list
+          -> the mapped list has the target twice; de-duplicated in place,
+          order preserved.
+      (b) two different items on one block carry the two members on the SAME
+          span -> after the rename that is the same signal twice on one target,
+          which the one-label-per-target rule forbids; the later item loses the
+          label (and is dropped if its list empties).
+      (c) two different items on one block carry the two members on DIFFERENT
+          spans -> under A3 these could be two genuine occurrences, or under A6
+          one question given two homes. That is a judgment call, so the mode
+          REPORTS them and changes nothing.
+    """
+    con = sqlite3.connect(db_path())
+    rows = con.execute("""SELECT tc.id, t.project_id, t.id, t.data, tc.result
+                          FROM task_completion tc JOIN task t ON t.id = tc.task_id
+                          WHERE tc.was_cancelled = 0 AND tc.result IS NOT NULL""").fetchall()
+    renamed = defaultdict(int)
+    dedup_item = dedup_span = 0
+    joined_a3, accepted_a3, pre_existing, touched = [], [], [], []
+
+    for cid, pid, tid, data, res_raw in rows:
+        try:
+            result = json.loads(res_raw)
+        except (TypeError, ValueError):
+            continue
+        dirty = False
+        orig = {}
+        try:
+            dialogue = json.loads(data).get("dialogue") or []
+        except (TypeError, ValueError):
+            dialogue = []
+
+        for it in result:                                        # (a) rename + in-item dedup
+            v = it.get("value", {})
+            labs = v.get("paragraphlabels")
+            if not labs:
+                continue
+            orig[id(it)] = list(labs)
+            mapped, seen = [], set()
+            for lab in labs:
+                new = V07_MERGES.get(lab, lab)
+                if new != lab:
+                    renamed[(pid, lab)] += 1
+                    dirty = True
+                if new in seen:
+                    dedup_item += 1
+                    continue
+                seen.add(new)
+                mapped.append(new)
+            if mapped != labs:
+                v["paragraphlabels"] = mapped
+                dirty = True
+
+        by_block = defaultdict(list)                             # (b)/(c) same block, same signal
+        for it in result:
+            v = it.get("value", {})
+            for lab in (v.get("paragraphlabels") or []):
+                by_block[(str(v.get("start")), lab)].append(it)
+        for (block, lab), items in sorted(by_block.items()):
+            if len(items) < 2 or lab not in set(V07_MERGES.values()):
+                continue
+            # Only collisions the RENAME created are this mode's business. If the items
+            # already carried the same label before v0.7, the duplicate predates the merge
+            # and is a separate question (A3 allows two occurrences of one signal on a
+            # block when they are separated by other text).
+            originals = {l for it in items for l in orig.get(id(it), [lab])
+                         if V07_MERGES.get(l, l) == lab}
+            if len(originals) < 2:
+                pre_existing.append((pid, tid, block, lab, len(items)))
+                continue
+            spans = [(it["value"].get("startOffset"), it["value"].get("endOffset")) for it in items]
+            if len(set(spans)) == 1:                             # (b) identical target -> collapse
+                for it in items[1:]:
+                    it["value"]["paragraphlabels"].remove(lab)
+                    dedup_span += 1
+                    dirty = True
+                result[:] = [it for it in result
+                             if it.get("value", {}).get("paragraphlabels") or
+                             it.get("type") != "paragraphlabels"]
+                continue
+            # (c) different spans. Rule A3 decides: consecutive exhibiting sentences are ONE
+            # span, occurrences separated by other text are separate spans. So if the only
+            # thing between the two spans is whitespace and sentence punctuation, they are
+            # one occurrence and the rename has split it; otherwise they are two genuine
+            # occurrences of the merged signal and nothing is wrong.
+            ordered = sorted(items, key=lambda it: it["value"].get("startOffset") or 0)
+            text = block_text(dialogue, block)
+            joined = False
+            if text is not None and len(ordered) == 2:
+                a_end = ordered[0]["value"].get("endOffset")
+                b_start = ordered[1]["value"].get("startOffset")
+                gap = text[a_end:b_start] if a_end is not None and b_start is not None else "x"
+                if gap.strip(" \t\r\n?!.;:,") == "":
+                    v0, v1 = ordered[0]["value"], ordered[1]["value"]
+                    v0["endOffset"] = v1["endOffset"]
+                    v0["text"] = text[v0["startOffset"]:v0["endOffset"]]
+                    v1["paragraphlabels"].remove(lab)
+                    result[:] = [it for it in result
+                                 if it.get("value", {}).get("paragraphlabels") or
+                                 it.get("type") != "paragraphlabels"]
+                    joined_a3.append((pid, tid, block, lab, v0["startOffset"], v0["endOffset"]))
+                    dirty = joined = True
+            if not joined:
+                accepted_a3.append((pid, tid, block, lab, sorted(originals), spans))
+
+        if dirty:
+            touched.append((cid, pid, result))
+
+    print(f"projects scanned: 1-5   completions: {len(rows)}")
+    print("\nlabels renamed")
+    for (pid, lab), n in sorted(renamed.items()):
+        print(f"  project {pid}  {lab:32s} -> {V07_MERGES[lab]:32s} {n:4d}")
+    print(f"\ntotal renamed              : {sum(renamed.values())}")
+    print(f"collapsed inside one item  : {dedup_item}")
+    print(f"collapsed on identical span: {dedup_span}")
+    print(f"completions to rewrite     : {len(touched)}")
+
+    if joined_a3:
+        print(f"\nJOINED under A3 -- the two spans were consecutive sentences, so the merged"
+              f" signal gets one span ({len(joined_a3)}):")
+        for pid, tid, block, lab, a, b in joined_a3:
+            print(f"  project {pid}  task {tid}  block {block}  {lab}  -> {a}-{b}")
+
+    if accepted_a3:
+        print(f"\nACCEPTED under A3 -- two genuine occurrences on one block, separated by other"
+              f" text; left as two spans ({len(accepted_a3)}):")
+        for pid, tid, block, lab, originals, spans in accepted_a3:
+            print(f"  project {pid}  task {tid}  block {block}  {lab}  <- {' + '.join(originals)}")
+            for a, b in spans:
+                print(f"      span {a}-{b}")
+
+    if pre_existing:
+        print(f"\nPRE-EXISTING duplicates, not created by this merge, left untouched"
+              f" ({len(pre_existing)}):")
+        for pid, tid, block, lab, n in pre_existing:
+            print(f"  project {pid}  task {tid}  block {block}  {lab} x{n}")
+
+    if not apply_changes:
+        print("\nDRY RUN -- nothing written. Re-run with --apply.")
+        return
+    for cid, pid, result in touched:
+        con.execute("UPDATE task_completion SET result=?, updated_at=datetime('now') WHERE id=?",
+                    (json.dumps(result, ensure_ascii=False), cid))
+    con.commit()
+    print(f"\nWROTE {len(touched)} completions.")
+
+
 if __name__ == "__main__":
     _apply = "--apply" in sys.argv
     if "--list-wide-spans" in sys.argv:
@@ -1997,5 +2173,7 @@ if __name__ == "__main__":
         apply_round1_adjudication(_apply)
     elif "--apply-priya-adjudication" in sys.argv:
         apply_priya_adjudication(_apply)
+    elif "--apply-v07-merges" in sys.argv:
+        apply_v07_merges(_apply)
     else:
         fix_span_drift(_apply)
