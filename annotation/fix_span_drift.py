@@ -98,6 +98,7 @@ Usage:
     python annotation/fix_span_drift.py --apply-v07-merges [--apply] [--db PATH]
     python annotation/fix_span_drift.py --v07-rescan-screen [--db PATH]
     python annotation/fix_span_drift.py --apply-v07-screen [--apply] [--db PATH]
+    python annotation/fix_span_drift.py --refresh-priya-md [757,758,...] [--apply]
 
 Mode 10 (--fix-priya-role-violations) -- remove Priya's 10 confirmed round-2 label
 violations: ai_structured_response fired on code-role blocks (task 759 blocks
@@ -2579,6 +2580,89 @@ def apply_v07_screen(apply_changes):
 
 
 
+PRIYA_FILES = {757: ("757.md", "R1"), 758: ("annotations_758.md", "R2"),
+               759: ("annotations_759.md", "R3"), 760: ("annotations_760.md", "R4"),
+               761: ("annotations_761.md", "R5"), 762: ("annotations_762.md", "R6"),
+               763: ("annotations_763.md", "R7"), 764: ("annotations_764.md", "R8"),
+               765: ("annotations_765.md", "R9"), 766: ("annotations_766.md", "R10")}
+
+
+def refresh_priya_md(apply_changes, task_ids=None):
+    """Mode 17 -- rewrite Priya's per-conversation .md tables from her CURRENT
+    project-4 data, so her own record matches what the three-rater review left.
+
+    Direction matters and is the opposite of Mode 7. Mode 7 imported her files INTO
+    the database. This writes the database OUT to the files, because the files are her
+    pre-review submission and the database now carries the rulings. Importing the files
+    again would reinstate labels the review removed.
+
+    Read-only against the database. The previous contents of each file stay in git.
+    """
+    con = sqlite3.connect(f"file:{db_path()}?mode=ro", uri=True)
+    out_dir = ANNOT_DIR / "Rubric_agree" / "round_2" / "priya"
+    targets = task_ids or sorted(PRIYA_FILES)
+    for tid in targets:
+        fname, c_index = PRIYA_FILES[tid]
+        row = con.execute("""SELECT t.data, tc.result FROM task_completion tc
+                             JOIN task t ON t.id = tc.task_id
+                             WHERE t.project_id = 4 AND t.id = ?""", (tid,)).fetchone()
+        if not row:
+            print(f"  task {tid}: no completion in project 4, skipped")
+            continue
+        payload, result = json.loads(row[0]), json.loads(row[1])
+        dialogue = payload.get("dialogue") or []
+        turn_of, turn = {}, 0
+        for i, blk in enumerate(dialogue):
+            if blk.get("author") == "human":
+                turn += 1
+            turn_of[i] = max(turn, 1)
+
+        items = []
+        for it in result:
+            v = it.get("value", {})
+            labs = v.get("paragraphlabels") or []
+            if not labs:
+                continue
+            b = int(v.get("start"))
+            raw = v.get("text") or ""
+            if isinstance(raw, list):
+                raw = " ".join(str(x) for x in raw)
+            span = " ".join(str(raw).split())
+            if not span:
+                t = dialogue[b].get("text", "") if b < len(dialogue) else ""
+                span = " ".join(t[v.get("startOffset", 0):v.get("endOffset", 0)].split())
+            for lab in labs:
+                items.append((b, v.get("startOffset") or 0, lab,
+                              dialogue[b].get("author", "?") if b < len(dialogue) else "?",
+                              turn_of.get(b, 1), span))
+        items.sort(key=lambda r: (r[0], r[1]))
+
+        L = [f"# {c_index} (task {tid}) — Priya's labels as they now stand in Round-2-Priya",
+             "",
+             "Regenerated from Label Studio project 4, not from the original submission.",
+             "The three-rater review of September 2026 removed labels by ruling and added",
+             "others, so this table is the reconciled state, not what was first sent. The",
+             "original file is in git history.",
+             "",
+             "| # | Signal | Block | Turn | Span |",
+             "|---|--------|-------|------|------|"]
+        for n, (b, _o, lab, role, trn, span) in enumerate(items, 1):
+            cell = span.replace("|", "\\|")
+            if len(cell) > 300:
+                cell = cell[:300] + "..."
+            L.append(f'| {n} | `{lab}` | {role} | {trn} | "{cell}" |')
+        text = "\n".join(L) + "\n"
+        path = out_dir / fname
+        print(f"  {fname:24s} task {tid} [{c_index}]  {len(items)} labels")
+        if apply_changes:
+            path.write_text(text)
+    if not apply_changes:
+        print("\nDRY RUN -- nothing written. Re-run with --apply.")
+    else:
+        print(f"\nrewrote {len(targets)} files from project 4.")
+
+
+
 if __name__ == "__main__":
     _apply = "--apply" in sys.argv
     if "--list-wide-spans" in sys.argv:
@@ -2609,5 +2693,10 @@ if __name__ == "__main__":
         v07_rescan_screen()
     elif "--apply-v07-screen" in sys.argv:
         apply_v07_screen(_apply)
+    elif "--refresh-priya-md" in sys.argv:
+        _ids = [int(x) for x in sys.argv[sys.argv.index("--refresh-priya-md") + 1].split(",")] \
+            if len(sys.argv) > sys.argv.index("--refresh-priya-md") + 1 \
+            and not sys.argv[sys.argv.index("--refresh-priya-md") + 1].startswith("--") else None
+        refresh_priya_md(_apply, _ids)
     else:
         fix_span_drift(_apply)
