@@ -729,3 +729,27 @@ negative examples. Current state of `sharechat_rubric.json` (verified read-only)
 several of the signals that drove round-2 disagreement — `ai_provides_step_by_step`,
 `user_multi_request`, `user_corrects_ai`, `user_implicit_correction`,
 `ai_provides_example`, `ethical_tension`, `user_expresses_dissatisfaction`.
+
+### 2026-09-19 — v0.7 cut; the eight merge collisions ruled under A3
+
+`sharechat_rubric.json` is now `sharechat-v0.7`, 49 → 46 signals, with
+`rubric_edits_v07.md` as its one-page edit summary. All four name sources agree on 46
+for the first time. Six entries other than the merged ones had decision steps or block
+notes routing to a retired name; all rewritten.
+
+**The A3 ruling.** Renaming the merged labels put one signal twice on a block in 8 cases,
+all of them the followup/probing pair. Rule A3 decides them without a judgment call:
+consecutive exhibiting sentences are one span, occurrences separated by other text are
+separate spans.
+
+- **Joined into one span (2).** Task 28 block 3, where the gap between the two questions
+  is "? ", and task 49 block 18, where it is a single space. One occurrence that the two
+  old signals had split.
+- **Left as two spans (6).** Tasks 754, 744 and 747, where 94 to 212 characters of other
+  text separate the two questions. Two genuine occurrences of one signal, which A3 allows.
+
+Six further same-block duplicates predate the merge and were left untouched; they are a
+separate question from anything v0.7 causes.
+
+**Not yet applied to the database.** The 330 renames dry-run clean but the write was
+blocked by the sandbox, so the stored annotations are still on v0.6 names.
