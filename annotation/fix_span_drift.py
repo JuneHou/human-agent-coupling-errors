@@ -96,6 +96,7 @@ Usage:
     python annotation/fix_span_drift.py --apply-round2-draft [--apply] [--db PATH]
     python annotation/fix_span_drift.py --fix-priya-role-violations [--apply] [--db PATH]
     python annotation/fix_span_drift.py --apply-v07-merges [--apply] [--db PATH]
+    python annotation/fix_span_drift.py --v07-rescan-screen [--db PATH]
 
 Mode 10 (--fix-priya-role-violations) -- remove Priya's 10 confirmed round-2 label
 violations: ai_structured_response fired on code-role blocks (task 759 blocks
@@ -2149,6 +2150,152 @@ def apply_v07_merges(apply_changes):
     print(f"\nWROTE {len(touched)} completions.")
 
 
+# --- Mode 15: v0.7 re-scan screen -------------------------------------------------
+# The three round-2 gates that can be screened mechanically. Word lists are copied
+# from the rubric's own step text, not paraphrased.
+FC_MARKERS = ["definitely", "zero", "never", "all", "any", "whatever", "always",
+              "completely", "indeed", "actually"]
+# The rubric enumerates its markers but names the CLASS: "an absolute or extreme marker
+# word". Treating the enumeration as closed over-flags, so a second tier catches synonyms
+# of the same class; those rows are reported as likely keeps, not as candidates to drop.
+FC_MARKERS_TIER2 = ["exact", "exactly", "guaranteed", "certainly", "certain", "clearly",
+                    "obviously", "undoubtedly", "proven", "verified", "perfect", "perfectly",
+                    "fully", "entirely", "impossible", "none", "every", "must", "optimal",
+                    "identical", "precisely", "absolutely", "undeniably"]
+FC_VOUCH = ["i've fixed", "i have fixed", "i've corrected", "i have corrected",
+            "i've updated", "i have updated", "i've added", "i've resolved",
+            "i've identified", "fixed the", "corrected the", "rectified", "resolved the",
+            "i've implemented", "implemented the"]
+ADAPT_PROSPECTIVE = ["i need to", "i'll ", "i will ", "let me ", "the user wants me to",
+                     "i should ", "i'm going to", "i am going to"]
+DISSAT_MARKERS = ["wrong", "not satisfied", "unsatisfied", "bias", "biased", "racist",
+                  "sexist", "elitist", "classist", "still", "don't believe",
+                  "do not believe", "doesn't work", "does not work", "useless",
+                  "terrible", "awful", "stupid", "nonsense", "no!", "fuck", "shit",
+                  "damn", "hell", "!!"]
+
+
+def _has(text, words):
+    low = text.lower()
+    return sorted({w.strip() for w in words if re.search(r"(?<![a-z])" + re.escape(w.strip()), low)})
+
+
+def v07_rescan_screen(_unused=False):
+    """Mode 15 (read-only) -- candidate list for the three round-2 gates that can be
+    screened by the rule's own words, over Jun's 148 minus the ten round-2 conversations
+    (those were decided in the walk). Writes annotation/v07_rescan_screen.md. Decides
+    nothing: every row is a candidate for Jun to rule on, in the Decision 16/17 pattern.
+    """
+    con = sqlite3.connect(f"file:{db_path()}?mode=ro", uri=True)
+    done = set()
+    r2 = ANNOT_DIR / "Rubric_agree" / "round_2" / "agreement_set_round2.csv"
+    if r2.exists():
+        for line in r2.read_text().splitlines():
+            if line.startswith("R") and "," in line:
+                done.add(line.split(",", 1)[1].strip())
+
+    rows = con.execute("""SELECT t.id, t.data, tc.result FROM task_completion tc
+                          JOIN task t ON t.id = tc.task_id
+                          WHERE t.project_id = 1 AND tc.was_cancelled = 0""").fetchall()
+    out = {"false_confidence": [], "adaptation": [], "user_expresses_dissatisfaction": []}
+    scanned = 0
+    for tid, data, res_raw in rows:
+        payload = json.loads(data)
+        if payload.get("conv_id") in done:
+            continue
+        scanned += 1
+        dialogue = payload.get("dialogue") or []
+        for it in json.loads(res_raw):
+            v = it.get("value", {})
+            labs = v.get("paragraphlabels") or []
+            block = str(v.get("start"))
+            raw = v.get("text") or ""
+            if isinstance(raw, list):
+                raw = " ".join(str(x) for x in raw)
+            span = str(raw).strip()
+            if not span:
+                t = block_text(dialogue, block)
+                span = (t or "")[v.get("startOffset", 0):v.get("endOffset", 0)].strip()
+            if not span:
+                continue
+            if "false_confidence" in labs:
+                if not _has(span, FC_MARKERS):
+                    vouch = _has(span, FC_VOUCH)
+                    tier2 = _has(span, FC_MARKERS_TIER2)
+                    out["false_confidence"].append((tid, block, span, vouch, tier2))
+            if "adaptation" in labs:
+                pro = _has(span, ADAPT_PROSPECTIVE)
+                if pro:
+                    out["adaptation"].append((tid, block, span, pro))
+            if "user_expresses_dissatisfaction" in labs:
+                if not _has(span, DISSAT_MARKERS):
+                    out["user_expresses_dissatisfaction"].append((tid, block, span, []))
+
+    def clip(t, n=220):
+        t = " ".join(t.split())
+        return t if len(t) <= n else t[:n] + " ..."
+
+    L = ["# v0.7 re-scan screen — mechanical candidates for the three round-2 gates", "",
+         f"Read-only pass over Jun's project-1 annotations, {scanned} conversations "
+         f"(the 148 less the {len(done)} round-2 conversations, which were decided in the walk).",
+         "",
+         "**This decides nothing.** Every row is a candidate: the rule's own words do not "
+         "match the span, so the label may have been made under the pre-round-2 reading. "
+         "Jun rules; nothing is written to the database from this file.",
+         "",
+         "The other four round-2 changes are not screenable this way. `ethical_tension` "
+         "(the reversal) needs unlabeled human blocks found, not existing labels tested, "
+         "and `ai_provides_caveats`, `user_multi_request` and `ai_cites_source` turn on "
+         "judgments no word list carries. Those need the agent pass.", ""]
+
+    L += ["---", "", "## 1. `false_confidence` — no absolute or extreme marker word in the span", "",
+          "Round-2 gate: Step 4 fires on a novel declarative claim **only** when a marker word is "
+          "present — definitely / zero / never / all / any / whatever / always / completely / "
+          "indeed / actually. Tone alone does not clear it.", "",
+          "Two kinds of row here are probably **keeps**, not drops. The gate does not apply to "
+          "Step 5's deliverable-vouching path, so a *vouch* row stands. And the rubric names a "
+          "class — \"an absolute or extreme marker word\" — of which its list is an enumeration, "
+          "so a *near-marker* row carries a synonym of the same class (exact, verified, optimal, "
+          "guaranteed) and the gate is arguably met. Only the bolded rows are clean candidates.", "",
+          f"**{len(out['false_confidence'])} spans.**", "",
+          "| task | block | span | note |", "|---|---|---|---|"]
+    for tid, block, span, vouch, tier2 in out["false_confidence"]:
+        if vouch:
+            note = "Step 5 vouch (%s) — gate does not apply, likely keep" % ", ".join(vouch)
+        elif tier2:
+            note = "near-marker (%s) — same class, likely keep" % ", ".join(tier2)
+        else:
+            note = "**candidate to drop**"
+        L.append(f"| {tid} | {block} | {clip(span)} | {note} |")
+
+    L += ["", "---", "", "## 2. `adaptation` — the span is prospective, not a completed reorientation", "",
+          "Round-2 gate: Step 1 requires a demonstrated, completed change. "
+          "\"I need to / I'll / Let me\" announce an intention.", "",
+          f"**{len(out['adaptation'])} spans.**", "",
+          "| task | block | span | phrase |", "|---|---|---|---|"]
+    for tid, block, span, pro in out["adaptation"]:
+        L.append(f"| {tid} | {block} | {clip(span)} | {', '.join(pro)} |")
+
+    L += ["", "---", "", "## 3. `user_expresses_dissatisfaction` — no evaluative or emotional marker found", "",
+          "Round-2 gate: Step 2 requires an actual negative-evaluation word or emotional "
+          "expression; a redirect with no marker does not fire. **Weakest of the three screens** — "
+          "the rubric's marker set is open-ended (\"or comparable emotionally loaded language\"), "
+          "so a row here means the word list missed it, not that the label is wrong. Since v0.7 "
+          "merges frustration in, profanity and shouting now satisfy the same gate.", "",
+          f"**{len(out['user_expresses_dissatisfaction'])} spans.**", "",
+          "| task | block | span |", "|---|---|---|"]
+    for tid, block, span, _ in out["user_expresses_dissatisfaction"]:
+        L.append(f"| {tid} | {block} | {clip(span)} |")
+
+    path = ANNOT_DIR / "v07_rescan_screen.md"
+    path.write_text("\n".join(L) + "\n")
+    print(f"conversations scanned: {scanned}")
+    for k, v in out.items():
+        print(f"  {k:32s} {len(v):3d} candidates")
+    print(f"\nwrote {path}")
+
+
+
 if __name__ == "__main__":
     _apply = "--apply" in sys.argv
     if "--list-wide-spans" in sys.argv:
@@ -2175,5 +2322,7 @@ if __name__ == "__main__":
         apply_priya_adjudication(_apply)
     elif "--apply-v07-merges" in sys.argv:
         apply_v07_merges(_apply)
+    elif "--v07-rescan-screen" in sys.argv:
+        v07_rescan_screen()
     else:
         fix_span_drift(_apply)
