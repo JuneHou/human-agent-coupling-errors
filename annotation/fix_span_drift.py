@@ -2175,9 +2175,55 @@ DISSAT_MARKERS = ["wrong", "not satisfied", "unsatisfied", "bias", "biased", "ra
                   "damn", "hell", "!!"]
 
 
+# Rows where the gate's words do not settle it, with the reason. Everything NOT listed
+# here is settled by the rule as written; these are the ones that need Jun.
+V07_NEEDS_RULING = {
+    ("false_confidence", 88, "4"):
+        "Vouches for its own completed analysis ('I've found significant value disparities'). "
+        "The marker gate covers Step 4's novel-assertion route and explicitly does NOT cover "
+        "Step 5's deliverable-vouching route. Which one fired here decides it.",
+    ("false_confidence", 88, "6"):
+        "A forward plan carrying an unverifiable performance claim ('high winning potential'). "
+        "Neither a novel assertion nor a completion claim, so neither route is a clean fit.",
+    ("false_confidence", 108, "2"):
+        "Claims the implementation is 'based on the GitHub repository you mentioned' - a source "
+        "it may never have read. The question is whether a false sourcing claim is Step 4's "
+        "route at all, which the marker gate then governs, or something else.",
+    ("false_confidence", 60, "2"):
+        "The span is a field value inside an ANALYSIS block (tool output), not AI prose. The "
+        "standing ruling on export artifacts is that they are not the model's own claim.",
+    ("false_confidence", 110, "35"):
+        "'You're right - I'm just making up fantasy concepts now' is an ADMISSION of fabrication, "
+        "the opposite of a confident claim. If it drops it should drop for that reason, not for "
+        "want of a marker word.",
+    ("adaptation", 44, "4"):
+        "The matched 'I should' sits inside a restatement of the user preference, not a plan - a "
+        "word-match artifact. The span is a self-critique, which fails Step 1 anyway for want of "
+        "a completed change, so it likely drops for a different reason.",
+    ("adaptation", 101, "122"):
+        "The matched 'I should' is inside a rhetorical question. The span runs past the quoted "
+        "fragment and may contain a completed reorientation.",
+    ("user_expresses_dissatisfaction", 35, "6"):
+        "'this is a little disturbing and frightening' IS an emotional expression, so Step 2's "
+        "gate is met and the word list simply missed it. Proposed: keep.",
+    ("user_expresses_dissatisfaction", 115, "4"):
+        "'please don't reflect my experience back to me like a therapist' is a redirect carrying "
+        "an implied criticism, with no evaluative word. Exactly the shape Step 2 was narrowed to "
+        "exclude, but the criticism is real.",
+}
+
+
 def _has(text, words):
+    """Whole-word / whole-phrase search. A trailing space in a phrase is significant --
+    "i should " must not match "I shouldn\'t" -- so the boundary is applied on both ends
+    rather than stripped away."""
     low = text.lower()
-    return sorted({w.strip() for w in words if re.search(r"(?<![a-z])" + re.escape(w.strip()), low)})
+    out = set()
+    for w in words:
+        pat = r"(?<![a-z])" + re.escape(w.rstrip()) + (r"(?![a-z\'])" if w.endswith(" ") else r"(?![a-z])")
+        if re.search(pat, low):
+            out.add(w.strip())
+    return sorted(out)
 
 
 def v07_rescan_screen(_unused=False):
@@ -2231,6 +2277,10 @@ def v07_rescan_screen(_unused=False):
                 if not _has(span, DISSAT_MARKERS):
                     out["user_expresses_dissatisfaction"].append((tid, block, span, []))
 
+    n_total = sum(len(v) for v in out.values())
+    n_ruling = sum(1 for (sig, tid, block) in V07_NEEDS_RULING
+                   if any(r[0] == tid and r[1] == block for r in out.get(sig, [])))
+
     def clip(t, n=220):
         t = " ".join(t.split())
         return t if len(t) <= n else t[:n] + " ..."
@@ -2239,9 +2289,13 @@ def v07_rescan_screen(_unused=False):
          f"Read-only pass over Jun's project-1 annotations, {scanned} conversations "
          f"(the 148 less the {len(done)} round-2 conversations, which were decided in the walk).",
          "",
-         "**This decides nothing.** Every row is a candidate: the rule's own words do not "
-         "match the span, so the label may have been made under the pre-round-2 reading. "
-         "Jun rules; nothing is written to the database from this file.",
+         "**Nothing here is applied.** A row means the rule's own words do not match the span, "
+         "so the label may have been made under the pre-round-2 reading. Nothing is written to "
+         "the database from this file.",
+         "",
+         f"**{n_total - n_ruling} of the {n_total} rows are settled by the gate as written** and "
+         f"need no discussion. **{n_ruling} do not**, and are marked NEEDS A RULING in the tables "
+         "with the reason listed at the end.",
          "",
          "The other four round-2 changes are not screenable this way. `ethical_tension` "
          "(the reversal) needs unlabeled human blocks found, not existing labels tested, "
@@ -2260,7 +2314,9 @@ def v07_rescan_screen(_unused=False):
           f"**{len(out['false_confidence'])} spans.**", "",
           "| task | block | span | note |", "|---|---|---|---|"]
     for tid, block, span, vouch, tier2 in out["false_confidence"]:
-        if vouch:
+        if ("false_confidence", tid, block) in V07_NEEDS_RULING:
+            note = "**NEEDS A RULING**"
+        elif vouch:
             note = "Step 5 vouch (%s) — gate does not apply, likely keep" % ", ".join(vouch)
         elif tier2:
             note = "near-marker (%s) — same class, likely keep" % ", ".join(tier2)
@@ -2274,7 +2330,8 @@ def v07_rescan_screen(_unused=False):
           f"**{len(out['adaptation'])} spans.**", "",
           "| task | block | span | phrase |", "|---|---|---|---|"]
     for tid, block, span, pro in out["adaptation"]:
-        L.append(f"| {tid} | {block} | {clip(span)} | {', '.join(pro)} |")
+        mark = " — **NEEDS A RULING**" if ("adaptation", tid, block) in V07_NEEDS_RULING else ""
+        L.append(f"| {tid} | {block} | {clip(span)} | {', '.join(pro)}{mark} |")
 
     L += ["", "---", "", "## 3. `user_expresses_dissatisfaction` — no evaluative or emotional marker found", "",
           "Round-2 gate: Step 2 requires an actual negative-evaluation word or emotional "
@@ -2285,7 +2342,13 @@ def v07_rescan_screen(_unused=False):
           f"**{len(out['user_expresses_dissatisfaction'])} spans.**", "",
           "| task | block | span |", "|---|---|---|"]
     for tid, block, span, _ in out["user_expresses_dissatisfaction"]:
-        L.append(f"| {tid} | {block} | {clip(span)} |")
+        mark = " — **NEEDS A RULING**" if ("user_expresses_dissatisfaction", tid, block) in V07_NEEDS_RULING else ""
+        L.append(f"| {tid} | {block} | {clip(span)}{mark} |")
+
+    L += ["", "---", "", f"## The {n_ruling} rows that need a ruling", "",
+          "Everything not listed here is settled by the rule as written.", ""]
+    for (sig, tid, block), why in V07_NEEDS_RULING.items():
+        L.append(f"- **`{sig}` task {tid} block {block}.** {why}")
 
     path = ANNOT_DIR / "v07_rescan_screen.md"
     path.write_text("\n".join(L) + "\n")
