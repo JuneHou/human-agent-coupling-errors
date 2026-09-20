@@ -97,6 +97,7 @@ Usage:
     python annotation/fix_span_drift.py --fix-priya-role-violations [--apply] [--db PATH]
     python annotation/fix_span_drift.py --apply-v07-merges [--apply] [--db PATH]
     python annotation/fix_span_drift.py --v07-rescan-screen [--db PATH]
+    python annotation/fix_span_drift.py --apply-v07-screen [--apply] [--db PATH]
 
 Mode 10 (--fix-priya-role-violations) -- remove Priya's 10 confirmed round-2 label
 violations: ai_structured_response fired on code-role blocks (task 759 blocks
@@ -2171,8 +2172,18 @@ ADAPT_PROSPECTIVE = ["i need to", "i'll ", "i will ", "let me ", "the user wants
 DISSAT_MARKERS = ["wrong", "not satisfied", "unsatisfied", "bias", "biased", "racist",
                   "sexist", "elitist", "classist", "still", "don't believe",
                   "do not believe", "doesn't work", "does not work", "useless",
-                  "terrible", "awful", "stupid", "nonsense", "no!", "fuck", "shit",
-                  "damn", "hell", "!!"]
+                  "terrible", "awful", "stupid", "nonsense"]
+# Since v0.7 merges frustration in, Step 2's gate is also met by profanity, shouting caps
+# and exclamation-heavy anger. Profanity must match as a STEM -- whole-word matching misses
+# "FUCKING" and "BULLSHIT", which are the rubric's own C4 calibration blocks.
+DISSAT_STEMS = ["fuck", "shit", "damn", "crap", "idiot", "moron", "pathetic", "ridiculous"]
+SHOUT = re.compile(r"[A-Z]{4,}|\?{3,}|!{2,}")
+
+
+def _dissat_marker(span):
+    return bool(_has(span, DISSAT_MARKERS)
+                or any(w in span.lower() for w in DISSAT_STEMS)
+                or SHOUT.search(span))
 
 
 # Rows where the gate's words do not settle it, with the reason. Everything NOT listed
@@ -2327,7 +2338,7 @@ def v07_rescan_screen(_unused=False):
                 if pro:
                     out["adaptation"].append((tid, block, span, pro))
             if "user_expresses_dissatisfaction" in labs:
-                if not _has(span, DISSAT_MARKERS):
+                if not _dissat_marker(span):
                     out["user_expresses_dissatisfaction"].append((tid, block, span, []))
 
     n_total = sum(len(v) for v in out.values())
@@ -2422,6 +2433,152 @@ def v07_rescan_screen(_unused=False):
 
 
 
+# Explicit actions on the screened rows: Jun's nine rulings, plus the two structural
+# fixes they turned up. Everything NOT listed here is decided by the gate itself
+# (drop when the rule's words do not match, keep when a vouch or near-marker applies).
+V07_SCREEN_ACTIONS = {
+    ("false_confidence", 88, "4"): ("drop", None),
+    ("false_confidence", 88, "6"): ("drop", None),
+    ("false_confidence", 108, "2"): ("keep", None),
+    ("false_confidence", 60, "2"): ("drop", None),
+    ("false_confidence", 110, "35"): ("relabel", "ai_validates_user"),
+    ("adaptation", 44, "4"): ("drop", None),
+    ("adaptation", 101, "122"): ("keep", None),
+    ("user_expresses_dissatisfaction", 35, "6"): ("keep", None),
+    ("user_expresses_dissatisfaction", 115, "4"): ("relabel", "user_implicit_correction"),
+}
+# (signal, task, block, old_start, old_end) -> (new_start, new_end)
+V07_SPAN_FIXES = {("ai_validates_user", 101, "122", 100, 190): (53, 77)}
+# (signal, task, block) -> (start, end)
+V07_ADDITIONS = {("user_implicit_correction", 110, "33"): (0, 18)}
+
+
+def apply_v07_screen(apply_changes):
+    """Mode 16 -- apply the v0.7 re-scan screen to project 1.
+
+    Three sources of action, kept apart in the report so each is auditable:
+      RULED     -- the nine rows Jun decided (drop / keep / relabel)
+      BY GATE   -- rows the rule's own words settle: a candidate with no marker,
+                   no vouch and no near-marker drops; the rest stand
+      STRUCTURAL -- one misplaced span and one label the rubric's text asserts but
+                   the data lacks, both found while ruling the nine
+    """
+    con = sqlite3.connect(db_path())
+    done = set()
+    r2 = ANNOT_DIR / "Rubric_agree" / "round_2" / "agreement_set_round2.csv"
+    for line in r2.read_text().splitlines():
+        if line.startswith("R") and "," in line:
+            done.add(line.split(",", 1)[1].strip())
+
+    rows = con.execute("""SELECT tc.id, t.id, t.data, tc.result FROM task_completion tc
+                          JOIN task t ON t.id = tc.task_id
+                          WHERE t.project_id = 1 AND tc.was_cancelled = 0""").fetchall()
+    ruled, by_gate, structural, touched = [], [], [], []
+
+    for cid, tid, data, res_raw in rows:
+        payload = json.loads(data)
+        dialogue = payload.get("dialogue") or []
+        in_screen = payload.get("conv_id") not in done
+        result = json.loads(res_raw)
+        dirty = False
+
+        for it in list(result):
+            v = it.get("value", {})
+            labs = v.get("paragraphlabels") or []
+            block = str(v.get("start"))
+            a, b = v.get("startOffset"), v.get("endOffset")
+
+            fix = V07_SPAN_FIXES.get((labs[0] if len(labs) == 1 else None, tid, block, a, b))
+            if fix:
+                v["startOffset"], v["endOffset"] = fix
+                t = block_text(dialogue, block)
+                if t is not None:
+                    v["text"] = t[fix[0]:fix[1]]
+                structural.append(("span fix", labs[0], tid, block, f"{a}-{b} -> {fix[0]}-{fix[1]}"))
+                dirty = True
+                continue
+
+            if not in_screen:
+                continue
+            raw = v.get("text") or ""
+            if isinstance(raw, list):
+                raw = " ".join(str(x) for x in raw)
+            span = str(raw).strip()
+            if not span:
+                t = block_text(dialogue, block)
+                span = (t or "")[a or 0:b or 0].strip()
+            if not span:
+                continue
+
+            for sig in list(labs):
+                if sig not in ("false_confidence", "adaptation", "user_expresses_dissatisfaction"):
+                    continue
+                if sig == "false_confidence":
+                    if _has(span, FC_MARKERS):
+                        continue
+                    settled_keep = bool(_has(span, FC_VOUCH) or _has(span, FC_MARKERS_TIER2))
+                elif sig == "adaptation":
+                    if not _has(span, ADAPT_PROSPECTIVE):
+                        continue
+                    settled_keep = False
+                else:
+                    if _dissat_marker(span):
+                        continue
+                    settled_keep = False
+
+                act, target = V07_SCREEN_ACTIONS.get((sig, tid, block), (None, None))
+                source = "RULED" if act else "BY GATE"
+                if act is None:
+                    act = "keep" if settled_keep else "drop"
+                if act == "keep":
+                    (ruled if source == "RULED" else by_gate).append(("keep", sig, tid, block, span[:70]))
+                    continue
+                if act == "relabel":
+                    labs[labs.index(sig)] = target
+                    ruled.append((f"relabel -> {target}", sig, tid, block, span[:70]))
+                else:
+                    labs.remove(sig)
+                    (ruled if source == "RULED" else by_gate).append(("drop", sig, tid, block, span[:70]))
+                dirty = True
+
+        for (sig, tid_a, block_a), (a0, b0) in V07_ADDITIONS.items():
+            if tid_a != tid:
+                continue
+            if any(sig in (i.get("value", {}).get("paragraphlabels") or [])
+                   and str(i["value"].get("start")) == block_a for i in result):
+                continue
+            t = block_text(dialogue, block_a)
+            result.append({
+                "value": {"start": block_a, "end": block_a, "startOffset": a0, "endOffset": b0,
+                          "text": (t or "")[a0:b0], "paragraphlabels": [sig]},
+                "id": _new_id(1, payload.get("conv_id"), block_a, sig),
+                "from_name": "signals", "to_name": "dialogue",
+                "type": "paragraphlabels", "origin": "manual"})
+            structural.append(("add", sig, tid, block_a, (t or "")[a0:b0][:70]))
+            dirty = True
+
+        if dirty:
+            result = [i for i in result
+                      if i.get("value", {}).get("paragraphlabels")
+                      or i.get("type") != "paragraphlabels"]
+            touched.append((cid, result))
+
+    for title, group in (("RULED by Jun", ruled), ("BY GATE", by_gate), ("STRUCTURAL", structural)):
+        print(f"\n{title} ({len(group)}):")
+        for act, sig, tid, block, span in sorted(group, key=lambda r: (r[1], r[2])):
+            print(f"  {act:26s} {sig:32s} task {tid:>3} b{block:<4} {span}")
+    print(f"\ncompletions to rewrite: {len(touched)}")
+    if not apply_changes:
+        print("\nDRY RUN -- nothing written. Re-run with --apply.")
+        return
+    for cid, result in touched:
+        con.execute("UPDATE task_completion SET result=?, updated_at=datetime('now') WHERE id=?",
+                    (json.dumps(result, ensure_ascii=False), cid))
+    con.commit()
+    print(f"\nWROTE {len(touched)} completions.")
+
+
+
 if __name__ == "__main__":
     _apply = "--apply" in sys.argv
     if "--list-wide-spans" in sys.argv:
@@ -2450,5 +2607,7 @@ if __name__ == "__main__":
         apply_v07_merges(_apply)
     elif "--v07-rescan-screen" in sys.argv:
         v07_rescan_screen()
+    elif "--apply-v07-screen" in sys.argv:
+        apply_v07_screen(_apply)
     else:
         fix_span_drift(_apply)
