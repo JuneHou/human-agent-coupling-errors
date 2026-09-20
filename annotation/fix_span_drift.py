@@ -99,6 +99,7 @@ Usage:
     python annotation/fix_span_drift.py --v07-rescan-screen [--db PATH]
     python annotation/fix_span_drift.py --apply-v07-screen [--apply] [--db PATH]
     python annotation/fix_span_drift.py --refresh-priya-md [757,758,...] [--apply]
+    python annotation/fix_span_drift.py --fix-task-counters [--apply] [--db PATH]
 
 Mode 10 (--fix-priya-role-violations) -- remove Priya's 10 confirmed round-2 label
 violations: ai_structured_response fired on code-role blocks (task 759 blocks
@@ -2663,6 +2664,45 @@ def refresh_priya_md(apply_changes, task_ids=None):
 
 
 
+def fix_task_counters(apply_changes):
+    """Mode 18 -- repair Label Studio's cached per-task counters.
+
+    A completion written by direct INSERT (mode 7, mode 13) does not update
+    task.total_annotations or task.is_labeled, which the ORM normally maintains.
+    The annotation is in the database and every script that reads
+    task_completion sees it, but the Label Studio UI reads the cached counters,
+    so the task renders as unannotated and the labels are invisible to the
+    annotator. Recomputes both fields from task_completion for every project.
+    """
+    con = sqlite3.connect(db_path())
+    rows = con.execute("""SELECT t.id, t.project_id, t.total_annotations, t.cancelled_annotations,
+                                 t.is_labeled,
+                                 (SELECT COUNT(*) FROM task_completion c
+                                  WHERE c.task_id = t.id AND c.was_cancelled = 0),
+                                 (SELECT COUNT(*) FROM task_completion c
+                                  WHERE c.task_id = t.id AND c.was_cancelled = 1)
+                          FROM task t ORDER BY t.project_id, t.id""").fetchall()
+    fixes = []
+    for tid, pid, tot, canc, labeled, real, real_canc in rows:
+        want_labeled = 1 if real > 0 else 0
+        if tot != real or canc != real_canc or labeled != want_labeled:
+            fixes.append((tid, pid, tot, real, canc, real_canc, labeled, want_labeled))
+    print(f"tasks scanned: {len(rows)}   needing repair: {len(fixes)}")
+    for tid, pid, tot, real, canc, real_canc, labeled, want in fixes:
+        print(f"  project {pid} task {tid}: total_annotations {tot}->{real} "
+              f"cancelled {canc}->{real_canc}  is_labeled {labeled}->{want}")
+    if not apply_changes:
+        print("\nDRY RUN -- nothing written. Re-run with --apply.")
+        return
+    for tid, pid, tot, real, canc, real_canc, labeled, want in fixes:
+        con.execute("""UPDATE task SET total_annotations=?, cancelled_annotations=?,
+                                       is_labeled=? WHERE id=?""",
+                    (real, real_canc, want, tid))
+    con.commit()
+    print(f"\nWROTE {len(fixes)} task rows.")
+
+
+
 if __name__ == "__main__":
     _apply = "--apply" in sys.argv
     if "--list-wide-spans" in sys.argv:
@@ -2693,6 +2733,8 @@ if __name__ == "__main__":
         v07_rescan_screen()
     elif "--apply-v07-screen" in sys.argv:
         apply_v07_screen(_apply)
+    elif "--fix-task-counters" in sys.argv:
+        fix_task_counters(_apply)
     elif "--refresh-priya-md" in sys.argv:
         _ids = [int(x) for x in sys.argv[sys.argv.index("--refresh-priya-md") + 1].split(",")] \
             if len(sys.argv) > sys.argv.index("--refresh-priya-md") + 1 \
