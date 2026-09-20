@@ -1,0 +1,13 @@
+# round-3 blind agreement set; drawn from the 128 project-1 conversations A annotated, excluding the round-1 10 and the round-2 10
+# seed=20260919 size=10 strategy=coverage rubric=sharechat-v0.7
+c_index,conv_id
+R3-1,https://claude.ai/share/00c03d19-b03c-487a-b3b3-717a9c7440ae
+R3-2,https://claude.ai/share/00cb35e9-5357-40f2-8578-13c92b8f638f
+R3-3,https://claude.ai/share/0270730e-caa8-4308-b088-1f6016a68aee
+R3-4,https://claude.ai/share/02cb40ad-19d1-46a4-ab97-cf1d5b61c90a
+R3-5,https://claude.ai/share/04588cae-dd13-40fe-b81f-630b4915babc
+R3-6,https://claude.ai/share/09580f15-2dad-473c-b25c-9f0b6b33ac06
+R3-7,https://claude.ai/share/0dc78145-6151-4980-91a1-0db1cbc59cad
+R3-8,https://claude.ai/share/221e193b-463c-4a45-b655-e344f3793fe0
+R3-9,https://claude.ai/share/284aa938-55a6-441f-aef2-b5d296715c62
+R3-10,https://claude.ai/share/289b1ee6-5a43-48c2-8b1c-d5b53058e126

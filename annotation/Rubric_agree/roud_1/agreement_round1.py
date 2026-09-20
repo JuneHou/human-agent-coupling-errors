@@ -293,17 +293,26 @@ def disagreement_rows(signals, cells, dialogues, presence, spans,
 
 
 def draw_round2(db_path, seed, size=10, min_blocks=0, strategy="random",
-                write=True):
-    """Draw the round-2 blind set from the 148 conversations A has annotated,
-    excluding the round-1 agreement 10, and report the statistics Jun reviews
+                write=True, round_no=2):
+    """Draw a blind agreement set from the 148 conversations A has annotated,
+    excluding every earlier round's set, and report the statistics Jun reviews
     before any Label Studio setup: block structure per conversation and the
-    signal coverage implied by A's existing v0.5 labels.
+    signal coverage implied by A's existing labels.
 
-    Read-only. Deterministic for a given seed (the seed is recorded in the
-    output file header, so a redraw is auditable).
+    Read-only. Deterministic for a given seed AND a given state of A's labels --
+    the greedy coverage strategy reads those labels, so a set drawn under an
+    earlier rubric is not exactly reproducible once the labels have moved. The
+    seed and rubric version go in the output header so a redraw is auditable.
     """
     conv_to_c, _ = load_conv_map()
-    round1 = set(conv_to_c)
+    exclude = set(conv_to_c)
+    excluded_from = ["the round-1 10"]
+    if round_no >= 3:
+        for line in ROUND2_CONV_MAP.read_text().splitlines():
+            if line.startswith("R") and "," in line:
+                exclude.add(line.split(",", 1)[1].strip())
+        excluded_from.append("the round-2 10")
+    round1 = exclude
 
     con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
     rows = con.execute(
@@ -363,10 +372,10 @@ def draw_round2(db_path, seed, size=10, min_blocks=0, strategy="random",
         return roles
 
     r1_present = [c for c in round1 if c in pool]
-    print(f"ROUND-2 DRAW  seed={seed}  size={size}  strategy={strategy}  "
+    print(f"ROUND-{round_no} DRAW  seed={seed}  size={size}  strategy={strategy}  "
           f"min_blocks={min_blocks}")
     print(f"pool: {len(candidates)} eligible conversations "
-          f"(A-annotated, not in the round-1 {len(round1)}"
+          f"(A-annotated, excluding {' and '.join(excluded_from)} = {len(round1)}"
           f"{f', >= {min_blocks} blocks' if min_blocks else ''})\n")
 
     print("drawn conversations")
@@ -383,7 +392,7 @@ def draw_round2(db_path, seed, size=10, min_blocks=0, strategy="random",
               f"{len(rec['signals'] & signals):>8}")
 
     drawn_roles, r1_roles = role_counts(drawn), role_counts(r1_present)
-    print(f"\n{'':<22}{'round-2 draw':>14}{'round-1 set':>14}{'138 pool':>12}")
+    print(f"\n{'':<22}{f'round-{round_no} draw':>14}{'earlier sets':>14}{'pool':>12}")
     print(f"  {'conversations':<20}{len(drawn):>14}{len(r1_present):>14}"
           f"{len(candidates):>12}")
     print(f"  {'blocks':<20}{sum(drawn_roles.values()):>14}"
@@ -400,12 +409,12 @@ def draw_round2(db_path, seed, size=10, min_blocks=0, strategy="random",
                                   coverage(candidates))
     print(f"\nsignal coverage (signals A fired at least once; universe "
           f"{len(signals)} after the v0.6 drop)")
-    print(f"  {'in the round-2 draw':<28}{len(cov_draw):>4}")
-    print(f"  {'in the round-1 set':<28}{len(cov_r1):>4}")
-    print(f"  {'anywhere in the 138 pool':<28}{len(cov_pool):>4}")
+    print(f"  {f'in the round-{round_no} draw':<28}{len(cov_draw):>4}")
+    print(f"  {'in the earlier sets':<28}{len(cov_r1):>4}")
+    print(f"  {'anywhere in the pool':<28}{len(cov_pool):>4}")
     missing = sorted(cov_pool - cov_draw)
     print(f"\n  present in the pool but NOT in the draw ({len(missing)}) — these "
-          f"signals get no round-2 evidence:")
+          f"signals get no round-{round_no} evidence:")
     for s in missing:
         n = sum(1 for c in candidates if s in pool[c]["signals"])
         print(f"    {s:<34} (in {n}/{len(candidates)} pool conversations)")
@@ -415,22 +424,25 @@ def draw_round2(db_path, seed, size=10, min_blocks=0, strategy="random",
               f"{', '.join(never)}")
     only_r1 = sorted(cov_r1 - cov_draw)
     if only_r1:
-        print(f"\n  covered in round 1 but not in this draw ({len(only_r1)}): "
+        print(f"\n  covered in an earlier set but not in this draw ({len(only_r1)}): "
               f"{', '.join(only_r1)}")
 
     if not write:
         return
-    out_dir = OUT_DIR.parent / "round_2"
+    out_dir = OUT_DIR.parent / f"round_{round_no}"
     out_dir.mkdir(exist_ok=True)
-    out_path = out_dir / "agreement_set_round2.csv"
+    out_path = out_dir / f"agreement_set_round{round_no}.csv"
+    rubric_version = json.loads((ANNOT_DIR / "sharechat_rubric.json").read_text()).get("version", "?")
+    prefix = "R" if round_no == 2 else f"R{round_no}-"
     with open(out_path, "w", newline="") as f:
-        f.write(f"# round-2 blind agreement set; drawn from the {len(candidates)} "
-                f"project-1 conversations A annotated, excluding the round-1 10\n")
-        f.write(f"# seed={seed} size={size} rubric=v0.6\n")
+        f.write(f"# round-{round_no} blind agreement set; drawn from the {len(candidates)} "
+                f"project-1 conversations A annotated, excluding "
+                f"{' and '.join(excluded_from)}\n")
+        f.write(f"# seed={seed} size={size} strategy={strategy} rubric={rubric_version}\n")
         w = csv.writer(f)
         w.writerow(["c_index", "conv_id"])
         for i, cid in enumerate(drawn, 1):
-            w.writerow([f"R{i}", cid])
+            w.writerow([f"{prefix}{i}", cid])
     print(f"\nwrote {out_path}")
 
     # Import-ready task file for the two round-2 Label Studio projects. The
@@ -447,11 +459,12 @@ def draw_round2(db_path, seed, size=10, min_blocks=0, strategy="random",
             payloads[payload["conv_id"]] = payload
     con.close()
     tasks = [{"data": payloads[cid]} for cid in drawn]
-    tasks_path = out_dir / "tasks_round2.json"
+    tasks_path = out_dir / f"tasks_round{round_no}.json"
     tasks_path.write_text(json.dumps(tasks, ensure_ascii=False, indent=1) + "\n")
     n_blocks = sum(len(t["data"]["dialogue"]) for t in tasks)
     print(f"wrote {tasks_path}  ({len(tasks)} tasks, {n_blocks} blocks) "
-          f"- upload to BOTH round-2 projects")
+          f"- upload to BOTH round-{round_no} projects, in this order, "
+          f"with sampling = Sequential")
 
 
 def compute_agreement(db_path, raters, rater_by_project, rater_user_id,
@@ -646,6 +659,9 @@ def review_packet(signal, db_path=DEFAULT_DB, raters=None, rater_by_project=None
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--db", default=DEFAULT_DB)
+    ap.add_argument("--draw-round3", type=int, metavar="SEED",
+                    help="draw the round-3 blind set (excludes both the round-1 "
+                         "and round-2 sets); read-only apart from the set file")
     ap.add_argument("--draw-round2", type=int, metavar="SEED",
                     help="draw the round-2 blind set and print its statistics "
                          "(read-only; does not touch the frozen round-1 CSVs)")
@@ -710,6 +726,12 @@ def main():
                       rater_by_project=RATER_BY_PROJECT_PRIYA,
                       rater_user_id=RATER_USER_ID_PRIYA,
                       conv_map_path=ROUND2_PRIYA_CONV_MAP)
+        return
+
+    if args.draw_round3 is not None:
+        draw_round2(args.db, args.draw_round3, size=args.size,
+                    min_blocks=args.min_blocks, strategy=args.strategy,
+                    write=not args.no_write, round_no=3)
         return
 
     if args.draw_round2 is not None:

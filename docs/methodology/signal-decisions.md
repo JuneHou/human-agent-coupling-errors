@@ -753,3 +753,35 @@ separate question from anything v0.7 causes.
 
 **Not yet applied to the database.** The 330 renames dry-run clean but the write was
 blocked by the sandbox, so the stored annotations are still on v0.6 names.
+
+### 2026-09-19 — round-3 agreement set drawn
+
+Ten conversations, blind, Michelle and Priya again, under v0.7. Files:
+`Rubric_agree/round_3/agreement_set_round3.csv` (index `R3-1` … `R3-10`, keyed on
+`conv_id`) and `tasks_round3.json`, which is imported unchanged into both projects so
+the two annotators see byte-identical tasks.
+
+**Method: seeded greedy set cover**, the same strategy round 2 used. Confirmed this turn
+rather than assumed: re-running the round-2 draw reproduces 7 of its 10 under `coverage`
+and 0 of 10 under `random`. It is not an exact reproduction because the greedy reads
+Jun's labels, and those have moved since August.
+
+**The pool is depleted, and this is the headline constraint.** 128 conversations remain
+after excluding both earlier sets, but they hold only 888 blocks between them. Rounds 1
+and 2 took 820 blocks in 20 conversations; what is left averages seven blocks each.
+
+| selection over the 128 | signals | blocks |
+|---|---|---|
+| greedy set cover (chosen) | 39 | 166 |
+| set cover within the 40 longest | 36 | 213 |
+| the 10 longest conversations | 29 | 266 |
+
+So with ten conversations round 3 cannot approach round 1's 441 blocks or round 2's 379.
+266 is the ceiling, and buying depth costs coverage. The seed makes no difference: the
+greedy argmax is unique at every step, so all seeds give the same set.
+
+**Coverage.** 39 of 46 signals fire in Jun's existing labels on the drawn set. Three more
+exist in the pool but not in the draw (`ai_normalizes_difficulty` and `off_topic_drift`,
+one pool conversation each; `user_multi_request`, four). Four fire nowhere in the pool at
+all and therefore cannot be measured in round 3 under any selection:
+`performative_hedge`, `repetition`, `user_abandons_thread`, `user_provides_invalid_input`.
