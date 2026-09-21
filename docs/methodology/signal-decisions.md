@@ -841,3 +841,20 @@ rubric at the step concerned:
    Removed from Jun and Michelle, who already carried structured-response on the list;
    Priya never had it. This closes one of the six differences held under the deferred
    proposal 2, and gives step-by-step its first ruled negative.
+
+### 2026-09-20 — round-2 blind macro kappa: 0.39
+
+One number for round 2, by Jun's ruling: the mean of the two recorded before-refinement
+pairwise macros, Jun–Michelle **0.370** (`agreement_round2_kappa.csv`, committed at
+`954405f`, 28 signals defined) and Jun–Priya **0.411** (recorded as a headline in
+`priya/quality_and_disagreement_review.md` line 33, 28 signals defined). Both on 379
+blocks × 49 signals, before any cell was reconciled.
+
+Not like-for-like with round 1's 0.296, and to be said wherever the number appears:
+round 1 averaged three pairs per signal and then across signals; round 2 has no
+Michelle–Priya pair, and Priya's per-signal table is lost because
+`agreement_priya_partial_kappa.csv` is rewritten on every `--priya` run and the committed
+copy (`44ad887`) holds the walk-end value 0.914, not agreement. The two pairs also sit on
+different Jun baselines: Michelle against Jun's pre-review labels, Priya against Jun's
+post-Michelle reconciled labels. The loss of the per-signal table was Claude's error:
+the regenerated file was committed as if it were a record.
