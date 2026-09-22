@@ -12,6 +12,11 @@ determination; it only surfaces candidate spans for adjudication.
 Search space is ai blocks only (rubric `blocks: ["ai"]`; signal-decisions.md
 bars the signal from <thinking> content).
 
+Also hosts two cross-cutting guards that are not specific to this signal: the
+R21 nesting check, and a ROLE CHECK that every label sits on a block role its
+rubric entry allows (A1) -- the slip you make picking the wrong neighbour out of
+~46 signals, which is mechanical and so mechanically catchable.
+
 Read-only: the database is opened via signal_stats.load_annotations, which uses
 `mode=ro`. Nothing here writes to Label Studio.
 
@@ -24,6 +29,7 @@ import json
 import re
 import sys
 from collections import Counter, defaultdict
+from pathlib import Path
 
 from signal_stats import DEFAULT_DB, load_annotations
 
@@ -259,6 +265,50 @@ def sweep(db_path):
     return candidates, labeled_spans, labeled_blocks, ai_block_total, tasks, ack_spans
 
 
+
+def role_legality_check(db_path, projects=None):
+    """Every label must sit on a block role its rubric entry allows (rule A1).
+
+    Picking the wrong neighbour out of ~46 signals is a mechanical slip, not a
+    judgment error, and it is mechanically detectable: `ai_asked_clarifying_question`
+    on a human block is always wrong, whatever the sentence says. Read-only.
+
+    Returns (violations, gaps). A VIOLATION is a label whose role the entry
+    disallows AND whose signal is side-consistent with its entry. A GAP is the
+    same mismatch where the rubric text, not the label, is behind -- A1 lets
+    AI-side signals sit on any AI-authored block, and the reversed
+    `ethical_tension` fires on human blocks, but several entries still list only
+    `ai`. Gaps are reported separately so they are not chased as labeling errors.
+    """
+    rubric = json.loads((Path(__file__).resolve().parent / "sharechat_rubric.json").read_text())
+    allowed = {sig: set(e.get("blocks", [])) for sig, e in rubric["signals"].items()}
+    AI_AUTHORED = {"ai", "reasoning", "code", "analysis"}
+    violations, gaps = [], []
+    for task_id, dialogue, items in load_annotations(db_path):
+        for it in items:
+            v = it.get("value", {})
+            start = v.get("start")
+            try:
+                b = int(start)
+            except (TypeError, ValueError):
+                continue
+            if b >= len(dialogue):
+                continue
+            role = dialogue[b].get("author")
+            for sig in (v.get("paragraphlabels") or []):
+                if sig not in allowed or role in allowed[sig]:
+                    continue
+                entry_is_ai_side = allowed[sig] <= AI_AUTHORED
+                # rubric behind the rule, not the label:
+                if entry_is_ai_side and role in AI_AUTHORED:
+                    gaps.append((task_id, b, role, sig, "A1 allows any AI-authored block"))
+                elif sig == "ethical_tension":
+                    gaps.append((task_id, b, role, sig, "Step 2 reversed 2026-09-14: both sides fire"))
+                else:
+                    violations.append((task_id, b, role, sig, sorted(allowed[sig])))
+    return violations, gaps
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", default=DEFAULT_DB)
@@ -321,6 +371,21 @@ def main():
     else:
         print("  none -- no spans nest inside an acknowledgment of correction.")
 
+    violations, gaps = role_legality_check(args.db)
+    print("\nROLE CHECK -- every label on a block role its entry allows (A1):")
+    if violations:
+        for t, b, role, sig, ok in violations:
+            print(f"  WRONG ROLE task {t} block {b} [{role}]: {sig} (entry allows {ok})")
+        print(f"  -> {len(violations)} label(s) on a disallowed role. Relabel to the "
+              f"same-side signal.")
+    else:
+        print("  none -- every label sits on a role its entry allows.")
+    if gaps:
+        print(f"  {len(gaps)} further mismatch(es) where the RUBRIC TEXT is behind the "
+              f"rule, not the label:")
+        for t, b, role, sig, why in gaps:
+            print(f"    task {t} block {b} [{role}]: {sig} -- {why}")
+
     print("\nCOVERAGE CHECK -- existing labeled blocks not caught by any probe:")
     if missed:
         for t, b in sorted(missed):
@@ -340,7 +405,7 @@ def main():
                   fh, ensure_ascii=False, indent=1)
     print(f"\nwrote {args.out}")
 
-    return 1 if (missed or misplaced or nested) else 0
+    return 1 if (missed or misplaced or nested or violations) else 0
 
 
 if __name__ == "__main__":
