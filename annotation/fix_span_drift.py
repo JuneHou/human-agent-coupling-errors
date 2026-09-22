@@ -101,6 +101,8 @@ Usage:
     python annotation/fix_span_drift.py --refresh-priya-md [757,758,...] [--apply]
     python annotation/fix_span_drift.py --fix-task-counters [--apply] [--db PATH]
     python annotation/fix_span_drift.py --fix-span-hygiene [--apply] [--db PATH]
+    python annotation/fix_span_drift.py --round3-rescan-report [--db PATH]
+    python annotation/fix_span_drift.py --apply-round3-rescan [--apply] [--db PATH]
 
 Mode 10 (--fix-priya-role-violations) -- remove Priya's 10 confirmed round-2 label
 violations: ai_structured_response fired on code-role blocks (task 759 blocks
@@ -124,6 +126,7 @@ correction (`adaptation`, task 80/768 b31 and task 81/769 b25, ruled "both drop"
 raters. Does NOT touch Priya's project-4 data or the `ai_provides_caveats` consistency-sweep
 cells outside the R1-R10 set (Jun's tasks 14/31/43/49) -- both out of scope for this pass.
 """
+import collections
 import csv, hashlib, json, re, sqlite3, sys, uuid
 from collections import defaultdict
 from pathlib import Path
@@ -2796,6 +2799,301 @@ def fix_span_hygiene(apply_changes):
 
 
 
+# --- Mode 20: round-3 re-scan of Jun's arm -----------------------------------------
+R3_JUN_TASKS = [2, 3, 8, 10, 14, 32, 42, 115, 133, 134]     # R3-1 .. R3-10
+V07_CHANGED = {"ai_asks_followup", "request_unfulfilled", "user_expresses_dissatisfaction",
+               "false_confidence", "adaptation", "ai_provides_caveats", "ethical_tension",
+               "user_multi_request", "ai_cites_source", "ai_validates_user",
+               "user_provides_invalid_input", "user_validation_seeking",
+               "user_asks_clarification", "ai_provides_step_by_step", "ai_structured_response"}
+SCREEN_DIR = Path("/tmp/claude-29714/-data-wang-junh-githubs-human-agent-coupling-errors/"
+                  "42472996-cf38-4bb6-8c75-89583cbfa036/scratchpad/screen")
+
+
+def _parse_screen_md(path):
+    """Rows from a screening agent's table: (signal, block, role, span, step, excluded)."""
+    rows = []
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line.startswith("|"):
+            continue
+        cells = [c.strip() for c in re.split(r"(?<!\\)\|", line)[1:-1]]
+        if len(cells) < 5 or cells[0].lower() in ("signal", ""):
+            continue
+        if set(cells[0]) <= set("-: "):
+            continue
+        sig = cells[0].strip("`* ")
+        try:
+            blk = int(re.sub(r"[^0-9]", "", cells[1]))
+        except ValueError:
+            continue
+        rows.append((sig, blk, cells[2].strip(), _unescape_span(cells[3]),
+                     cells[4].strip(), cells[5].strip() if len(cells) > 5 else ""))
+    return rows
+
+
+def _unescape_span(cell):
+    """A span as an agent wrote it into a markdown cell, back to raw block text.
+
+    Agents escape markdown when they quote (\\<URL\\>, \\_, \\*), write newlines as a
+    literal backslash-n, and wrap fragments in backticks or <br>. None of that is in the
+    block, so a verbatim search fails until it is undone.
+    """
+    t = cell.strip()
+    t = re.sub(r"<br\s*/?>", "\n", t)
+    t = t.replace("\\n", "\n").replace("\\t", "\t")
+    t = re.sub(r"\\([<>_*|\[\]`()#+\-.!])", r"\1", t)
+    return t.strip().strip('"').strip("`").strip()
+
+
+def _locate(text, span):
+    """Offsets of `span` in `text`: exact, else ignoring whitespace runs. -1 if absent."""
+    at = text.find(span)
+    if at >= 0:
+        return at, at + len(span)
+    pat = re.compile(r"\s+".join(re.escape(w) for w in span.split()))
+    m = pat.search(text)
+    return (m.start(), m.end()) if m else (-1, -1)
+
+
+def round3_rescan_report(_unused=False):
+    """Mode 20 (read-only) -- diff the blind screen of the round-3 ten against Jun's
+    project-1 labels, and write the adjudication file.
+
+    The agreement unit is (block, signal), which is what kappa is computed on, so that
+    is the comparison unit. Spans are resolved for ADD rows because a new label needs
+    offsets, and a row whose span cannot be found verbatim is reported as UNLOCATED
+    rather than guessed at.
+
+    Scope: only signals v0.6 or v0.7 changed are actionable. Everything else is listed
+    under its own heading and left alone.
+    """
+    rubric = json.loads((ANNOT_DIR / "sharechat_rubric.json").read_text())
+    S = rubric["signals"]
+    scope = {s for s, e in S.items() if e.get("v06_change")} | V07_CHANGED
+    allowed = {s: set(e.get("blocks", [])) for s, e in S.items()}
+    con = sqlite3.connect(f"file:{db_path()}?mode=ro", uri=True)
+    norm = lambda t: " ".join(t.split())
+
+    L = ["# Round-3 re-scan of Jun's arm against v0.6 + v0.7", "",
+         "Each conversation was annotated blind by an agent following the prompt in "
+         "`ANNOTATION_GUIDE.md`, with no sight of Jun's labels, then diffed against "
+         "project 1 at the (block, signal) level.", "",
+         "**ADD** the screen fires it and Jun has not got it. **DROP** Jun has it and the "
+         "screen did not fire it. Only signals v0.6 or v0.7 changed are actionable; the "
+         "rest are listed at the end and left alone.", "",
+         "Rule each ADD and DROP by writing `yes` or `no` in the last column.", ""]
+    tot = collections.Counter()
+    for i, tid in enumerate(R3_JUN_TASKS, 1):
+        f = SCREEN_DIR / f"out-R3-{i}.md"
+        if not f.exists():
+            L += [f"## R3-{i} (task {tid})", "", "_screen not yet run_", ""]
+            continue
+        data, res = con.execute(
+            """SELECT t.data, tc.result FROM task t JOIN task_completion tc
+               ON tc.task_id = t.id AND tc.was_cancelled = 0
+               WHERE t.project_id = 1 AND t.id = ?""", (tid,)).fetchone()
+        dialogue = json.loads(data)["dialogue"]
+        jun = collections.defaultdict(list)
+        for it in json.loads(res):
+            if it.get("type") != "paragraphlabels":
+                continue
+            v = it["value"]
+            for lab in (v.get("paragraphlabels") or []):
+                jun[(int(v["start"]), lab)].append((v.get("startOffset"), v.get("endOffset")))
+        screen = {}
+        for sig, blk, role, span, step, excl in _parse_screen_md(f):
+            screen.setdefault((blk, sig), (span, step, excl))
+
+        adds, drops, agrees, oos, unloc = [], [], [], [], []
+        for (blk, sig), (span, step, excl) in sorted(screen.items()):
+            if (blk, sig) in jun:
+                agrees.append((blk, sig)); continue
+            if sig not in scope:
+                oos.append(("ADD", blk, sig, span)); continue
+            if blk >= len(dialogue):
+                unloc.append((blk, sig, "block out of range")); continue
+            text = dialogue[blk]["text"]
+            role = dialogue[blk].get("author")
+            at, _end = _locate(text, span)
+            if at < 0:
+                unloc.append((blk, sig, f"span not found: {span[:70]!r}")); continue
+            bad_role = role not in allowed.get(sig, {role})
+            adds.append((blk, role, sig, span, step, at, bad_role))
+        for (blk, sig) in sorted(jun):
+            if (blk, sig) in screen:
+                continue
+            if sig not in scope:
+                oos.append(("DROP", blk, sig, "")); continue
+            drops.append((blk, sig, jun[(blk, sig)]))
+
+        tot["add"] += len(adds); tot["drop"] += len(drops)
+        tot["agree"] += len(agrees); tot["oos"] += len(oos); tot["unlocated"] += len(unloc)
+        L += [f"## R3-{i} — task {tid}", "",
+              f"{len(agrees)} agree, {len(adds)} ADD, {len(drops)} DROP"
+              + (f", {len(oos)} out of scope" if oos else "")
+              + (f", {len(unloc)} unlocated" if unloc else ""), ""]
+        if adds:
+            L += ["### ADD — the screen fires, Jun does not have it", "",
+                  "| block | role | signal | span | step the screen cited | your call |",
+                  "|---|---|---|---|---|---|"]
+            for blk, role, sig, span, step, at, bad in adds:
+                warn = " **ROLE?**" if bad else ""
+                # a span may contain newlines; a newline breaks the markdown row, and the
+                # apply mode's _locate falls back to a whitespace-insensitive match, so
+                # collapsing whitespace for display is lossless for re-locating it.
+                cell = " ".join(span.split())[:150].replace("|", chr(92) + "|")
+                stepc = " ".join(step.split())[:170].replace("|", chr(92) + "|")
+                L.append(f"| {blk} | {role} | `{sig}`{warn} | {cell} | {stepc} |  |")
+            L.append("")
+        if drops:
+            L += ["### DROP — Jun has it, the screen did not fire it", "",
+                  "| block | signal | your span | your call |", "|---|---|---|---|"]
+            for blk, sig, offs in drops:
+                text = dialogue[blk]["text"]
+                a, e = offs[0]
+                snippet = " ".join(norm(text[a:e]).split())[:120] if a is not None else ""
+                L.append(f"| {blk} | `{sig}` | {snippet.replace('|', chr(92)+'|')} |  |")
+            L.append("")
+        if unloc:
+            L += ["### unlocated — the screen's span does not appear in the block", ""]
+            for blk, sig, why in unloc:
+                L.append(f"- block {blk} `{sig}`: {why}")
+            L.append("")
+        if oos:
+            L += ["### out of scope — not actionable, listed only", ""]
+            for kind, blk, sig, span in oos:
+                L.append(f"- {kind} block {blk} `{sig}`")
+            L.append("")
+
+    L.insert(6, f"**Totals: {tot['add']} ADD, {tot['drop']} DROP, {tot['agree']} agree, "
+                f"{tot['oos']} out of scope, {tot['unlocated']} unlocated.**")
+    L.insert(7, "")
+    out = ANNOT_DIR / "Rubric_agree" / "round_3" / "rescan_jun_v07.md"
+    out.write_text("\n".join(L) + "\n")
+    print(f"scope: {len(scope)} of {len(S)} signals actionable")
+    for k in ("agree", "add", "drop", "oos", "unlocated"):
+        print(f"  {k:10s} {tot[k]}")
+    print(f"\nwrote {out}")
+
+
+
+def apply_round3_rescan(apply_changes):
+    """Mode 21 -- apply the adjudicated round-3 re-scan.
+
+    Reads `Rubric_agree/round_3/rescan_jun_v07.md`, the file Mode 20 writes and Jun
+    rules in. A row acts only when its last column says yes; anything else -- blank,
+    `no`, a note -- is a no-op, so an unruled file writes nothing. Refuses to run if the
+    ADD/DROP rows it parses do not match the file's own Totals line, the same self-check
+    Mode 9 uses.
+
+    Touches project 1 and only the ten round-3 tasks. Offsets for an ADD come from
+    locating the quoted span in the block; a row whose span cannot be found is skipped
+    and reported, never guessed.
+    """
+    path = ANNOT_DIR / "Rubric_agree" / "round_3" / "rescan_jun_v07.md"
+    text = path.read_text()
+    m = re.search(r"\*\*Totals: (\d+) ADD, (\d+) DROP", text)
+    if not m:
+        sys.exit("no Totals line in the adjudication file")
+    stated = (int(m.group(1)), int(m.group(2)))
+
+    task, section, parsed = None, None, []
+    n_add = n_drop = 0
+    for line in text.splitlines():
+        h = re.match(r"^##\s+R3-\d+\s+—\s+task\s+(\d+)", line)
+        if h:
+            task = int(h.group(1)); section = None; continue
+        if line.startswith("### ADD"):
+            section = "add"; continue
+        if line.startswith("### DROP"):
+            section = "drop"; continue
+        if line.startswith("### ") or line.startswith("## "):
+            section = None; continue
+        if not line.strip().startswith("|") or section is None or task is None:
+            continue
+        cells = [c.strip() for c in re.split(r"(?<!\\)\|", line.strip())[1:-1]]
+        if not cells or cells[0].lower() in ("block", "") or set(cells[0]) <= set("-: "):
+            continue
+        try:
+            blk = int(re.sub(r"[^0-9]", "", cells[0]))
+        except ValueError:
+            continue
+        if section == "add" and len(cells) >= 6:
+            n_add += 1
+            sig = cells[2].strip("`* ").replace(" **ROLE?**", "")
+            if cells[5].strip().lower() == "yes":
+                parsed.append(("add", task, blk, sig, cells[3].replace("\\|", "|").strip()))
+        elif section == "drop" and len(cells) >= 4:
+            n_drop += 1
+            if cells[3].strip().lower() == "yes":
+                parsed.append(("drop", task, blk, cells[1].strip("`* "), None))
+    if (n_add, n_drop) != stated:
+        sys.exit(f"tally mismatch: file states {stated[0]} ADD / {stated[1]} DROP, "
+                 f"parsed {n_add} / {n_drop}. Fix the file or the parser before applying.")
+    print(f"tally check OK: {n_add} ADD rows, {n_drop} DROP rows in the file")
+    print(f"ruled yes: {sum(1 for r in parsed if r[0]=='add')} ADD, "
+          f"{sum(1 for r in parsed if r[0]=='drop')} DROP")
+    if not parsed:
+        print("\nnothing ruled yes -- nothing to do.")
+        return
+
+    con = sqlite3.connect(db_path())
+    by_task = collections.defaultdict(list)
+    for r in parsed:
+        by_task[r[1]].append(r)
+    done, skipped = [], []
+    for tid, rows in sorted(by_task.items()):
+        cid, data, res = con.execute(
+            """SELECT tc.id, t.data, tc.result FROM task_completion tc JOIN task t
+               ON t.id = tc.task_id WHERE t.project_id = 1 AND t.id = ?
+               AND tc.was_cancelled = 0""", (tid,)).fetchone()
+        payload, result = json.loads(data), json.loads(res)
+        dialogue = payload["dialogue"]
+        for kind, _t, blk, sig, span in rows:
+            if kind == "drop":
+                hit = 0
+                for it in list(result):
+                    v = it.get("value", {})
+                    if str(v.get("start")) == str(blk) and sig in (v.get("paragraphlabels") or []):
+                        v["paragraphlabels"].remove(sig); hit += 1
+                if hit:
+                    done.append(("drop", tid, blk, sig, hit))
+                else:
+                    skipped.append(("drop", tid, blk, sig, "not present"))
+                continue
+            txt = dialogue[blk]["text"]
+            at = txt.find(span)
+            if at < 0:
+                skipped.append(("add", tid, blk, sig, "span not found")); continue
+            result.append({
+                "value": {"start": str(blk), "end": str(blk), "startOffset": at,
+                          "endOffset": at + len(span), "text": span,
+                          "paragraphlabels": [sig]},
+                "id": _new_id(1, payload.get("conv_id"), blk, sig),
+                "from_name": "signals", "to_name": "dialogue",
+                "type": "paragraphlabels", "origin": "manual"})
+            done.append(("add", tid, blk, sig, at))
+        result = [i for i in result if i.get("type") != "paragraphlabels"
+                  or i.get("value", {}).get("paragraphlabels")]
+        if apply_changes:
+            con.execute("UPDATE task_completion SET result=?, updated_at=datetime('now') "
+                        "WHERE id=?", (json.dumps(result, ensure_ascii=False), cid))
+    print(f"\nwould apply {len(done)}:")
+    for k, tid, blk, sig, extra in done:
+        print(f"  {k:5s} task {tid} b{blk} {sig}")
+    if skipped:
+        print(f"\nSKIPPED {len(skipped)}:")
+        for k, tid, blk, sig, why in skipped:
+            print(f"  {k:5s} task {tid} b{blk} {sig}: {why}")
+    if not apply_changes:
+        print("\nDRY RUN -- nothing written. Re-run with --apply.")
+        return
+    con.commit()
+    print(f"\nWROTE {len(by_task)} completions.")
+
+
+
 if __name__ == "__main__":
     _apply = "--apply" in sys.argv
     if "--list-wide-spans" in sys.argv:
@@ -2826,6 +3124,10 @@ if __name__ == "__main__":
         v07_rescan_screen()
     elif "--apply-v07-screen" in sys.argv:
         apply_v07_screen(_apply)
+    elif "--round3-rescan-report" in sys.argv:
+        round3_rescan_report()
+    elif "--apply-round3-rescan" in sys.argv:
+        apply_round3_rescan(_apply)
     elif "--fix-span-hygiene" in sys.argv:
         fix_span_hygiene(_apply)
     elif "--fix-task-counters" in sys.argv:

@@ -858,3 +858,47 @@ copy (`44ad887`) holds the walk-end value 0.914, not agreement. The two pairs al
 different Jun baselines: Michelle against Jun's pre-review labels, Priya against Jun's
 post-Michelle reconciled labels. The loss of the per-signal table was Claude's error:
 the regenerated file was committed as if it were a record.
+
+### 2026-09-21 — round-3 re-scan of Jun's arm against v0.6 and v0.7
+
+**Why it was needed.** The 2026-08-19 v0.6 re-scan never applied v0.6's per-signal edits
+to these ten conversations. `fix_span_drift.py` Mode 2 applies the agreed change rows
+from `changes_{A,B,F}.md`, which cover only the round-1 agreement ten, and separately
+strips `conversation_advanced` everywhere. None of the round-3 ten (Jun's tasks 2, 3, 8,
+10, 14, 32, 42, 115, 133, 134) is in the round-1 ten, so the A7 strip was the only v0.6
+rule they ever received. 146 of Jun's 156 labels on them sit on a signal v0.6 or v0.7
+changed.
+
+**Method.** Ten agents, one per conversation, each following `ANNOTATION_GUIDE.md`
+`## Prompt` and its four files, blind: no database, no `changes_*`/adjudication/
+calibration file, no repo grep on block numbers. Their tables are kept in
+`Rubric_agree/round_3/screens/`. Mode 20 diffs them against project 1 at the
+(block, signal) level, which is the unit kappa uses, and writes
+`Rubric_agree/round_3/rescan_jun_v07.md`. Mode 21 applies only rows Jun marks `yes`, and
+refuses to run unless its parsed counts match the file's own Totals line.
+
+**Result: 104 agree, 77 ADD, 42 DROP, 11 out of scope, 0 unlocated.** Every ADD row was
+re-verified from the written file: the span locates in its block and the block role is
+one the signal's entry allows. Scope is the 40 of 46 signals v0.6 or v0.7 changed; the
+other six are listed and not actionable.
+
+**Findings the screens produced that are not about Jun's labels.**
+
+1. **The rubric pre-answers cells of seven of the ten conversations**, in `examples` and
+   also in step and boundary text: task 3 (three cells), task 32 (`ai_malfunction` ×2,
+   `factual_error`, `ai_cites_source` 32/15), task 42 (`false_confidence` 42/7, 42/13,
+   42/15 and `ai_validates_user` 42/13 vs 42/5), task 2, task 10 (×2), task 14, task 134
+   (`user_empowered` "established on task 134/15"). Michelle and Priya read this text
+   before annotating. Only R3-3, R3-8 and R3-9 are clean.
+2. **`ai_structured_response` Step 1 versus Step 3** was flagged independently by every
+   screen. All followed the strict markers-only reading that §B records as practice.
+3. **`ai_cites_source` Step 6 versus A3** conflict on a citation-dense block: per
+   source-claim pair gives 93 rows on four blocks where A3's run rule gives 32.
+4. **`conversation_stalled` Step 3 versus its own pairing note** — Step 3 wants a repeat
+   *with dissatisfaction*, the note says any repeat at t is evidence t-1 stalled.
+5. Two benchmark-gap candidates, in the task-143/146 family: task 42, where the AI
+   abandons its own correct benign reading under user pressure and escalates to
+   "confirms" with no new evidence, leaving a trace on only two blocks; and task 32,
+   where the AI publishes a public page inviting visitors to paste their own API key and
+   reassures rather than warns, which neither `ai_warns_user` nor `problem_ignored`
+   reaches.
