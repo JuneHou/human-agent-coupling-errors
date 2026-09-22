@@ -100,6 +100,7 @@ Usage:
     python annotation/fix_span_drift.py --apply-v07-screen [--apply] [--db PATH]
     python annotation/fix_span_drift.py --refresh-priya-md [757,758,...] [--apply]
     python annotation/fix_span_drift.py --fix-task-counters [--apply] [--db PATH]
+    python annotation/fix_span_drift.py --fix-span-hygiene [--apply] [--db PATH]
 
 Mode 10 (--fix-priya-role-violations) -- remove Priya's 10 confirmed round-2 label
 violations: ai_structured_response fired on code-role blocks (task 759 blocks
@@ -2703,6 +2704,98 @@ def fix_task_counters(apply_changes):
 
 
 
+def fix_span_hygiene(apply_changes):
+    """Mode 19 -- three mechanical span defects, all judgment-free, all projects.
+
+      (a) DUPLICATE: the same signal twice on byte-identical offsets of one block,
+          from a span saved twice. Keep the first item, drop the repeat; an item
+          left with no labels is removed.
+      (b) OVERRUN: endOffset past the end of the block text (1-6 chars in
+          practice, a trailing selection artifact). Clamp to len(text) and
+          rewrite `text` from the clamped slice.
+      (c) EMPTY TEXT: `text` blank or missing while the offsets point at real
+          content -- the serialization failure already seen on Priya's R7 b1.
+          The label is real; rebuild `text` from the offsets.
+
+    Never changes a block index, a signal, or which spans exist beyond (a), so
+    block-level agreement is untouched except for the duplicates it removes.
+    """
+    con = sqlite3.connect(db_path())
+    rows = con.execute("""SELECT tc.id, t.project_id, t.id, t.data, tc.result
+                          FROM task_completion tc JOIN task t ON t.id = tc.task_id
+                          WHERE tc.was_cancelled = 0 AND tc.result IS NOT NULL""").fetchall()
+    dups, overruns, empties, touched = [], [], [], []
+    for cid, pid, tid, data, res_raw in rows:
+        try:
+            dialogue = json.loads(data).get("dialogue") or []
+            result = json.loads(res_raw)
+        except (TypeError, ValueError):
+            continue
+        dirty = False
+        seen = set()
+        for it in list(result):
+            v = it.get("value", {})
+            if it.get("type") != "paragraphlabels":
+                continue
+            try:
+                b = int(v.get("start"))
+            except (TypeError, ValueError):
+                continue
+            if b >= len(dialogue):
+                continue
+            txt = dialogue[b].get("text", "")
+            a, e = v.get("startOffset"), v.get("endOffset")
+
+            if a is not None and e is not None and e > len(txt):          # (b)
+                overruns.append((pid, tid, b, a, e, len(txt)))
+                v["endOffset"] = e = len(txt)
+                v["text"] = txt[a:e]
+                dirty = True
+
+            raw = v.get("text") or ""
+            if isinstance(raw, list):
+                raw = " ".join(str(x) for x in raw)
+            if not str(raw).strip() and a is not None and e is not None and txt[a:e].strip():
+                v["text"] = txt[a:e]                                       # (c)
+                empties.append((pid, tid, b, a, e, txt[a:e][:60]))
+                dirty = True
+
+            for lab in list(v.get("paragraphlabels") or []):               # (a)
+                key = (b, a, e, lab)
+                if key in seen:
+                    v["paragraphlabels"].remove(lab)
+                    dups.append((pid, tid, b, a, e, lab))
+                    dirty = True
+                else:
+                    seen.add(key)
+        if dirty:
+            result = [i for i in result
+                      if i.get("type") != "paragraphlabels"
+                      or i.get("value", {}).get("paragraphlabels")]
+            touched.append((cid, result))
+
+    for title, group, fmt in (
+            ("DUPLICATE labels removed", dups,
+             lambda x: f"  project {x[0]} task {x[1]} b{x[2]} {x[3]}-{x[4]}  {x[5]}"),
+            ("OVERRUNNING spans clamped", overruns,
+             lambda x: f"  project {x[0]} task {x[1]} b{x[2]} {x[3]}-{x[4]} -> {x[3]}-{x[5]} (block {x[5]} ch)"),
+            ("EMPTY stored text rebuilt", empties,
+             lambda x: f"  project {x[0]} task {x[1]} b{x[2]} {x[3]}-{x[4]}  {x[5]!r}")):
+        print(f"\n{title} ({len(group)}):")
+        for x in group:
+            print(fmt(x))
+    print(f"\ncompletions to rewrite: {len(touched)}")
+    if not apply_changes:
+        print("\nDRY RUN -- nothing written. Re-run with --apply.")
+        return
+    for cid, result in touched:
+        con.execute("UPDATE task_completion SET result=?, updated_at=datetime('now') WHERE id=?",
+                    (json.dumps(result, ensure_ascii=False), cid))
+    con.commit()
+    print(f"\nWROTE {len(touched)} completions.")
+
+
+
 if __name__ == "__main__":
     _apply = "--apply" in sys.argv
     if "--list-wide-spans" in sys.argv:
@@ -2733,6 +2826,8 @@ if __name__ == "__main__":
         v07_rescan_screen()
     elif "--apply-v07-screen" in sys.argv:
         apply_v07_screen(_apply)
+    elif "--fix-span-hygiene" in sys.argv:
+        fix_span_hygiene(_apply)
     elif "--fix-task-counters" in sys.argv:
         fix_task_counters(_apply)
     elif "--refresh-priya-md" in sys.argv:
