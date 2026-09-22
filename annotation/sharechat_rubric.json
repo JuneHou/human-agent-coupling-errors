@@ -1091,7 +1091,7 @@
           "block": "code",
           "label": 0,
           "category": "boundary",
-          "rationale": "The corrected scale-factor line is the PRODUCT of recovery; the recovery statement lives in the paired ai block ('I see the issue... Let me fix that'), which carries the label (R1)."
+          "rationale": "The corrected scale-factor line is the PRODUCT of recovery; a code block never carries the label, the statement block does (R1). Here that statement block is b6, which is itself NOT error_recovery - b3 is the user reporting the fault, so Step 2 routes b6 to ai_acknowledges_correction."
         },
         {
           "turn_id": "task33_4_reasoning",
@@ -1892,7 +1892,7 @@
       ]
     },
     "user_repeats_request": {
-      "definition": "User reports the same UNSERVED demand for the second or later time, in any surface form - an explicit restatement ('same problem', 'still doesn't work', 'again, like I said') or a re-evidencing (an error paste showing the same failure as before).",
+      "definition": "User reports the same UNMET demand for the second or later time, in any surface form - an explicit restatement ('same problem', 'still doesn't work', 'again, like I said') or a re-evidencing (an error paste showing the same failure as before).",
       "blocks": [
         "human"
       ],
@@ -1901,12 +1901,12 @@
       },
       "decision_steps": [
         "Step 1: is there an earlier turn in which the user made this same demand? If NO -> label 0. The FIRST report of a new problem is user_corrects_ai or a new request, never a repeat.",
-        "Step 2 (LOOK BACKWARD, NOT AT THE WORDS): what happened to that earlier request? UNSERVED and the same -> continue. SERVED BUT WRONG -> user_implicit_correction. SERVED AND ACCEPTED -> a NEW request, label 0: iteration commands like 'make it better' on delivered output repeat the words, not the request (the object is the new version each time).",
+        "Step 2 (LOOK BACKWARD, NOT AT THE WORDS): was that earlier request MET, or only attempted? NOT MET -> continue. MET BUT DEFECTIVE -> user_implicit_correction. MET AND ACCEPTED -> a NEW request, label 0: iteration commands like 'make it better' on accepted output repeat the words, not the request (the object is the new version each time).",
         "Step 3 (FORM INDEPENDENCE): the repeat need not restate anything. A bare compiler paste re-evidencing the SAME failure is a repeat (C10 b49, the third report of the same two shaders).",
-        "Step 4: second-or-later report of the same unserved demand -> label 1. Non-exclusive with user_corrects_ai when the report also names the fault."
+        "Step 4: second-or-later report of the same unmet demand -> label 1. Non-exclusive with user_corrects_ai when the report also names the fault."
       ],
       "boundary_notes": {
-        "calibration": "Positives: C10 b43 ('still doesn't work'), C10 b49 (bare paste - form independence), C4 b3/b9/b21/b24 (the standing demand re-raised unserved), C9 b39. Negatives: C9 b15/b18/b66 (iteration commands on served output), C9 b30 (adds a new instruction), C9 b33 (skepticism is not a non-service report), any first-occurrence error paste.",
+        "calibration": "Positives: C10 b43 ('still doesn't work'), C10 b49 (bare paste - form independence), C4 b3/b9/b21/b24 (the standing demand re-raised unmet), C9 b39. Negatives: C9 b15/b18/b66 (iteration commands on accepted output), C9 b30 (adds a new instruction), C9 b33 (skepticism is not a non-service report), any first-occurrence error paste.",
         "pairs_with_conversation_stalled": "A fire at turn t is the evidence that turn t-1 stalled (C9: b39 <-> b38)."
       },
       "v06_change": "v0.6 (2026-08-18): round-1 agreement review D11: NEW entry - the signal had none in v0.5; function-based repeat test.",
