@@ -78,7 +78,31 @@ RATERS_PRIYA = ["A", "P"]
 RATER_USER_ID_PRIYA = {"A": 1, "P": 4}
 ROUND2_PRIYA_CONV_MAP = ROUND2_DIR / "agreement_set_round2_priya_done.csv"
 
+# Round 3 (2026-09-22): Jun ("A") vs Michelle ("M") on tasks 2/3/8/10/14/32/42/
+# 115/133/134. Jun's arm is project 1 as in round 2. Michelle's arm is NOT in
+# Label Studio -- she delivered ten markdown files, so it is parsed from those
+# (MICHELLE_R3_DIR) and injected as a rater, the same shape load_annotations
+# returns. Priya's arm (project 8) is not started, so round 3 is two-way here.
+RATER_BY_PROJECT_R3 = {1: "A"}
+RATERS_R3 = ["A", "M"]
+RATER_USER_ID_R3 = {"A": 1}
+ROUND3_DIR = OUT_DIR.parent / "round_3"
+ROUND3_CONV_MAP = ROUND3_DIR / "agreement_set_round3.csv"
+MICHELLE_R3_DIR = ROUND3_DIR / "michelle"
+MICHELLE_R3_PROJECT = 9          # her ten tasks, for the conv_id lookup only
+# Row shape and block-number base, taken from each file's own header note.
+MICHELLE_R3_SHAPE = {
+    787: ("bold", 1), 788: ("bold", 1), 789: ("bold", 0), 790: ("bold", 0),
+    791: ("bold", 0), 792: ("bold", 0), 793: ("table", 1), 794: ("table", 1),
+    795: ("turn", None), 796: ("turn", None),
+}
+MICHELLE_R3_ALIAS = {"ai_provides_structured_response": "ai_structured_response"}
 
+
+def _c_order(c_index):
+    """Numeric sort key for a c_index: 'C7' -> 7, 'R3-7' -> 7 (round 3's labels
+    carry a round prefix, so the old c[1:] slice does not parse them)."""
+    return int(re.search(r"(\d+)$", c_index).group(1))
 def load_conv_map(path=None):
     """c_index -> conv_id (verbatim, incl. any query string) and back.
 
@@ -467,8 +491,72 @@ def draw_round2(db_path, seed, size=10, min_blocks=0, strategy="random",
           f"with sampling = Sequential")
 
 
+def load_michelle_round3_md(db_path, conv_to_c, signals, md_dir=None):
+    """Parse Michelle's round-3 markdown into the presence/spans shape.
+
+    Her ten files use three row shapes -- a bold one-liner (787-792), a
+    markdown table (793-794) and a per-turn table keyed by turn_id (795-796) --
+    and two block-number bases, both declared in each file's own header. A row
+    whose first cell is not a bare signal name is not a fire: that is how the
+    corrected rows (`~~signal~~ 0 (corrected ...)`) and the per-file summary
+    tables are excluded without a second list to keep in step.
+
+    Returns (presence, spans, counts) for rater "M".
+    """
+    md_dir = md_dir or MICHELLE_R3_DIR
+    blk_re = re.compile(r"\bB(?:lock)?\s*(\d+)\b")
+    turn_re = re.compile(r"task(?:79[56])_(\d+)_(human|ai|reasoning|analysis|code)")
+    nofire_re = re.compile(r"label 0|does NOT fire|Excluded:", re.I)
+
+    con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    conv_by_task = {tid: json.loads(data).get("conv_id") for tid, data in
+                    con.execute("SELECT id, data FROM task WHERE project_id = ?",
+                                (MICHELLE_R3_PROJECT,))}
+    con.close()
+
+    presence, spans = set(), defaultdict(list)
+    rows = 0
+    for tid, (shape, base) in sorted(MICHELLE_R3_SHAPE.items()):
+        c = conv_to_c.get(conv_by_task[tid])
+        assert c is not None, f"task {tid}: conv_id not in the round-3 set"
+        for line in (md_dir / f"task{tid}.md").read_text().splitlines():
+            ln = line.strip()
+            if shape == "bold":
+                m = re.match(r"\*\*([a-z_]+)\s*\|", ln)
+                if not m:
+                    continue
+                head = ln[m.end():].partition("Span")[0]
+                if nofire_re.search(head) or "does NOT fire" in ln:
+                    continue
+                sig, where, span = m.group(1), head, ln
+            else:
+                cells = [x.strip() for x in ln.strip("|").split("|")]
+                if len(cells) < 3:
+                    continue
+                sig, where, span = cells[0], cells[1], cells[2]
+            sig = MICHELLE_R3_ALIAS.get(sig, sig)
+            if sig not in signals:
+                continue
+            if shape == "turn":
+                t = turn_re.search(where)
+                if not t:
+                    continue
+                k, role = int(t.group(1)), t.group(2)
+                blocks = [2 * k - 2 if role == "human" else 2 * k - 1]
+            else:
+                blocks = [int(x) - base for x in blk_re.findall(where)]
+            if not blocks:
+                raise ValueError(f"task{tid}: no block reference in {ln[:70]!r}")
+            rows += 1
+            for b in blocks:
+                presence.add((c, b, sig))
+                spans[("M", c, b, sig)].append(span[:SPAN_TEXT_LIMIT])
+    return presence, spans, {"spans": rows, "labels": len(presence)}
+
+
 def compute_agreement(db_path, raters, rater_by_project, rater_user_id,
-                      conv_map_path, out_dir, out_prefix):
+                      conv_map_path, out_dir, out_prefix, md_rater=None,
+                      md_dir=None):
     """Load annotations for `raters` and write the kappa + disagreement CSVs.
 
     conv_map_path=None reproduces round 1's default conv map. Shared by both
@@ -479,9 +567,18 @@ def compute_agreement(db_path, raters, rater_by_project, rater_user_id,
     allowed_blocks = load_allowed_blocks()
     rubric_index = load_rubric_index()
 
+    db_raters = [r for r in raters if r != md_rater]
     dialogues, presence, spans, counts = load_annotations(
-        db_path, conv_to_c, raters, rater_by_project, rater_user_id)
+        db_path, conv_to_c, db_raters, rater_by_project, rater_user_id)
     assert sorted(dialogues) == sorted(conv_order)
+    if md_rater:
+        p, sp, ct = load_michelle_round3_md(db_path, conv_to_c, signals,
+                                           md_dir=md_dir)
+        presence[md_rater], counts[md_rater] = p, ct
+        spans.update(sp)
+        for c, b, sig in p:
+            assert 0 <= b < len(dialogues[c]), \
+                f"{md_rater}: {c} block {b} out of range"
 
     # The block universe: every content block of every agreement conversation.
     cells = [(c, b) for c in conv_order for b in range(len(dialogues[c]))]
@@ -555,7 +652,8 @@ def compute_agreement(db_path, raters, rater_by_project, rater_user_id,
 
 
 def review_packet(signal, db_path=DEFAULT_DB, raters=None, rater_by_project=None,
-                  rater_user_id=None, conv_map_path=None):
+                  rater_user_id=None, conv_map_path=None, md_rater=None,
+                  md_dir=None):
     """Print every disagreement cell for one signal with full, untruncated
     context: the block's full text, each rater's full highlighted span (not
     the 160-char SPAN_TEXT_LIMIT slice used in the disagreement CSV), and the
@@ -575,6 +673,7 @@ def review_packet(signal, db_path=DEFAULT_DB, raters=None, rater_by_project=None
     rater_user_id = rater_user_id or RATER_USER_ID_R2
     conv_map_path = conv_map_path or ROUND2_CONV_MAP
     project_ids = tuple(rater_by_project)
+    db_raters = [r for r in raters if r != md_rater]
 
     conv_to_c, conv_order = load_conv_map(conv_map_path)
     rubric = json.loads((ANNOT_DIR / "sharechat_rubric.json").read_text())
@@ -596,7 +695,9 @@ def review_packet(signal, db_path=DEFAULT_DB, raters=None, rater_by_project=None
     presence = {r: set() for r in raters}
 
     for project_id, completed_by, data, result in rows:
-        rater = rater_by_project[project_id]
+        rater = rater_by_project.get(project_id)
+        if rater is None or rater not in db_raters:
+            continue
         assert completed_by == rater_user_id[rater], (
             f"project {project_id} ({rater}) annotated by user {completed_by}, "
             f"expected {rater_user_id[rater]}")
@@ -619,8 +720,17 @@ def review_packet(signal, db_path=DEFAULT_DB, raters=None, rater_by_project=None
             presence[rater].add((c_index, idx))
             full_spans[(rater, c_index, idx)].append(text)
 
+    if md_rater:
+        p_md, sp_md, _ = load_michelle_round3_md(
+            db_path, conv_to_c, load_signals(), md_dir=md_dir)
+        for c, b, sig in p_md:
+            if sig == signal:
+                presence[md_rater].add((c, b))
+                for raw in sp_md[(md_rater, c, b, sig)]:
+                    full_spans[(md_rater, c, b)].append(raw)
+
     cells = sorted({cell for r in raters for cell in presence[r]},
-                   key=lambda cb: (int(cb[0][1:]), cb[1]))
+                   key=lambda cb: (_c_order(cb[0]), cb[1]))
     # a cell is a disagreement whenever it's not the case that every rater fired it
     disagreements = [(c, b) for c, b in cells
                      if not all((c, b) in presence[r] for r in raters)]
@@ -641,7 +751,7 @@ def review_packet(signal, db_path=DEFAULT_DB, raters=None, rater_by_project=None
     by_conv = defaultdict(list)
     for c, b in disagreements:
         by_conv[c].append(b)
-    for c in sorted(by_conv, key=lambda x: int(x[1:])):
+    for c in sorted(by_conv, key=_c_order):
         print(f"\n--- {c} ({len(by_conv[c])} cell(s)) ---")
         for b in sorted(by_conv[c]):
             role = block_roles[c][b]
@@ -679,6 +789,18 @@ def main():
     ap.add_argument("--round2", action="store_true",
                     help="compute round-2 agreement (Jun 'A' vs Michelle 'M', "
                          "projects 1+5) instead of round-1's three-way A/B/F")
+    ap.add_argument("--md-dir",
+                    help="directory holding Michelle's round-3 markdown "
+                         "(default round_3/michelle; point at michelle/"
+                         "as_received to score her arm before corrections)")
+    ap.add_argument("--round3-review", metavar="SIGNAL",
+                    help="round-3 review packet for SIGNAL: full block text, both "
+                         "raters' spans, Michelle's own Step-fired line, and the "
+                         "rubric's decision_steps + boundary_notes")
+    ap.add_argument("--round3", action="store_true",
+                    help="compute round-3 agreement (Jun 'A', project 1, vs "
+                         "Michelle 'M', parsed from her ten markdown files in "
+                         "round_3/michelle/ -- her arm is not in Label Studio)")
     ap.add_argument("--priya", action="store_true",
                     help="compute round-2 agreement (Jun 'A' vs Priya 'P', "
                          "projects 1+4) restricted to whichever conversations "
@@ -738,6 +860,21 @@ def main():
         draw_round2(args.db, args.draw_round2, size=args.size,
                     min_blocks=args.min_blocks, strategy=args.strategy,
                     write=not args.no_write)
+        return
+
+    if args.round3_review:
+        review_packet(args.round3_review, db_path=args.db, raters=RATERS_R3,
+                      rater_by_project=RATER_BY_PROJECT_R3,
+                      rater_user_id=RATER_USER_ID_R3,
+                      conv_map_path=ROUND3_CONV_MAP, md_rater="M",
+                      md_dir=Path(args.md_dir) if args.md_dir else None)
+        return
+
+    if args.round3:
+        compute_agreement(args.db, RATERS_R3, RATER_BY_PROJECT_R3,
+                          RATER_USER_ID_R3, ROUND3_CONV_MAP, ROUND3_DIR,
+                          f"agreement_round3{args.out_suffix}", md_rater="M",
+                          md_dir=Path(args.md_dir) if args.md_dir else None)
         return
 
     if args.round2:

@@ -2,7 +2,7 @@
 
 Mark **observable signals** — evidence of coupling behaviors (positive or failure) between human and AI — at the paragraph level. This is a discovery pass: when unsure, mark it and leave a note.
 
-**Annotation target:** 148 conversations (w=0.5, power=0.90, df=49). See `docs/methodology/annotation-protocol.md` for statistical details.
+**Annotation target:** 148 conversations (w=0.5, power=0.90, df=45 — 46 signals in v0.7; requires n=143, so 148 exceeds it). See `docs/methodology/annotation-protocol.md` for statistical details.
 
 ---
 

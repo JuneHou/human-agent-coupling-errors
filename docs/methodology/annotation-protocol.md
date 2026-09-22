@@ -22,7 +22,7 @@
 
 **Corpus:** 716 English conversations from the ShareChat Claude dataset (HuggingFace), filtered from 911 raw conversations by ≥50% English word content.
 
-**Annotation target:** 148 conversations (w=0.5, power=0.90; see power analysis in `advisor-update.md`).
+**Annotation target:** 148 conversations. The paper's justification is per-signal binary (one-sample proportion, df=1), under which N=148 gives >=90% power for w >= 0.266 and the signal count is irrelevant (`paper/methods.md`). The older multinomial chi-square justification (w=0.5, power=0.90) required n=148 at df=49 and requires **n=143** at df=45 after the v0.7 merges took the taxonomy to 46 signals; 148 exceeds both (see the 2026-09-22 revision note in `advisor-update.md`).
 
 **Task assignment:**
 

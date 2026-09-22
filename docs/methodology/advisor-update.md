@@ -48,7 +48,7 @@ Signal set: 50 signals active for annotation. All tiers now reflect paper (arXiv
 | Purple — user behavior | 12 | κ ≥ 0.4 (7 confirmed; 5 unmeasured) | Primary for confirmed |
 | Grey — candidate signals | 2 | κ not yet measured | Exploratory |
 
-15 signals with κ < 0.4 are excluded from Label Studio and power analysis (paper Appendix C.3 κ values; Landis & Koch 1977 threshold). df = 49 (50 signals − 1).
+15 signals with κ < 0.4 are excluded from Label Studio and power analysis (paper Appendix C.3 κ values; Landis & Koch 1977 threshold). df = 45 (46 signals − 1, v0.7; was 49 when the taxonomy held 50 — see the 2026-09-22 revision note below).
 
 A `CANDIDATE_SIGNAL` meta-label and `TextArea` capture new signals observed in data not yet in the taxonomy.
 
@@ -154,14 +154,14 @@ We target **w = 0.5** because some signals (e.g., `conversation_advanced`) are s
 
 **α = 0.05**: standard 5% false-positive rate (chance of detecting a pattern that does not actually exist).
 
-**df = 49** = number of signals − 1 = 50 − 1.
+**df = 45** = number of signals − 1 = 46 − 1 (rubric v0.7).
 
-**Test:** Chi-square goodness-of-fit (one-sample), α = 0.05, df = 49
-(50 signals after tier reconciliation with paper Appendix C.3, minus `CANDIDATE_SIGNAL` meta-label → df = 50−1 = 49)
+**Test:** Chi-square goodness-of-fit (one-sample), α = 0.05, df = 45
+(46 signals in rubric v0.7, minus `CANDIDATE_SIGNAL` meta-label → df = 46−1 = 45)
 
 ### Mathematical formulation
 
-H₀: Signal frequencies are uniformly distributed across k = df + 1 = 50 categories.
+H₀: Signal frequencies are uniformly distributed across k = df + 1 = 46 categories.
 
 **Effect size (Cohen's w):** w = √(Σᵢ (pᵢ − p₀ᵢ)² / p₀ᵢ), where p₀ᵢ = 1/k
 
@@ -186,35 +186,35 @@ def required_n(w, df, alpha=0.05, power=0.90):
     return lo
 ```
 
-All n values below computed with df=49, α=0.05. κ values from arXiv:2603.15423 Table 5 (Appendix C.3); all 15 excluded signals confirmed κ < 0.4 from paper.
+All n values below computed with **df=45, α=0.05** (recomputed 2026-09-22; the df=49 column is kept for comparison). κ values from arXiv:2603.15423 Table 5 (Appendix C.3); all 15 excluded signals confirmed κ < 0.4 from paper.
 
 ### Table 1 — power = 0.90
 
-| w | n | % of 716 |
-|---|---|---|
-| 0.1 | >716 | 100% |
-| 0.2 | >716 | 100% |
-| 0.3 | 419 | 58.5% |
-| **0.4** | **230** | **32.1%** |
-| **0.5** | **148** | **20.7%** |
-| 0.6 | 103 | 14.4% |
-| 0.7 | 76 | 10.6% |
-| 0.8 | 58 | 8.1% |
-| 0.9 | 46 | 6.4% |
+| w | n (df=45, v0.7) | % of 703 | n (df=49, superseded) |
+|---|---|---|---|
+| 0.1 | >703 | 100% | >703 |
+| 0.2 | >703 | 100% | >703 |
+| 0.3 | 395 | 56.2% | 409 |
+| **0.4** | **223** | **31.7%** | 230 |
+| **0.5** | **143** | **20.3%** | 148 |
+| 0.6 | 99 | 14.1% | 103 |
+| 0.7 | 73 | 10.4% | 76 |
+| 0.8 | 56 | 8.0% | 58 |
+| 0.9 | 44 | 6.3% | 46 |
 
 ### Table 2 — power = 0.95
 
-| w | n | % of 716 |
-|---|---|---|
-| 0.1 | >716 | 100% |
-| 0.2 | >716 | 100% |
-| 0.3 | 475 | 66.3% |
-| **0.4** | **268** | **37.4%** |
-| **0.5** | **171** | **23.9%** |
-| 0.6 | 119 | 16.6% |
-| 0.7 | 88 | 12.3% |
-| 0.8 | 67 | 9.4% |
-| 0.9 | 53 | 7.4% |
+| w | n (df=45, v0.7) | % of 703 | n (df=49, superseded) |
+|---|---|---|---|
+| 0.1 | >703 | 100% | >703 |
+| 0.2 | >703 | 100% | >703 |
+| 0.3 | 460 | 65.4% | 475 |
+| **0.4** | **259** | **36.8%** | 268 |
+| **0.5** | **166** | **23.6%** | 171 |
+| 0.6 | 115 | 16.4% | 119 |
+| 0.7 | 85 | 12.1% | 88 |
+| 0.8 | 65 | 9.2% | 67 |
+| 0.9 | 52 | 7.4% | 53 |
 
 Cohen's w conventions: small=0.1, medium=0.3, large=0.5
 
@@ -331,7 +331,7 @@ old English filter but not the new one).
 
 **Corpus update:** English filter tightened from "combined plain_text ≥50%" to "user turns ≥50%
 AND LLM turns ≥50% independently." Corpus reduced from 716 → **703 conversations** (13 removed).
-Power analysis target updated: n=148 (w=0.5, power=0.90, df=49) — essentially unchanged.
+Power analysis target updated: n=148 (w=0.5, power=0.90, df=49) — essentially unchanged. *(Superseded 2026-09-22: at df=45 the requirement is n=143; the annotated 148 exceeds it.)*
 
 ---
 
@@ -592,3 +592,58 @@ Decision 8 (`user_misled`, `false_confidence` under the R12/R19 three-way rule).
    limitation (last window — no signal additions after freeze).
 3. Post-freeze consistency sweep over top-drift signals (scope above).
 4. Housekeeping: flag the 16 κ-excluded rows in `control_mapping.csv` as `excluded`.
+
+---
+
+### Revision note — 2026-09-22: df 49 → 45 after the v0.7 merges
+
+**What changed.** Rubric v0.7 merged three signal pairs (`ai_asked_probing_question` →
+`ai_asks_followup`; `intent_missed` + `under_delivered` → `request_unfulfilled`;
+`user_expresses_frustration` → `user_expresses_dissatisfaction`), taking the taxonomy from
+49 to 46 signals. v0.6's rule A7 had already dropped `conversation_advanced`. So the df
+recorded here as 49 (50 − 1) drifted twice: **148 → 146 (A7) → 143 (the merges)**, and only
+the last step is from v0.7.
+
+**The new number.** At w = 0.5, α = 0.05, power = 0.90, df = 45: **n = 143**.
+
+**Derivation.** χ²_crit = `chi2.ppf(0.95, 45)` = 61.656233; λ = n·w² = 0.25 n;
+power(n) = `1 − ncx2.cdf(61.656233, 45, λ)`. power(142) = 0.899447, power(143) = 0.902246 →
+143 is the smallest n reaching 0.90.
+
+**Validated four ways.** (1) The same code at df = 49 returns 148, reproducing the number
+this document already states, so the method is the one that was used. (2)
+`statsmodels.stats.power.GofChisquarePower().solve_power(effect_size=0.5, alpha=0.05,
+power=0.90, n_bins=46)` = 142.196 → ⌈⌉ = 143. (3) Monte Carlo, 400,000 draws from
+`noncentral_chisquare(45, λ)`: power 0.9028 at n=143, 0.8999 at n=142. (4) The same
+implementation reproduces all four published values in `paper/methods.md` (0.266, 95.4%,
+99.998%, 0.230).
+
+**Literature.** The formula is Cohen's: power = 1 − F_ncχ²(χ²_crit | df, λ) with λ = N·w²
+and df = k − 1 for goodness of fit (Cohen, *Statistical Power Analysis for the Behavioral
+Sciences*, 2nd ed., 1988, ch. 7; conventions w = 0.10/0.30/0.50 small/medium/large). It is
+what G*Power 3 implements for the χ² family (Faul, Erdfelder, Lang & Buchner, 2007,
+*Behavior Research Methods* 39(2), 175–191), which is why `statsmodels` agrees. **Caveat:
+the copy of Cohen (1988) checked on 2026-09-22 was image-only and the text could not be
+extracted; λ = N·w², df = k−1 and the conventions were confirmed from secondary sources,
+not the primary. The page citation should be checked against a readable copy before the
+paper cites it.**
+
+**This table is not what the paper relies on.** `paper/methods.md` argues the sample at the
+**per-signal binary** level — a one-sample proportion test, equivalently χ² goodness of fit
+on one signal with **df = 1** — because the annotation is multi-label, not assignment to
+mutually exclusive classes. At df = 1 the signal count does not enter, so the merges change
+**nothing** in the paper: N = 148 still gives ≥ 90% power for w ≥ 0.266. The multinomial
+table here is the older justification, retained for provenance.
+
+**Practical effect: none.** The merges *lower* the requirement (148 → 143), so the 148
+annotated conversations remain sufficient under either framing, with 5 conversations of
+headroom. At fixed N = 148 the minimum detectable w moves only 0.498 → 0.490 — a
+bookkeeping correction, not a power gain.
+
+**Also corrected here.** Table 1's w = 0.3 cell read **419**; the documented function at
+df = 49 returns **409**. Every other cell reproduced exactly, so 419 was a transcription
+error, not a different calculation.
+
+**Two stale items left untouched, pending Jun's call.** (a) The w = 0.5 justification above
+cites `conversation_advanced` as the flagship common signal; A7 dropped it. (b) "Planned
+annotation strategy" item 1 still says **n=151**, which no table in this document produces.

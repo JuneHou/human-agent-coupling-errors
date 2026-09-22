@@ -3094,6 +3094,150 @@ def apply_round3_rescan(apply_changes):
 
 
 
+# ----------------------------------------------------------------------------
+# Mode 22: drop `ai_structured_response` from blocks with no visible marker
+# (--fix-structured-response-strict). See module docstring.
+#
+# Round-1 v0.6 D17a: "Never fire on formatting ASSUMED to have been stripped by
+# the export." Round-2 rubric_edits_v07.md SSB reaffirms it: the entry's Step 1
+# (visible markers) and Step 3's last sentence (stripped glyphs still count)
+# contradict each other, and "practice follows the strict reading". This mode
+# enforces Step 1 on Jun's round-3 arm. Each target is re-verified against the
+# live block text before deletion: if a marker IS present the row is skipped,
+# so a legitimate fire can never be removed by a stale target list.
+# ----------------------------------------------------------------------------
+
+STRICT_SR_TARGETS = [        # (task, block) in project 1, Jun's round-3 arm
+    (133, 5), (133, 7), (134, 1), (134, 5), (134, 13), (134, 17),
+]
+SR_SIGNAL = "ai_structured_response"
+# Step 1 + Step 2 together, read strictly. A block keeps the label when the
+# plain_text export still shows: any '#' header line, any box-drawing table or
+# tree glyph, or three-or-more items of one list shape -- '-'/'*'/'1.'/'1)' or
+# roman-numeral line starts, dash-delimited "Name - description" entries, or an
+# enumerated "Option N:" list. Nothing else counts. The test is deliberately
+# generous: this mode only deletes, so anything arguable keeps its label.
+_SR_HEAD = re.compile(r"(?m)^\s*#")
+_SR_TREE = re.compile(r"[\u2500-\u257F]")
+_SR_ITEM = re.compile(r"(?m)^\s*(?:[-*]\s|\d+[.)]\s|[IVXLC]+\.\s)")
+_SR_DASH = re.compile(r"(?m)^[^\n]{1,50}? - \S")
+_SR_OPTN = re.compile(r"Option\s*\d+\s*:")
+
+
+def _sr_marker(txt):
+    """Return the marker that keeps ai_structured_response alive, or None."""
+    for rx in (_SR_HEAD, _SR_TREE):
+        m = rx.search(txt)
+        if m:
+            return m.group(0)
+    for rx in (_SR_ITEM, _SR_DASH, _SR_OPTN):
+        hits = rx.findall(txt)
+        if len(hits) >= 3:
+            return f"{len(hits)}x {rx.pattern[:24]}"
+    return None
+
+
+def fix_structured_response_strict(apply_changes):
+    con = sqlite3.connect(db_path())
+    removed = skipped = 0
+    by_task = collections.defaultdict(list)
+    for tid, blk in STRICT_SR_TARGETS:
+        by_task[tid].append(blk)
+
+    for tid, blocks in sorted(by_task.items()):
+        cid, data, res = con.execute(
+            """SELECT tc.id, t.data, tc.result FROM task_completion tc
+               JOIN task t ON t.id = tc.task_id
+               WHERE t.project_id = 1 AND t.id = ? AND tc.was_cancelled = 0""",
+            (tid,)).fetchone()
+        payload, result = json.loads(data), json.loads(res)
+        dialogue = payload["dialogue"]
+        for blk in sorted(blocks):
+            txt = dialogue[blk]["text"]
+            hit = _sr_marker(txt)
+            if hit:
+                print(f"  SKIP task {tid} b{blk}: marker present "
+                      f"({hit!r}) -- Step 1 passes, fire stands")
+                skipped += 1
+                continue
+            found = 0
+            for it in list(result):
+                v = it.get("value", {})
+                if str(v.get("start")) == str(blk) and \
+                        SR_SIGNAL in (v.get("paragraphlabels") or []):
+                    v["paragraphlabels"].remove(SR_SIGNAL)
+                    found += 1
+            if found:
+                removed += found
+                print(f"  DROP task {tid} b{blk}: {found} label(s), "
+                      f"no visible marker in the block")
+            else:
+                print(f"  SKIP task {tid} b{blk}: {SR_SIGNAL} not present")
+                skipped += 1
+        result = [i for i in result if i.get("type") != "paragraphlabels"
+                  or i.get("value", {}).get("paragraphlabels")]
+        if apply_changes:
+            con.execute(
+                """UPDATE task_completion SET result=?, updated_at=datetime('now')
+                   WHERE id=?""",
+                (json.dumps(result, ensure_ascii=False), cid))
+    if apply_changes:
+        con.commit()
+    con.close()
+    print(f"\n{'APPLIED' if apply_changes else 'DRY RUN'}: "
+          f"{removed} label(s) removed, {skipped} skipped")
+
+
+
+# ----------------------------------------------------------------------------
+# Mode 23: retire a signal, deleting its spans corpus-wide
+# (--retire-signal NAME). See module docstring.
+#
+# Removing a label from label_studio_config.xml without removing its spans
+# leaves orphaned highlights the UI renders as "No label", so the two must ship
+# together. Refuses to run while the signal is still in the config, which makes
+# the ordering explicit: edit the config first, then run this.
+# ----------------------------------------------------------------------------
+
+
+def retire_signal(apply_changes, signal):
+    cfg = (ANNOT_DIR / "label_studio_config.xml").read_text()
+    if f'value="{signal}"' in cfg:
+        sys.exit(f"{signal} is still in label_studio_config.xml -- remove it there "
+                 "first, so the config and the spans never disagree.")
+    con = sqlite3.connect(db_path())
+    rows = con.execute(
+        """SELECT tc.id, t.id, t.project_id, tc.result FROM task_completion tc
+           JOIN task t ON t.id = tc.task_id WHERE tc.was_cancelled = 0""").fetchall()
+    removed, touched = 0, 0
+    for cid, tid, pid, res in rows:
+        result = json.loads(res or "[]")
+        hit = 0
+        for it in list(result):
+            labels = it.get("value", {}).get("paragraphlabels") or []
+            if signal in labels:
+                labels.remove(signal)
+                hit += 1
+        if not hit:
+            continue
+        kept = [i for i in result if i.get("type") != "paragraphlabels"
+                or i.get("value", {}).get("paragraphlabels")]
+        print(f"  project {pid} task {tid}: {hit} span(s), "
+              f"result {len(result)} -> {len(kept)}")
+        removed += hit
+        touched += 1
+        if apply_changes:
+            con.execute("UPDATE task_completion SET result=?, "
+                        "updated_at=datetime('now') WHERE id=?",
+                        (json.dumps(kept, ensure_ascii=False), cid))
+    if apply_changes:
+        con.commit()
+    con.close()
+    print(f"\n{'APPLIED' if apply_changes else 'DRY RUN'}: {removed} span(s) of "
+          f"{signal} removed across {touched} completion(s)")
+
+
+
 if __name__ == "__main__":
     _apply = "--apply" in sys.argv
     if "--list-wide-spans" in sys.argv:
@@ -3132,6 +3276,10 @@ if __name__ == "__main__":
         fix_span_hygiene(_apply)
     elif "--fix-task-counters" in sys.argv:
         fix_task_counters(_apply)
+    elif "--retire-signal" in sys.argv:
+        retire_signal(_apply, sys.argv[sys.argv.index("--retire-signal") + 1])
+    elif "--fix-structured-response-strict" in sys.argv:
+        fix_structured_response_strict(_apply)
     elif "--refresh-priya-md" in sys.argv:
         _ids = [int(x) for x in sys.argv[sys.argv.index("--refresh-priya-md") + 1].split(",")] \
             if len(sys.argv) > sys.argv.index("--refresh-priya-md") + 1 \

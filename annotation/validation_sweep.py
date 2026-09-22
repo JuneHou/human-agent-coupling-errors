@@ -12,8 +12,14 @@ determination; it only surfaces candidate spans for adjudication.
 Search space is ai blocks only (rubric `blocks: ["ai"]`; signal-decisions.md
 bars the signal from <thinking> content).
 
-Also hosts two cross-cutting guards that are not specific to this signal: the
-R21 nesting check, and a ROLE CHECK that every label sits on a block role its
+Also hosts cross-cutting guards that are not specific to this signal: the R21
+nesting check, a ROLE CHECK, and four ROUTING GUARDS (2026-09-22) that test the
+observable antecedent deciding a two-signal routing rather than the annotation
+state -- see routing_guards(). The R21 nesting check below is the state-based
+form and is kept only as a subset of guard 1; it misses the case where the
+annotator placed the acknowledgment span elsewhere.
+
+A ROLE CHECK that every label sits on a block role its
 rubric entry allows (A1) -- the slip you make picking the wrong neighbour out of
 ~46 signals, which is mechanical and so mechanically catchable.
 
@@ -309,10 +315,120 @@ def role_legality_check(db_path, projects=None):
     return violations, gaps
 
 
+
+# ---------------------------------------------------------------------------
+# Routing guards (2026-09-22). Each pairs two signals that compete for one act
+# and tests the OBSERVABLE antecedent that decides the routing -- never the
+# annotation state. A test of the form "does this span sit inside a span already
+# labeled X" is satisfiable by moving the other span, so two annotators can both
+# pass it and still disagree; that is how the round-3 task-8 b5/b8 cells arose.
+# Flag only: a hit is a candidate for review, not an automatic correction.
+# Named for the BEHAVIOUR, not for the ruling number (R19/R21/A6): those
+# identifiers are discussion shorthand that an annotator reading only the
+# rubric cannot resolve, which is the defect these guards exist to catch.
+# ---------------------------------------------------------------------------
+
+CORRECTION_SIGNALS = {"user_corrects_ai", "user_implicit_correction",
+                      "user_repeats_request"}
+QUESTION_FAMILY = {"ai_asked_clarifying_question", "ai_asks_followup",
+                   "ai_offered_options", "ai_offers_to_elaborate",
+                   "ai_provides_example"}
+AGREEMENT_OPENER = re.compile(
+    r"^\s*(you'?re\s+(absolutely\s+|exactly\s+|completely\s+)?right"
+    r"|you\s+are\s+right|yes,|correct[.,!]|good catch|exactly[.,!]"
+    r"|true[.,!]|fair\s+(enough|point))", re.I)
+
+
+def _overlap(a, b):
+    return a[0] < b[1] and b[0] < a[1]
+
+
+def routing_guards(db_path):
+    """Four observable-antecedent routing checks over every submitted
+    annotation in the database (all raters, all projects). Returns findings."""
+    out = []
+    for task_id, dialogue, result in load_annotations(db_path):
+        per_block = defaultdict(list)
+        for item in result:
+            value = item.get("value", {})
+            labels = value.get("paragraphlabels") or []
+            if not labels or "startOffset" not in value:
+                continue
+            per_block[int(value["start"])].append(
+                (set(labels), int(value["startOffset"]), int(value["endOffset"]),
+                 value.get("text", "")))
+
+        def prev_human(idx):
+            for j in range(idx - 1, -1, -1):
+                if dialogue[j].get("author") == "human":
+                    return j
+            return None
+
+        for block, spans_here in per_block.items():
+            if block >= len(dialogue):
+                continue
+            here = set().union(*[lbl for lbl, _, _, _ in spans_here])
+            j = prev_human(block)
+            prev_labels = (set().union(*[l for l, _, _, _ in per_block[j]])
+                           if j is not None and per_block.get(j) else set())
+            corrected = bool(prev_labels & CORRECTION_SIGNALS)
+            text = dialogue[block].get("text", "")
+
+            # 1. ai_validates_user vs ai_acknowledges_correction. Antecedent:
+            #    the preceding human turn corrected the AI, so an agreement
+            #    clause opening this block is the acknowledgment act (R21).
+            opener = AGREEMENT_OPENER.match(text)
+            if opener and corrected:
+                for lbl, s0, e0, txt in spans_here:
+                    if SIGNAL in lbl and s0 <= opener.start() and e0 >= opener.end():
+                        out.append(("AGREEMENT-AFTER-CORRECTION", task_id, block,
+                                    f"{SIGNAL} on the opening agreement clause "
+                                    f"while the preceding human turn b{j} carries "
+                                    f"{sorted(prev_labels & CORRECTION_SIGNALS)}",
+                                    txt[:70]))
+
+            # 2. error_recovery self-caught gate. Antecedent: the preceding
+            #    human turn reported the error, so the repair is user-caught.
+            if "error_recovery" in here and corrected:
+                for lbl, _, _, txt in spans_here:
+                    if "error_recovery" in lbl:
+                        out.append(("REPAIR-AFTER-USER-REPORT", task_id, block,
+                                    f"error_recovery while the preceding human "
+                                    f"turn b{j} carries "
+                                    f"{sorted(prev_labels & CORRECTION_SIGNALS)} "
+                                    f"-- Step 2 routes a user-reported error to "
+                                    f"{ACK_SIGNAL}. Legitimate only if this span "
+                                    f"repairs a DIFFERENT, self-caught error",
+                                    txt[:70]))
+
+            # 3. A6 one home per question, and 4. R19 per-claim exclusivity.
+            for i, (l1, s1, e1, t1) in enumerate(spans_here):
+                for l2, s2, e2, _ in spans_here[i + 1:]:
+                    if not _overlap((s1, e1), (s2, e2)):
+                        continue
+                    q1, q2 = QUESTION_FAMILY & l1, QUESTION_FAMILY & l2
+                    if q1 and q2 and q1 != q2:
+                        out.append(("ONE-QUESTION-TWO-HOMES", task_id, block,
+                                    f"{sorted(q1)} overlaps {sorted(q2)}",
+                                    t1[:70]))
+                    pair = {"factual_error", "false_confidence"}
+                    if (pair & l1) and (pair & l2) and (pair & l1) != (pair & l2):
+                        out.append(("WRONG-FACT-AND-OVERCLAIM-SAME-SPAN", task_id, block,
+                                    "factual_error and false_confidence spans "
+                                    "overlap -- R19 is exclusive per CLAIM, so "
+                                    "narrow the wider span to its own claim",
+                                    t1[:70]))
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", default=DEFAULT_DB)
     ap.add_argument("--out", default="/tmp/validation_sweep.json")
+    ap.add_argument("--strict", action="store_true",
+                    help="exit non-zero when a routing guard fires; for the "
+                         "automated-annotation pipeline, where no human reads "
+                         "the report")
     args = ap.parse_args()
 
     cands, spans, labeled_blocks, ai_total, tasks, ack_spans = sweep(args.db)
@@ -405,7 +521,21 @@ def main():
                   fh, ensure_ascii=False, indent=1)
     print(f"\nwrote {args.out}")
 
-    return 1 if (missed or misplaced or nested or violations) else 0
+    guards = routing_guards(args.db)
+    print("\nROUTING GUARDS -- observable antecedents, flag only:")
+    if guards:
+        by_kind = Counter(g[0] for g in guards)
+        for kind, n in by_kind.most_common():
+            print(f"  {kind:<22} {n}")
+        for kind, t, b, why, txt in sorted(guards):
+            print(f"  {kind} task {t} block {b}: {why}")
+            if txt:
+                print(f"      span: {txt!r}")
+    else:
+        print("  none.")
+
+    gate = bool(guards) if args.strict else False
+    return 1 if (missed or misplaced or nested or violations or gate) else 0
 
 
 if __name__ == "__main__":
