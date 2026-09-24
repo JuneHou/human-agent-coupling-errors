@@ -849,6 +849,218 @@ def import_priya_missing(apply_changes):
           f"{total_added} label(s) across {touched} new completion(s)")
 
 
+
+# ----------------------------------------------------------------------------
+# Write Michelle's corrected round-3 arm into her Label Studio project
+# (--import-michelle-round3). Her ten markdown files are the source; the agreed
+# corrections in round_3/changes_Michelle.md are applied on top, and the result
+# is written as one completion per task. Markdown flows INTO Label Studio and is
+# never regenerated from it.
+# ----------------------------------------------------------------------------
+
+MICHELLE_R3_DIR_IMPORT = ANNOT_DIR / "Rubric_agree" / "round_3" / "michelle"
+MICHELLE_R3_CHANGES = ANNOT_DIR / "Rubric_agree" / "round_3" / "changes_Michelle.md"
+MICHELLE_R3_PROJECT_ID = 9
+MICHELLE_R3_USER_ID = 5
+# Her file shapes, each declared in the file's own header: a bold one-liner, a
+# markdown table, or a table keyed by turn id. The number is the block base.
+MICHELLE_R3_FILE_SHAPE = {
+    787: ("bold", 1), 788: ("bold", 1), 789: ("bold", 0), 790: ("bold", 0),
+    791: ("bold", 0), 792: ("bold", 0), 793: ("table", 1), 794: ("table", 1),
+    795: ("btable", 1), 796: ("turn", None),
+}
+# Task 133: her replacement file of 2026-09-23 supersedes the original.
+MICHELLE_R3_FILENAME = {795: "task795_new.md"}
+# Cells the walk raised but Jun has not ruled. They stay out until he does.
+MICHELLE_R3_HELD = {(795, 2, "user_asks_clarification")}
+
+_M_PUNCT = str.maketrans({"\u2019": "'", "\u2018": "'", "\u201c": '"',
+                          "\u201d": '"', "\u00a0": " "})
+
+
+def _m_norm_map(txt):
+    """Whitespace-collapsed copy of a block plus the index of each kept
+    character, so a span found in the copy maps back to real offsets."""
+    txt = txt.translate(_M_PUNCT)
+    out, idx, prev_space = [], [], False
+    for i, ch in enumerate(txt):
+        if ch.isspace():
+            if prev_space:
+                continue
+            out.append(" "); idx.append(i); prev_space = True
+        else:
+            out.append(ch); idx.append(i); prev_space = False
+    return "".join(out), idx
+
+
+def _m_span_candidates(row):
+    """Quoted text a row offers as its evidence, best guess first."""
+    row = row.translate(_M_PUNCT)
+    out = []
+    m = re.search(r"Span[^:]{0,12}:\s*(.+?)(?:\s*\|\s*Step|\s*\*\*\s*$|$)", row)
+    if m:
+        out.append(m.group(1))
+    out += re.findall(r'"([^"]{8,})"', row)
+    return out
+
+
+def _m_parse_files(signals):
+    """Her ten files -> {(task, block, signal): [row text, ...]}."""
+    blk_re = re.compile(r"\bB(?:lock)?\s*(\d+)\b")
+    turn_re = re.compile(r"task(?:79[56])_(\d+)_(human|ai|reasoning|analysis|code)")
+    nofire_re = re.compile(r"label 0|does NOT fire|Excluded:", re.I)
+    prose_re = re.compile(r"`([a-z_]+)`[\s\S]{0,400}?[Ff]ires on\s+"
+                          r"\*\*task(?:79[56])_(\d+)_(human|ai|reasoning|analysis|code)\*\*")
+    alias = {"ai_provides_structured_response": "ai_structured_response"}
+    fires = defaultdict(list)
+
+    for task_id, (shape, base) in sorted(MICHELLE_R3_FILE_SHAPE.items()):
+        name = MICHELLE_R3_FILENAME.get(task_id, f"task{task_id}.md")
+        # Commentary is not a label (Jun, 2026-09-22: "notes is not fire").
+        body = (MICHELLE_R3_DIR_IMPORT / name).read_text().split("## Notes for Jun")[0]
+        for line in body.splitlines():
+            ln = line.strip()
+            if shape == "bold":
+                m = re.match(r"\*\*([a-z_]+)\s*\|", ln)
+                if not m:
+                    continue
+                head = ln[m.end():].partition("Span")[0]
+                if nofire_re.search(head):
+                    continue
+                signal, where, row = m.group(1), head, ln
+            else:
+                cells = [x.strip() for x in ln.strip("|").split("|")]
+                if len(cells) < 3:
+                    continue
+                signal, where, row = cells[0], cells[1], cells[2]
+            signal = alias.get(signal, signal)
+            if signal not in signals:
+                continue
+            if shape == "turn":
+                t = turn_re.search(where)
+                if not t:
+                    continue
+                k, role = int(t.group(1)), t.group(2)
+                blocks = [2 * k - 2 if role == "human" else 2 * k - 1]
+            else:
+                blocks = [int(x) - base for x in blk_re.findall(where)]
+            for b in blocks:
+                fires[(task_id, b, signal)].append(row)
+        # A block-level signal has no sentence to quote, so some are recorded as
+        # a paragraph in the turn body rather than as a row.
+        for m in prose_re.finditer(body):
+            signal, k, role = m.group(1), int(m.group(2)), m.group(3)
+            if signal in signals:
+                fires[(task_id, 2 * k - 2 if role == "human" else 2 * k - 1,
+                       signal)].append("")
+    return fires
+
+
+def _m_parse_corrections():
+    """changes_Michelle.md -> (adds, removes). Section heading decides which."""
+    row_re = re.compile(r"^\|\s*(\d{3})\s+b(\d+)\s*\|\s*`([a-z_]+)`")
+    adds, removes, section = [], [], ""
+    for line in MICHELLE_R3_CHANGES.read_text().splitlines():
+        if line.startswith("#"):
+            section = line.strip("# ").strip()
+        m = row_re.match(line)
+        if not m:
+            continue
+        cell = (int(m.group(1)), int(m.group(2)), m.group(3))
+        if section.startswith("Add"):
+            adds.append(cell)
+        elif section.startswith("Remove"):
+            removes.append(cell)
+    return adds, removes
+
+
+def import_michelle_round3(apply_changes):
+    signals = set(json.loads((ANNOT_DIR / "sharechat_rubric.json").read_text())["signals"])
+    fires = _m_parse_files(signals)
+    adds, removes = _m_parse_corrections()
+
+    before = len(fires)
+    for cell in removes:
+        if cell in fires:
+            del fires[cell]
+        else:
+            print(f"  correction not applicable, no such fire: {cell}")
+    added = 0
+    for cell in adds:
+        if cell in MICHELLE_R3_HELD:
+            print(f"  held, not ruled by Jun: {cell}")
+        elif cell in fires:
+            print(f"  correction already present: {cell}")
+        else:
+            fires[cell] = [""]
+            added += 1
+    print(f"\nher files {before} cells -> corrected {len(fires)} "
+          f"({added} added, {len(removes)} removed)")
+
+    con = sqlite3.connect(db_path())
+    dialogues = {t: json.loads(d)["dialogue"] for t, d in con.execute(
+        "SELECT id, data FROM task WHERE project_id = ?", (MICHELLE_R3_PROJECT_ID,))}
+
+    results, located, block_wide = defaultdict(list), 0, 0
+    for (task_id, block, signal), rows in sorted(fires.items()):
+        text = dialogues[task_id][block]["text"]
+        flat, index = _m_norm_map(text)
+        start, end, found = 0, len(text), False
+        for row in rows:
+            hit = None
+            for cand in _m_span_candidates(row):
+                cand = cand.strip().strip('"').strip()
+                for probe in (cand, cand.split("...")[0], cand.split("\u2026")[0]):
+                    probe = re.sub(r"\s+", " ",
+                                   re.sub(r"\s*/\s*", " ", probe)).strip().translate(_M_PUNCT)
+                    if len(probe) >= 8 and probe in flat:
+                        at = flat.index(probe)
+                        hit = (index[at], index[at + len(probe) - 1] + 1)
+                        break
+                if hit:
+                    break
+            if hit:
+                start, end, found = hit[0], hit[1], True
+                break
+        if found:
+            located += 1
+        else:
+            block_wide += 1
+        results[task_id].append({
+            "value": {"start": str(block), "end": str(block),
+                      "startOffset": start, "endOffset": end,
+                      "text": text[start:end], "paragraphlabels": [signal]},
+            "id": uuid.uuid4().hex[:10], "from_name": "signals",
+            "to_name": "dialogue", "type": "paragraphlabels", "origin": "manual"})
+
+    print(f"spans located in the block text: {located}, "
+          f"whole-block fallback: {block_wide}")
+    for task_id in sorted(results):
+        existing = con.execute(
+            "SELECT id FROM task_completion WHERE task_id = ? AND completed_by_id = ?",
+            (task_id, MICHELLE_R3_USER_ID)).fetchone()
+        state = f"REPLACES completion {existing[0]}" if existing else "new"
+        print(f"  task {task_id}: {len(results[task_id]):3d} label(s)  [{state}]")
+        if apply_changes:
+            if existing:
+                con.execute("DELETE FROM task_completion WHERE id = ?", (existing[0],))
+            con.execute(
+                """INSERT INTO task_completion
+                   (result, was_cancelled, created_at, updated_at, task_id,
+                    prediction, result_count, completed_by_id, ground_truth,
+                    project_id, updated_by_id, unique_id, bulk_created)
+                   VALUES (?, 0, datetime('now'), datetime('now'), ?, '{}',
+                           ?, ?, 0, ?, ?, ?, 1)""",
+                (json.dumps(results[task_id], ensure_ascii=False), task_id,
+                 len(results[task_id]), MICHELLE_R3_USER_ID, MICHELLE_R3_PROJECT_ID,
+                 MICHELLE_R3_USER_ID, uuid.uuid4().hex))
+    if apply_changes:
+        con.commit()
+    con.close()
+    total = sum(len(v) for v in results.values())
+    print(f"\n{'APPLIED' if apply_changes else 'DRY RUN'}: {total} label(s) "
+          f"across {len(results)} completion(s) in project {MICHELLE_R3_PROJECT_ID}")
+
 # ----------------------------------------------------------------------------
 # Mode 9: write back round2_disagreement_draft.md's completed walk to Jun's and
 # Michelle's data (--apply-round2-draft). See module docstring.
@@ -3280,6 +3492,8 @@ if __name__ == "__main__":
         retire_signal(_apply, sys.argv[sys.argv.index("--retire-signal") + 1])
     elif "--fix-structured-response-strict" in sys.argv:
         fix_structured_response_strict(_apply)
+    elif "--import-michelle-round3" in sys.argv:
+        import_michelle_round3(_apply)
     elif "--refresh-priya-md" in sys.argv:
         _ids = [int(x) for x in sys.argv[sys.argv.index("--refresh-priya-md") + 1].split(",")] \
             if len(sys.argv) > sys.argv.index("--refresh-priya-md") + 1 \

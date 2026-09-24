@@ -516,6 +516,13 @@ def load_michelle_round3_md(db_path, conv_to_c, signals, md_dir=None):
 
     presence, spans = set(), defaultdict(list)
     rows = 0
+    # A block-level signal has no sentence to quote, so M records some of them as a
+    # paragraph in the turn body -- "`conversation_stalled` ... Fires on **task796_1_ai**"
+    # -- rather than as a row. Those are labels. Commentary in a "Notes for Jun" section
+    # is not (Jun, 2026-09-22: "notes is not fire"), so the scan stops at that heading.
+    fires_re = re.compile(
+        r"`([a-z_]+)`[\s\S]{0,400}?[Ff]ires on\s+\*\*task(?:79[56])_(\d+)_(human|ai"
+        r"|reasoning|analysis|code)\*\*")
     for tid, (shape, base) in sorted(MICHELLE_R3_SHAPE.items()):
         c = conv_to_c.get(conv_by_task[tid])
         assert c is not None, f"task {tid}: conv_id not in the round-3 set"
@@ -551,6 +558,20 @@ def load_michelle_round3_md(db_path, conv_to_c, signals, md_dir=None):
             for b in blocks:
                 presence.add((c, b, sig))
                 spans[("M", c, b, sig)].append(span[:SPAN_TEXT_LIMIT])
+
+        text = (md_dir / f"task{tid}.md").read_text()
+        cut = text.find("## Notes for Jun")
+        for m in fires_re.finditer(text[:cut] if cut > 0 else text):
+            sig = MICHELLE_R3_ALIAS.get(m.group(1), m.group(1))
+            if sig not in signals:
+                continue
+            k, role = int(m.group(2)), m.group(3)
+            b = 2 * k - 2 if role == "human" else 2 * k - 1
+            if (c, b, sig) not in presence:
+                rows += 1
+                presence.add((c, b, sig))
+                spans[("M", c, b, sig)].append(
+                    " ".join(m.group(0).split())[:SPAN_TEXT_LIMIT])
     return presence, spans, {"spans": rows, "labels": len(presence)}
 
 
