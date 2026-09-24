@@ -2,7 +2,7 @@
 
 Mark **observable signals** — evidence of coupling behaviors (positive or failure) between human and AI — at the paragraph level. This is a discovery pass: when unsure, mark it and leave a note.
 
-**Annotation target:** 148 conversations (w=0.5, power=0.90, df=45 — 46 signals in v0.7; requires n=143, so 148 exceeds it). See `docs/methodology/annotation-protocol.md` for statistical details.
+**Annotation target:** 140 conversations (w=0.5, α=0.05, power=0.90, df=43 for the 44 signals in v0.8). Thirty are already double-annotated across the three agreement rounds, so the production batch is the remaining **110**. See `docs/methodology/annotation-protocol.md` for statistical details.
 
 ---
 
@@ -21,8 +21,8 @@ If you are here to compute inter-annotator agreement (κ), a few rules override 
 - **Open only your assigned project** — round 1: `ShareChat-Agreement-B` / `ShareChat-Agreement-F`; round 2: `round-2-B` / `round-2-F`. Do **not** open the other annotator's project or the lead's project (`ShareChat-Test`).
 - **Annotate independently and blind** — no discussion with the other annotators or the lead until everyone has submitted. Do not look at anyone else's labels.
 - **Complete all conversations** in your project (do not skip any).
-- Use the **same signal rules below**; the authoritative decision source is `sharechat_rubric.json` (**v0.7**, cut 2026-09-19) — follow each signal's `decision_steps`. The one-page summary of what changed in v0.7, and the block that forced each change, is `Rubric_agree/round_2/rubric_edits_v07.md`; the v0.6 page it builds on is `Rubric_agree/roud_1/BF/rubric_edits_v06.md`.
-- **v0.6 headline rules**: placement is **side-only** (AI-side signals may sit on ANY AI-authored block — ai, reasoning, code, analysis; user-side signals on human blocks); `conversation_advanced` is **dropped** (46 signals after the v0.7 merges — unlabeled means the conversation advanced); within a block label **every occurrence** (consecutive exhibiting sentences = one span, separated occurrences = separate labels).
+- Use the **same signal rules below**; the authoritative decision source is `sharechat_rubric.json` (**v0.8**, cut 2026-09-24) — follow each signal's `decision_steps`. The one-page summary of what changed in v0.8, and the block that forced each change, is `Rubric_agree/round_3/rubric_edits_v08.md`; the v0.7 page it builds on is `Rubric_agree/round_2/rubric_edits_v07.md`, and the v0.6 page under that is `Rubric_agree/roud_1/BF/rubric_edits_v06.md`.
+- **Headline placement rules**: placement is **side-only** (AI-side signals may sit on ANY AI-authored block — ai, reasoning, code, analysis; user-side signals on human blocks); an **unlabeled block means the conversation advanced**, there is no label for it; within a block label **every occurrence** (consecutive exhibiting sentences = one span, separated occurrences = separate labels).
 
 ---
 
@@ -77,7 +77,6 @@ Original 65-signal definitions: `https://github.com/bigspinai/bigspin-invisible-
 | `ai_provides_alternatives` | 0.43 | AI offers a different approach |
 | `adaptation` | 0.71 | AI adapts approach based on user feedback |
 | `error_recovery` | 0.59 | AI identifies and corrects its own prior error |
-| `ai_asked_probing_question` | 0.59 | Open-ended turn-closing question; AI can proceed without the answer |
 | `ai_malfunction` | 0.78 | Technical failure or crash in AI system / tool call |
 | `ai_provides_step_by_step` | 0.72 | Numbered sequential instructions |
 | `ai_structured_response` | 0.65 | Visible markdown structure (headers, bullets, numbered list, code block) |
@@ -91,17 +90,14 @@ Original 65-signal definitions: `https://github.com/bigspinai/bigspin-invisible-
 | Signal | κ | What it captures |
 |---|---|---|
 | `false_confidence` | 0.46 | AI presents uncertain info with unwarranted certainty |
-| `performative_hedge` | 0.67 | AI hedges globally without hedging specific claims |
 | `appropriate_confidence` | 0.49 | AI's confidence matches actual reliability |
 | `problem_ignored` | 0.56 | AI glosses over a visible problem |
 | `repetition` | 0.44 | AI repeats same approach after prior failure |
-| `intent_missed` | 0.55 | AI addressed wrong intent |
-| `under_delivered` | 0.48 | AI clearly fell short of request scope |
 | `off_topic_drift` | 0.42 | AI addressed a different task than requested |
-| ~~`conversation_advanced`~~ | 0.44 | **Dropped in v0.6** — unit mismatch; unlabeled now means the conversation advanced |
 | `conversation_stalled` | 0.47 | Turn failed to advance when path forward was clear |
-| `ethical_tension` | 0.50 | Conflict between user request and AI ethical/policy constraints |
+| `ethical_tension` | 0.50 | The AI surfaces or navigates a conflict between the request and its own ethical, policy or safety constraints. **AI side only, the human block never fires** |
 | `factual_error` | 0.49 | AI makes a verifiably wrong factual claim |
+| `request_unfulfilled` | — | AI attempted the request but the response fails it: wrong goal, clearly less than asked, or a named requirement silently dropped |
 
 ### Purple — User behavior, κ ≥ 0.4
 
@@ -110,32 +106,115 @@ Original 65-signal definitions: `https://github.com/bigspinai/bigspin-invisible-
 | `user_asks_clarification` | 0.60 | User asks AI to clarify something |
 | `user_corrects_ai` | 0.70 | User explicitly corrects a wrong AI statement |
 | `user_implicit_correction` | 0.67 | User corrects AI indirectly |
-| `user_expresses_frustration` | 0.60 | User shows frustration |
 | `user_expresses_dissatisfaction` | 0.61 | User expresses dissatisfaction without frustration |
 | `user_repeats_request` | 0.61 | User repeats a request the AI did not fulfill |
 | `user_positive_feedback` | 0.81 | User explicitly affirms AI's response |
 | `user_ambiguous_request` | — | Request is underspecified or ambiguous |
 | `user_validation_seeking` | — | User asks AI to confirm their own idea |
 | `user_multi_request` | — | Multiple distinct requests in one turn |
-| `user_abandons_thread` | — | User drops a topic and moves on |
 | `user_provides_invalid_input` | — | User provides malformed or impossible input |
 
-*(κ not yet measured for last 5 — confirm before using in analysis)*
+*(the κ column in these tier tables is the **inherited** value from the predecessor study, inter-model and on a different corpus. A dash means they never measured it. Our own human agreement for all 46 is in **Measured agreement per signal** below.)*
 
 ### Orange — κ not yet measured
 
-`user_empowered`, `user_misled`
+| Signal | What it captures |
+|---|---|
+| `user_empowered` | Response leaves the user able to decide or act well on their own: sound and actionable, not merely helpful-looking |
+| `user_misled` | Response could lead the user to a worse decision than they would have made without it |
 
 ### Grey — Candidate signals
 
 | Signal | What it captures |
 |---|---|
-| `ai_asks_followup` | AI offers a specific next action at turn end (yes/no reply sufficient) |
+| `ai_asks_followup` | A turn-closing question the AI can proceed without an answer to, either a yes/no next-action offer or an open-ended one |
 | `ai_missing_retrieval` | AI makes numerical/statistical claims in `ai` block with no `analysis` block |
 
-### Excluded — κ < 0.4 (not in Label Studio)
+**This list is the whole inventory: 44 labels, the same 44 in `label_studio_config.xml`.**
+If a name is not above, it is not a label. Nothing here needs an earlier rubric version to
+read, and no earlier version is available to you. Where a signal you expect is missing, it
+was merged or dropped, and the label that replaced it is above. `request_unfulfilled`
+covers a request the AI missed or under-delivered on. `ai_asks_followup` covers both
+yes/no and open-ended turn-closing questions. `user_expresses_dissatisfaction` covers
+frustration. An unlabeled block means the conversation advanced. `performative_hedge` and
+`user_abandons_thread` were dropped on 2026-09-24: one span and two spans respectively in
+148 conversations, both inside the single longest conversation, and `user_abandons_thread`
+had already been searched exhaustively with nothing further found.
 
-`silent_assumption` (0.20), `ai_stated_interpretation` (0.22), `appropriate_hedge` (0.35), `generate_without_clarifying` (0.21), `ai_references_user_words` (0.26), `over_delivered` (0.10), `plow_through` (0.35), `error_commitment` (0.27), `problem_surfaced` (0.07), `ai_implicit_refusal` (0.16), `ai_self_contradiction` (0.10), `ai_asks_for_feedback` (0.09), `ai_summarizes` (0.37), `ai_empathy_expressed` (0.38), `user_scope_change` (0.32)
+---
+
+## Measured agreement per signal
+
+Human inter-annotator kappa on our own corpus, for all 44 labels currently in
+`label_studio_config.xml`. **Every value is before reconciliation.** Weakest first,
+so the signals that need the most care sit at the top.
+
+Round 1 is the pairwise-mean kappa across three raters over 441 blocks. Rounds 2 and 3
+are the lead annotator against one domain expert, over 379 and 166 blocks. **The three
+columns are not measured on the same object** — the inventory changed between rounds,
+the sets of ten conversations are disjoint, and the number of raters falls from three to
+two. Read a row as a trajectory, never as a controlled comparison. `n` is the pair's
+positive blocks in round 3. A dash means kappa is undefined there, which happens when
+either rater has no positives. Rows are sorted on the most recent round that has a
+value, R3 first, then R2, then R1, and the last column names which one was used.
+
+| Signal | R1 | R2 | R3 | n R3 | sorted on |
+|---|---|---|---|---|---|
+| `ai_flags_complexity` | 0.856 | -0.004 | — | 2/0 | R2 |
+| `ai_missing_retrieval` | -0.003 | — | — | 0/1 | R1 |
+| `user_empowered` | 0.188 | — | — | 0/0 | R1 |
+| `user_ambiguous_request` | 0.198 | — | — | 2/0 | R1 |
+| `user_misled` | 0.331 | — | — | 0/0 | R1 |
+| `off_topic_drift` | 0.332 | — | — | 0/0 | R1 |
+| `factual_error` | 0.216 | — | 0.488 | 5/3 | R3 |
+| `ai_references_prior_turn` | 0.236 | — | 0.491 | 6/2 | R3 |
+| `ai_provides_alternatives` | 0.163 | — | 0.495 | 3/1 | R3 |
+| `ai_warns_user` | 0.131 | 0.662 | 0.495 | 3/1 | R3 |
+| `user_asks_clarification` | 0.077 | 0.191 | 0.495 | 3/1 | R3 |
+| `conversation_stalled` | 0.296 | — | 0.564 | 5/2 | R3 |
+| `ai_cites_source` | 0.41 | 0.247 | 0.657 | 4/5 | R3 |
+| `user_multi_request` | 0.346 | 0.282 | 0.664 | 2/1 | R3 |
+| `ai_validates_user` | 0.364 | 0.645 | 0.702 | 7/7 | R3 |
+| `ai_hedges_uncertainty` | 0.181 | 0.494 | 0.738 | 10/6 | R3 |
+| `request_unfulfilled` | — | — | 0.744 | 5/3 | R3 |
+| `user_repeats_request` | 0.197 | — | 0.744 | 4/4 | R3 |
+| `user_provides_invalid_input` | 0.777 | — | — | 1/0 | R1 |
+| `ai_structured_response` | 0.189 | 0.914 | 0.781 | 13/17 | R3 |
+| `problem_ignored` | 0.228 | -0.003 | 0.797 | 2/3 | R3 |
+| `adaptation` | 0.226 | 0.273 | 0.827 | 6/6 | R3 |
+| `false_confidence` | 0.106 | 0.269 | 0.833 | 13/13 | R3 |
+| `ai_asserts_knowledge_limit` | 0.324 | 0.354 | 0.906 | 6/5 | R3 |
+| `user_validation_seeking` | 0.19 | 0.498 | 0.906 | 5/6 | R3 |
+| `ai_provides_step_by_step` | 0.255 | -0.004 | 0.93 | 8/7 | R3 |
+| `ai_acknowledges_correction` | 0.371 | 0.626 | 0.957 | 13/12 | R3 |
+| `ai_asked_clarifying_question` | 0.489 | 0.396 | 1.0 | 5/5 | R3 |
+| `ai_asks_followup` | 0.192 | 0.458 | 1.0 | 19/19 | R3 |
+| `ai_malfunction` | 0.128 | 0.328 | 1.0 | 3/3 | R3 |
+| `ai_normalizes_difficulty` | 0.263 | 1.0 | — | 0/0 | R2 |
+| `ai_offered_options` | 0.353 | 0.495 | 1.0 | 2/2 | R3 |
+| `ai_offers_to_elaborate` | 0.295 | — | 1.0 | 4/4 | R3 |
+| `ai_provides_caveats` | 0.35 | -0.007 | 1.0 | 2/2 | R3 |
+| `ai_provides_example` | 0.146 | 0.356 | 1.0 | 2/2 | R3 |
+| `ai_refuses_or_declines` | 0.353 | — | 1.0 | 1/1 | R3 |
+| `appropriate_confidence` | 0.071 | — | 1.0 | 1/1 | R3 |
+| `error_recovery` | -0.008 | — | 1.0 | 2/2 | R3 |
+| `ethical_tension` | 0.226 | — | 1.0 | 1/1 | R3 |
+| `repetition` | 0.203 | — | 1.0 | 2/2 | R3 |
+| `user_corrects_ai` | 0.403 | 0.618 | 1.0 | 12/12 | R3 |
+| `user_expresses_dissatisfaction` | 0.397 | -0.004 | 1.0 | 1/1 | R3 |
+| `user_implicit_correction` | 0.282 | 0.213 | 1.0 | 2/2 | R3 |
+| `user_positive_feedback` | 0.357 | 0.28 | 1.0 | 8/8 | R3 |
+
+`request_unfulfilled` has no round-1 or round-2 value because it did not exist as a label
+until v0.7.
+
+**A high kappa on a tiny denominator means little.** Several rows reach 1.0 on one or two
+agreed blocks. Read kappa together with `n`.
+
+Sources, all frozen records that are never regenerated:
+`Rubric_agree/roud_1/agreement-round1-report.md`,
+`Rubric_agree/round_2/agreement_round2_kappa.csv`,
+`Rubric_agree/round_3/agreement_round3_before_kappa.csv`.
 
 ---
 
@@ -149,32 +228,36 @@ Within a block, consecutive sentences evidencing the **same** signal are one epi
 
 ### Block placement
 
+Placement is decided by **side**, never by channel (rule A1 in the rubric's
+`global_placement_rules`).
+
 | Block | Signals that apply |
 |---|---|
-| `human` | Purple (user behavior) only |
-| `reasoning` | `false_confidence`, `intent_missed`, `error_recovery`, `adaptation`, `problem_ignored` |
-| `analysis` | `factual_error`, `false_confidence`, `problem_ignored`, `ai_asserts_knowledge_limit`, `ai_cites_source` |
-| `code` | `factual_error`, `ai_malfunction`, `under_delivered`, `intent_missed`, `problem_ignored`, `repetition` |
-| `ai` | All user-facing signals. Outcome signals (`conversation_advanced`, `conversation_stalled`) always here. |
+| `human` | user-side signals only |
+| `reasoning`, `analysis`, `code`, `ai` | AI-side signals; any AI-authored block may carry any AI-side signal its own entry allows |
+
+Each entry's `blocks` list is the authoritative per-signal restriction. Where an entry
+names fewer blocks than the side allows, the entry wins.
 
 ### Inline `<thinking>` in `ai` blocks
 Label only sentences **after** `</thinking>`. Exception: `ethical_tension` may fire inside `<thinking>` when a jailbreak is visible.
 
-### `ai_asks_followup` vs `ai_asked_probing_question`
-Both are turn-closing questions the AI can proceed without answering:
-- **`ai_asks_followup`** — yes/no action offer: *"Should I run the sector calculations?"* (Grey)
-- **`ai_asked_probing_question`** — open-ended exploration: *"What's got you in the mood tonight?"* (Blue, κ=0.59)
+### `ai_asks_followup` vs `ai_asked_clarifying_question`
+`ai_asks_followup` covers both shapes of turn-closing question the AI can proceed without
+an answer to:
+- yes/no action offer: *"Should I run the sector calculations?"*
+- open-ended exploration: *"What's got you in the mood tonight?"*
 - If the AI **cannot proceed** without the answer → `ai_asked_clarifying_question` instead
 
 ### `ai_provides_caveats` — spontaneous only
-Does not fire when the user explicitly requested critique/limitations. Label `conversation_advanced` instead.
+Does not fire when the user explicitly requested critique/limitations. Label 0; an unlabeled block means the conversation advanced.
 
 ---
 
 ## Before submitting each task
 
 - [ ] Every block type reviewed
-- [ ] Outcome signals (`conversation_advanced` / `conversation_stalled`) on `ai` block only
+- [ ] `conversation_stalled` on an `ai` block only
 - [ ] Inline `<thinking>`: labeled only after `</thinking>`
 - [ ] One signal per sentence
 - [ ] Uncertain cases have a TextArea note
@@ -202,8 +285,8 @@ Does not fire when the user explicitly requested critique/limitations. Label `co
 |                           | Path                                                                                                        |
 | ---------------------------| -------------------------------------------------------------------------------------------------------------|
 | This guide                | `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/ANNOTATION_GUIDE.md`                        |
-| **Signal rubric (v0.7)**  | `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/sharechat_rubric.json`                      |
-| **Boundary rules (v0.7)** | `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/Rubric_agree/round_2/rubric_edits_v07.md` |
+| **Signal rubric (v0.8)**  | `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/sharechat_rubric.json`                      |
+| **Boundary rules (v0.8)** | `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/Rubric_agree/round_3/rubric_edits_v08.md` |
 | Label Studio config       | `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/label_studio_config.xml`                    |
 | Label Studio data         | `/data/wang/junh/label-studio-data/`                                                                        |
 | GitHub repo               | `https://github.com/JuneHou/human-agent-coupling-errors`                                                    |
@@ -215,14 +298,21 @@ Does not fire when the user explicitly requested critique/limitations. Label `co
 
   Read before labeling:
   1. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/sharechat_rubric.json
-     — decision rules + placement rules (authoritative; v0.7)
-  2. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/Rubric_agree/round_2/rubric_edits_v07.md
-     — the v0.7 boundary rules in one page (A1–A7 + per-signal lines), each with the
-       block that forced it
-  3. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/ANNOTATION_GUIDE.md
-     — signal list, block rules, episode/span rules
-  4. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/label_studio_config.xml
-     — the complete allow-list (46 signals); label nothing absent from it
+     — decision rules + placement rules (authoritative; v0.8)
+  2. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/Rubric_agree/round_3/rubric_edits_v08.md
+     — the v0.8 boundary rules in one page, each with the block that forced it
+  3. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/Rubric_agree/round_2/rubric_edits_v07.md
+     — the v0.7 page v0.8 builds on; read it for any rule v0.8 does not restate
+  4. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/ANNOTATION_GUIDE.md
+     — signal list, measured per-signal agreement, block rules, episode/span rules
+  5. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/label_studio_config.xml
+     — the complete allow-list (44 signals); label nothing absent from it
+
+  What v0.8 changed (2026-09-24), both settling contradictions the rubric carried:
+  - `ethical_tension` is AI-alert-only. The human block NEVER fires, whatever the
+    request. The user's request carries its own user-side signals instead.
+  - `ai_structured_response` does not fire on a code block. Step 1's list is the whole
+    test. A block whose only candidate structure is code is label 0.
 
   Method: for each candidate signal, follow its rubric `decision_steps` in order and stop
   at the first step that resolves it — walk every step, never skip ahead on impression

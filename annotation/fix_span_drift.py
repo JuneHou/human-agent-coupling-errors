@@ -909,6 +909,11 @@ def _m_parse_files(signals):
     blk_re = re.compile(r"\bB(?:lock)?\s*(\d+)\b")
     turn_re = re.compile(r"task(?:79[56])_(\d+)_(human|ai|reasoning|analysis|code)")
     nofire_re = re.compile(r"label 0|does NOT fire|Excluded:", re.I)
+    # A withdrawal can also sit after the span quote ("... block - label 0, does
+    # NOT fire."), so the tail is checked too, with quoted text removed so that a
+    # span that merely mentions the words cannot suppress a real fire. "Excluded:"
+    # is left out of the tail test: it names competing signals on rows that do fire.
+    tail_re = re.compile(r"label 0|does NOT fire", re.I)
     prose_re = re.compile(r"`([a-z_]+)`[\s\S]{0,400}?[Ff]ires on\s+"
                           r"\*\*task(?:79[56])_(\d+)_(human|ai|reasoning|analysis|code)\*\*")
     alias = {"ai_provides_structured_response": "ai_structured_response"}
@@ -924,8 +929,10 @@ def _m_parse_files(signals):
                 m = re.match(r"\*\*([a-z_]+)\s*\|", ln)
                 if not m:
                     continue
-                head = ln[m.end():].partition("Span")[0]
+                head, _, tail = ln[m.end():].partition("Span")
                 if nofire_re.search(head):
+                    continue
+                if tail_re.search(re.sub(r'"[^"]*"', "", tail)):
                     continue
                 signal, where, row = m.group(1), head, ln
             else:

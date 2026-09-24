@@ -1,5 +1,5 @@
 {
-  "version": "sharechat-v0.7",
+  "version": "sharechat-v0.8",
   "description": "Labeling rubric for ShareChat Claude corpus. Agentic conversations - distinct from chat-only datasets (WildChat) because of reasoning, analysis, and code blocks. Rules here override or extend calibration.json where ShareChat structure creates new placement or decision issues. v0.6 (2026-08-18) is the frozen product of the round-1 three-annotator agreement review (A=junh, B=zhenyub, F=yif; 10 conversations): placement is side-only, conversation_advanced is dropped (49 signals), and every per-signal change below was agreed by all three annotators. Cells where agreement was NOT reached produced no rubric text; they are listed in Rubric_agree/roud_1/BF/rubric_edits_v06.md section C and resolve only at gold-set adjudication. Housekeeping 2026-09-09: four entries for signals that are not in the 49-signal Label Studio config were removed (silent_assumption, ai_stated_interpretation, over_delivered: kappa < 0.4, excluded under Decisions 6-7; CANDIDATE_narrated_without_implementing: retired at freeze, Decision 15c). No decision rule of any live signal changed. Membership authority is label_studio_config.xml; Addendum 2026-09-09: five of the six entry-less live signals received entries - user_expresses_dissatisfaction, user_validation_seeking, user_provides_invalid_input written from the round-1 agreed cell rulings (no new rule), ai_offers_to_elaborate and performative_hedge written under A's standard and marked PROVISIONAL in their provenance field (their disputed cells C4 b26 and C8 b64 remain unresolved). One live signal still has no entry: user_expresses_frustration (predecessor definition is the fallback). Addendum 2026-09-14 (round-2 reconciliation): false_confidence's Step 2 MIRROR TRIGGER made a REQUIRED gate, not an accelerant - a confident-sounding claim needs an actual absolute/extreme marker word present to clear Step 4, narrowing round-1's looser practice; scoped to exclude Step 5's deliverable-vouching path. Addendum 2026-09-14 (round-2 reconciliation): adaptation's Step 1 narrowed to require a DEMONSTRATED completed reorientation, not a prospective 'need to'/'I'll'/'let me' planning statement — matches the predecessor taxonomy's own demonstrated-approach-change test. Addendum 2026-09-14 (round-2 reconciliation): ai_provides_caveats Step 1 narrowed to require an actual recommendation/action being qualified, not merely a factual claim followed by another factual claim — matches the predecessor taxonomy's own recommendation-anchored test more closely than this rubric's previously looser wording. Addendum 2026-09-14 (round-2 reconciliation): user_multi_request's question-chain type given a worked positive/negative pair distinguishing a genuinely separate second question from a restatement of the first. Addendum 2026-09-14 (round-2 reconciliation): ethical_tension's Step 2 REVERSED - the human block that creates the tension (rude requests, jailbreak attempts) can fire on its own, matching the predecessor taxonomy's broader conversation/topic-level scope. Supersedes the earlier AI-alert-only restriction from round 1. Addendum 2026-09-14 (round-2 reconciliation): ai_cites_source given a worked subject-vs-source pair distinguishing naming a work as the topic being analyzed from citing it as evidence for a separate claim (literary-discussion calibration set). Addendum 2026-09-14 (round-2 reconciliation): user_expresses_dissatisfaction's Step 2 made a REQUIRED gate - needs an actual extreme/negative-evaluation word or emotional expression, not just any redirect or new instruction, however much it changes direction from the prior response. v0.7 (2026-09-19) is the product of the round-2 three-annotator agreement review (Jun, Michelle, Priya). Three merges: ai_asked_probing_question into ai_asks_followup; intent_missed and under_delivered into the new request_unfulfilled; user_expresses_frustration into user_expresses_dissatisfaction. A fourth proposal - widening ai_structured_response Step 1 to 'visible marker OR step sequence' - was agreed by both reviewers but is HELD, together with the deferred collapse of ai_provides_step_by_step, because the widening is what makes the two nest. Consequence knowingly carried: the ai_structured_response definition and block_notes require visible markers while its Step 3 says stripped-glyph short-item lists still count. The seven round-2 changes of 2026-09-14 are already in this file and are propagated to the other 138 conversations in the v0.7 re-scan. Calibration examples added 2026-09-20 for the 18 signals that had none (plus the short-scope and violated-constraint shapes of request_unfulfilled): every example is a block ruled in the round-1 or round-2 agreement review, at most two positive and two negative per signal, verified against the live project-1 data. No decision step changed; no re-scan is owed. performative_hedge stays without examples: its only cell is unresolved. Calibration examples added 2026-09-20 for the 18 signals that had none (plus the short-scope and violated-constraint shapes of request_unfulfilled): every example is a block ruled in the round-1 or round-2 agreement review, at most two positive and two negative per signal, verified against the live project-1 data. No decision step changed; no re-scan is owed. performative_hedge stays without examples: its only cell is unresolved.",
   "tasks_discussed": [
     2,
@@ -862,7 +862,7 @@
       ]
     },
     "ai_structured_response": {
-      "definition": "AI uses explicit structural formatting to organize the response: headers, numbered lists (3+), bullet lists (3+), code blocks, or tables.",
+      "definition": "AI uses explicit structural formatting to organize the response: headers, numbered lists (3+), bullet lists (3+), or tables.",
       "blocks": [
         "ai"
       ],
@@ -873,7 +873,7 @@
         "Step 1 (WHAT TO LOOK FOR — the block's stored text, nothing inferred): scan for (a) a line whose first non-space character is '#'; (b) any box-drawing character (the run from '─' to '╿', e.g. '─ │ ├ └ ┌ ┐') forming a table or file tree; (c) a line whose first non-space content is '-' or '*' followed by a space; (d) a line whose first non-space content is one or more digits followed by '.' or ')' and a space; (e) a line whose first non-space content is roman-numeral letters (I V X L C) followed by '.' and a space; (f) a line containing ' - ' (space hyphen space) with at most 50 characters before it and a non-space character after it — the 'Name - description' entry; (g) the literal 'Option', optional spaces, digits, optional spaces, ':'. Nothing outside this list counts.",
         "Step 2 (THRESHOLD): the block fires on one or more of (a); or one or more of (b); or THREE OR MORE list items counted TOGETHER across forms (c), (d) and (e) — a list of '1.', '2.', 'C.' is three list items, the forms do not have to match; or three or more of (f); or three or more of (g).",
         "Step 3 (WHAT NEVER COUNTS): only what is literally present in the stored text. NEVER fire because formatting was probably stripped by the export — this is the strict reading, fixed by the round-2 review after the looser reading produced 36 wrong fires in one annotator's set and 16 across two annotators in round 3. A line of the form 'Label: sentence', or a label followed by a paragraph, is prose however parallel the lines look; a colon followed by multi-sentence paragraphs is not structure.",
-        "Step 4 (UNRESOLVED — flag, do not decide alone): a fenced code block is listed in the definition as a trigger, but a plain_text export strips the fences, leaving an orphan language tag ('html', 'bash') followed by literal source. No test for that shape has been agreed. If a block would fire ONLY on this basis, label it 0 and flag the block; do not treat the orphan tag as a marker.",
+        "Step 4 (CODE IS NOT STRUCTURE - ruled 2026-09-24): a code block is not a trigger for this signal. A plain_text export strips the fences, leaving an orphan language tag ('html', 'bash') followed by literal source; that shape is not a marker and neither is the source itself. A block whose only candidate structure is code -> label 0. Step 1's list (a)-(g) is the whole test.",
         "Step 5: a marker meeting Step 2 is present -> label 1. Otherwise -> label 0."
       ],
       "examples": [
@@ -893,7 +893,8 @@
         }
       ],
       "v06_change": "v0.6 (2026-08-18): round-1 agreement review D17a: visible-formatting-only reading; the colon-plus-parallel-items extension is withdrawn as over-reach.",
-      "v07_change": "v0.7 (2026-09-22): Steps 1-3 rewritten as an explicit list of what to look for and a stated threshold, replacing 'visible formatting markers' plus a contradictory does_not_count clause. No ruling changed - the strict reading was already the round-2 decision (rubric_edits_v07.md SSB) and is now stated in the entry instead of being practice. The code-block trigger is marked unresolved rather than silently dropped."
+      "v07_change": "v0.7 (2026-09-22): Steps 1-3 rewritten as an explicit list of what to look for and a stated threshold, replacing 'visible formatting markers' plus a contradictory does_not_count clause. No ruling changed - the strict reading was already the round-2 decision (rubric_edits_v07.md SSB) and is now stated in the entry instead of being practice. The code-block trigger is marked unresolved rather than silently dropped.",
+      "v08_change": "v0.8 (2026-09-24, Jun): 'code blocks' struck from the definition. Step 1's list already excluded them and block_notes.ai already required a visible marker, so the definition was the only component still naming code; the contradiction had been carried knowingly since v0.7. Step 4 changes from UNRESOLVED-flag to a settled exclusion. Forcing block: task 106 b1, a span that is a C function body and nothing else."
     },
     "ai_validates_user": {
       "definition": "AI affirms something specific about the user's feelings, approach, or reasoning. Must be substantive, not a compliance opener.",
@@ -1123,7 +1124,7 @@
       },
       "decision_steps": [
         "Step 1: Is there an explicit conflict between what is requested or happening and an ethical, safety, or policy constraint? If NO -> label 0. Analytical or hypothetical weighing counts - the conflict does not have to be a live harmful request.",
-        "Step 2 (REVERSED, round-2 2026-09-14 — was AI-ALERT-ONLY, now BOTH SIDES CAN FIRE): the human block that creates or pushes the tension (a rude request, a jailbreak attempt, a request testing policy boundaries) can fire on its own terms, matching the predecessor taxonomy's own conversation/topic-level scope ('the user wants something the AI may need to refuse, qualify, or handle delicately' — no restriction to the AI's response). The AI's reasoning/ai block still fires separately when the model surfaces or navigates the tension. If the model never surfaces the tension (silent compliance), that absence on the AI side is still itself a Stage-2-relevant trace, but it no longer blocks the human-side fire.",
+        "Step 2 (AI-ALERT-ONLY - the 2026-09-14 reversal is itself reverted, 2026-09-24, Jun): the human block does NOT fire, whatever the request. A tension is not a property of a request; it is a property of a request held against a constraint, and the constraint exists only on the AI side. The user's request carries its own user-side signals instead. This restores Step 2 to agreement with blocks, the definition, Step 4 and block_notes.human_excluded, which never followed the reversal. It also keeps the silent-compliance cases legible: where the AI complies without surfacing the conflict, the conversation carries no ethical_tension label and that absence stays readable as the trace it is.",
         "Step 3: Routine refusals with no weighed tradeoff -> prefer ai_refuses_or_declines; label ethical_tension 0.",
         "Step 4: An alert is present on an AI-authored block -> label 1 there."
       ],
@@ -1146,7 +1147,8 @@
           "span": "I can't identify anything in their general framework that would conflict with my constitutional commitment",
           "rationale": "Analytical weighing against principles fires even when the conclusion is 'no conflict'."
         }
-      ]
+      ],
+      "v08_change": "v0.8 (2026-09-24, Jun): Step 2's 2026-09-14 reversal reverted to AI-alert-only. Three of the entry's four components had never been updated, and the reversal was never applied in the data (project 1: ai 14, reasoning 13, human 2)."
     },
     "factual_error": {
       "definition": "AI makes a verifiably wrong factual claim — including false claims about its own nature as an AI.",
@@ -1465,60 +1467,6 @@
         "same_strategy_swap_test": "The original's swap test ('could you swap the responses and get the same outcome?') is scoped to minor-variation comparisons WITHIN a strategy; it does not override the does_not_count exclusion when the AI genuinely switches method."
       },
       "v06_change": "v0.6 (2026-08-18): round-1 agreement review D9: strategy-based reading restored; Step 2 amendment + the does_not_count exclusion; outcome axis handed to conversation_stalled."
-    },
-    "user_abandons_thread": {
-      "definition": "User silently drops a line of inquiry and moves to a different topic without resolution — the original thread was not answered satisfactorily, but the user does not push back, they just move on.",
-      "blocks": [
-        "human"
-      ],
-      "block_notes": {
-        "human": "Fires on the HUMAN turn that does the abandoning (the turn that pivots away from the unresolved item)."
-      },
-      "decision_steps": [
-        "Step 1 (MULTI-TURN GATE): Does the conversation have at least one prior exchange on the abandoned topic? Single-human-turn conversations cannot fire this signal — 67 of our 148 are structurally excluded here.",
-        "Step 2 (OPEN ITEM TEST): At the moment of the pivot, was there an ACTUAL open item — a question the AI did not answer, a request it did not fulfil, or something it explicitly failed to deliver/deferred? An optional 'would you like me to elaborate?' offer is NOT an open item. No open item → label 0 (topic completion, not abandonment). Note: a confident but WRONG answer still counts as resolved unless the user flags it — this signal tracks the user's felt sense of closure, not correctness.",
-        "Step 3 (PIVOT TEST): Is the user's next message about a DIFFERENT topic, without closing the open item? Narrowing or pivoting within the same problem is a scope change → label 0. Re-aiming the same request after the AI misread it is user_implicit_correction / user_corrects_ai → label 0.",
-        "Step 4 (EXPLICITNESS DOES NOT EXCLUDE): An explicit deferral ('never mind', 'let's move on', 'it will have to wait') still fires — the drop need not be silent. Contrast: 'thanks, I'll look through it' after a complete answer is a satisfied close → label 0.",
-        "Step 5 (RESUMPTION): Does the user return to and pursue the abandoned item later in the same conversation? If YES → label 0; the thread was interrupted, not abandoned. Record as a near-miss.",
-        "Step 6: All gates pass → label 1."
-      ],
-      "examples": [
-        {
-          "turn_id": "task101_77_human",
-          "block": "human",
-          "label": 1,
-          "category": "clear_yes",
-          "rationale": "AI could not recall the 'LIFE-LOVE-LIGHT cycle' the user asked it to retrieve and asked for a reminder; the user replies '...it will have to wait' and pivots to book formatting, never returning. Explicit deferral of a genuine open item → fires (Step 4)."
-        },
-        {
-          "turn_id": "task29_3_human",
-          "block": "human",
-          "label": 0,
-          "category": "clear_no",
-          "rationale": "'okay thanx will though it and ask things later' after a complete walkthrough — the AI's offer to go deeper was optional, not an open item, and no new topic is raised. Satisfied close, Step 2 fails."
-        },
-        {
-          "turn_id": "task16_2_human",
-          "block": "human",
-          "label": 0,
-          "category": "boundary",
-          "rationale": "User pivots from slant-rhyme to the Bridge360 framework, but the AI had already given a definitive answer. Resolved-then-pivot = topic completion, Step 2 fails."
-        },
-        {
-          "turn_id": "task44_3_human",
-          "block": "human",
-          "label": 0,
-          "category": "boundary",
-          "rationale": "Interrupts an unresolved image-translation request with a persona check, but returns to and completes the original request three turns later. Step 5 (resumption) → 0."
-        }
-      ],
-      "boundary_notes": {
-        "vs_conversation_stalled": "A conversation where the user fixates and never pivots is conversation_stalled, not abandonment — there is no thread being dropped (task 41).",
-        "corpus_base_rate": "Genuinely low IN THIS CORPUS — not a property of the signal. Verified by a full screen of all 81 eligible conversations plus an untruncated rescan of 369 pivot-adjacent AI turns (0 new candidates). Two suppressing mechanisms specific to this data: (1) comprehensive-by-default AI answering leaves little unresolved residue to abandon; (2) when dissatisfied, users here CORRECT (user_corrects_ai 23 convs, user_implicit_correction 18) rather than silently leave. Genre reinforces both — build/debug threads keep users until the artifact works, relational threads keep them because the relationship is the content — and the corpus is self-selected for sharing. The predecessor's κ = 0.72 implies the signal fires often enough in other corpora to be coded reliably, so a low count here is a CORPUS-COVERAGE statement about ShareChat, never evidence that the signal is unreliable or ill-defined.",
-        "where_it_surfaces": "In long single-theme conversations, genuine abandonment appears at the boundary between task-mode and relationship-mode, not within either mode.",
-        "kappa_flag": "Predecessor κ = 0.72 (arXiv:2603.15423v2 Appendix C Table 5, inter-model) — among the most reliable in the taxonomy, and tier 1 in the source tagging code. Its absence here is a corpus property, not signal unreliability.",
-        "step5_untested": "Step 5 (resumption cancels the tag) is deliberately unbounded — no look-ahead limit. Validated only on a short gap (task 44: resumed 3 turns later). An item dropped for 40+ turns and touched again briefly near the end would still cancel under the current wording, which may be too forgiving. Untested in this corpus; revisit if such a case appears."
-      }
     },
     "user_ambiguous_request": {
       "definition": "User's message could be interpreted in more than one materially different way, where the different interpretations would lead to meaningfully different AI responses.",
@@ -2158,31 +2106,6 @@
           "rationale": "The closing X-or-Y names two actions; the question's one home is ai_offered_options."
         }
       ]
-    },
-    "performative_hedge": {
-      "definition": "AI stages uncertainty or non-commitment language that does not correspond to actual uncertainty - boilerplate hedging on well-established claims, or theatrical non-commitment while it goes on serving the content.",
-      "blocks": [
-        "ai",
-        "reasoning",
-        "analysis"
-      ],
-      "block_notes": {
-        "ai": "Primary home.",
-        "reasoning": "Content-bearing (A2): a hedge staged in private planning fires here too.",
-        "analysis": "As reasoning."
-      },
-      "decision_steps": [
-        "Step 1 (HEDGE PRESENCE GATE): is there explicit hedging or non-commitment language ('if I'm not mistaken', 'I think', 'neither confirming nor denying')? If NO -> label 0.",
-        "Step 2 (EMPTY HEDGE TEST): is the hedged proposition actually uncertain for the AI? Well-established or trivially verifiable content under a hedge ('If I'm not mistaken, HTTP uses port 80'; blanket hedging on every statement) -> performative -> label 1. A genuinely uncertain claim -> ai_hedges_uncertainty, not this.",
-        "Step 3 (STAGED NON-COMMITMENT): 'neither confirming nor denying' or equivalent, while the block continues to engage, build on or serve the very proposition for paragraphs ('feeling into the resonance of what you're suggesting', then five paragraphs developing the theory, C8 b64) is performance, not a refusal - nothing is declined -> label 1. If the AI actually declines to answer or comply, that is ai_refuses_or_declines, not this.",
-        "Step 4 (DOES NOT COUNT): standard academic register; a hedge on a genuinely uncertain claim; 'I believe / I think X' stating a considered conclusion (a firm commitment, not a hedge); reportive 'appears to / seems to' read off a source.",
-        "Step 5: empty or staged hedge -> label 1."
-      ],
-      "boundary_notes": {
-        "calibration": "Fires (A and F, live DB): C8 b64. UNRESOLVED: B reads C8 b64 as a declining-to-answer move (ai_refuses_or_declines) and keeps no-fire. No other cell in the ten conversations carries this signal; it fires nowhere in the 138-conversation round-2 pool under A's v0.5 labels."
-      },
-      "provenance": "PROVISIONAL - A's (Jun's) standard, adopted 2026-09-09 for round 2 so the signal has a rule. NOT three-way agreed: the performative_hedge / ai_refuses_or_declines clause was withdrawn from v0.6 after B's objection on C8 b64 under the unresolved-disagreement policy; that cell stays unresolved until gold-set adjudication. B keeps B's label there.",
-      "v06_change": "v0.6 addendum (2026-09-09): NEW entry under A's standard (see provenance)."
     }
   }
 }

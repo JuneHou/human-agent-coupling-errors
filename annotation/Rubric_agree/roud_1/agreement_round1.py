@@ -491,6 +491,191 @@ def draw_round2(db_path, seed, size=10, min_blocks=0, strategy="random",
           f"with sampling = Sequential")
 
 
+def _round_conv_ids(path, prefix):
+    """conv_ids from an agreement-set CSV, ignoring its '#' provenance lines."""
+    out = set()
+    for line in path.read_text().splitlines():
+        if line.startswith(prefix) and "," in line:
+            out.add(line.split(",", 1)[1].strip())
+    return out
+
+
+PRODUCTION_DIR = OUT_DIR.parent.parent / "production"
+# What each exclusion leaves of the 148 conversations A has annotated. The
+# agreement sets are pairwise disjoint, so these nest.
+PRODUCTION_EXCLUSIONS = {
+    "none":     [],                  # 148
+    "round3":   ["r3"],              # 138
+    "rounds23": ["r2", "r3"],        # 128
+    "all":      ["r1", "r2", "r3"],  # 118
+}
+
+
+RARE_COVERAGE = 3
+# A signal carried by this many conversations or fewer is rare: the cap never
+# drops a conversation that holds one, because losing it would take the signal
+# out of the batch entirely.
+
+
+def _conversation_signals(db_path, conv_ids):
+    """inner_id -> Counter of A's signal placements, for the given conv_ids."""
+    wanted = set(conv_ids)
+    con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    rows = con.execute(
+        """SELECT t.inner_id, t.data, tc.result FROM task_completion tc
+           JOIN task t ON t.id = tc.task_id
+           WHERE tc.was_cancelled = 0 AND tc.result IS NOT NULL
+             AND t.project_id = 1"""
+    ).fetchall()
+    con.close()
+    out = {}
+    for inner_id, data, result in rows:
+        if json.loads(data).get("conv_id") not in wanted:
+            continue
+        counts = defaultdict(int)
+        for item in json.loads(result):
+            for sig in item.get("value", {}).get("paragraphlabels", []):
+                counts[sig] += 1
+        out[inner_id] = counts
+    return out
+
+
+def draw_production(db_path, exclude="round3", limit=None, write=True):
+    """Build the import-ready task file for the production annotation projects.
+
+    This is not a draw. Every conversation A has annotated that the chosen
+    exclusion leaves is taken, in project-1 inner_id order, so the file needs no
+    seed to be reproducible and both annotators receive byte-identical tasks.
+
+    Read-only against the database. The projects themselves are created through
+    the UI for the reason draw_round2 records -- the project row carries derived
+    fields that only the UI regenerates correctly -- and this writes only the
+    file uploaded to each of them unchanged.
+    """
+    rounds = {
+        "r1": set(load_conv_map()[0]),
+        "r2": _round_conv_ids(ROUND2_CONV_MAP, "R"),
+        "r3": _round_conv_ids(ROUND3_CONV_MAP, "R3-"),
+    }
+    drop_keys = PRODUCTION_EXCLUSIONS[exclude]
+    drop = set().union(*(rounds[k] for k in drop_keys)) if drop_keys else set()
+
+    con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    rows = con.execute(
+        """SELECT t.inner_id, t.data FROM task t
+           WHERE t.project_id = 1
+             AND EXISTS (SELECT 1 FROM task_completion tc
+                         WHERE tc.task_id = t.id AND tc.was_cancelled = 0
+                           AND tc.result IS NOT NULL)
+           ORDER BY t.inner_id"""
+    ).fetchall()
+    con.close()
+
+    selected = []
+    for inner_id, data in rows:
+        payload = json.loads(data)
+        if payload.get("conv_id") in drop:
+            continue
+        selected.append((inner_id, payload))
+
+    # A cap drops the conversations whose removal costs the least signal
+    # evidence, not the highest inner_ids: a rare signal can sit in a single
+    # conversation, and cutting by id number would delete it from the batch.
+    # Two hard guards -- a conversation carrying a signal that appears in
+    # RARE_COVERAGE or fewer conversations is never dropped, and no signal may
+    # fall to zero. Among what remains the greedy drops the conversation that
+    # leaves the scarcest of its own signals best covered, breaking ties toward
+    # fewer labels then fewer blocks, so it takes the emptiest first.
+    # Deterministic: no seed, and the CSV records what went.
+    dropped = []
+    if limit is not None and len(selected) > limit:
+        labels = _conversation_signals(db_path, [p["conv_id"] for _, p in selected])
+
+        def presence(ids):
+            p = defaultdict(int)
+            for i in ids:
+                for sig in labels[i]:
+                    p[sig] += 1
+            return p
+
+        by_id = {i: p for i, p in selected}
+        base = presence(by_id)
+        keep = set(by_id)
+        while len(dropped) < len(selected) - limit:
+            best = None
+            for i in sorted(keep):
+                if any(base[sig] <= RARE_COVERAGE for sig in labels[i]):
+                    continue
+                after = presence(keep - {i})
+                if any(after[sig] == 0 for sig in base):
+                    continue
+                score = (min((after[sig] for sig in labels[i]), default=10 ** 6),
+                         -sum(labels[i].values()),
+                         -len(by_id[i]["dialogue"]))
+                if best is None or score > best[0]:
+                    best = (score, i)
+            if best is None:
+                raise SystemExit(
+                    f"cannot cap at {limit} without dropping a conversation that "
+                    f"carries a signal appearing in {RARE_COVERAGE} or fewer of "
+                    f"the set; raise the cap or lower RARE_COVERAGE deliberately")
+            keep.remove(best[1])
+            dropped.append(best[1])
+        dropped.sort()
+        selected = [(i, p) for i, p in selected if i in keep]
+
+    roles = defaultdict(int)
+    for _, payload in selected:
+        for b in payload["dialogue"]:
+            roles[b.get("author", "?")] += 1
+    n_blocks = sum(roles.values())
+
+    print(f"production set: exclude={exclude} "
+          f"({' + '.join(drop_keys) if drop_keys else 'nothing'})")
+    print(f"  A-annotated conversations : {len(rows)}")
+    print(f"  excluded                  : {len(drop)}")
+    print(f"  selected                  : {len(selected)}")
+    if dropped:
+        print(f"  dropped by the cap        : {len(dropped)}  inner_ids {dropped}")
+    print(f"  blocks                    : {n_blocks}")
+    for role in ("human", "ai", "reasoning", "code", "analysis"):
+        print(f"    {role:<10}{roles[role]:>6}")
+    for key in ("r1", "r2", "r3"):
+        kept = sum(1 for _, p in selected if p["conv_id"] in rounds[key])
+        print(f"  from the {key} ten kept    : {kept}")
+
+    if not write:
+        return
+
+    PRODUCTION_DIR.mkdir(exist_ok=True)
+    rubric_version = json.loads(
+        (ANNOT_DIR / "sharechat_rubric.json").read_text()).get("version", "?")
+
+    map_path = PRODUCTION_DIR / "production_set.csv"
+    with open(map_path, "w", newline="") as f:
+        f.write(f"# production annotation set; the {len(rows)} project-1 "
+                f"conversations A annotated"
+                f"{', excluding ' + ' and '.join(drop_keys) if drop_keys else ''}\n")
+        f.write(f"# exclude={exclude} size={len(selected)} "
+                f"rubric={rubric_version}\n")
+        if dropped:
+            f.write(f"# capped at {limit}; dropped inner_ids {dropped}, chosen "
+                    f"so that no signal loses a conversation and no signal "
+                    f"carried by {RARE_COVERAGE} or fewer is touched\n")
+        w = csv.writer(f)
+        w.writerow(["p_index", "conv_id", "dev_inner_id"])
+        for i, (inner_id, payload) in enumerate(selected, 1):
+            w.writerow([f"P{i}", payload["conv_id"], inner_id])
+    print(f"\nwrote {map_path}")
+
+    tasks = [{"data": payload} for _, payload in selected]
+    tasks_path = PRODUCTION_DIR / "tasks_production.json"
+    tasks_path.write_text(json.dumps(tasks, ensure_ascii=False, indent=1) + "\n")
+    print(f"wrote {tasks_path}  ({len(tasks)} tasks, {n_blocks} blocks) "
+          f"- upload to BOTH production projects, in this order, "
+          f"with sampling = Sequential")
+
+
 def load_michelle_round3_md(db_path, conv_to_c, signals, md_dir=None):
     """Parse Michelle's round-3 markdown into the presence/spans shape.
 
@@ -814,6 +999,14 @@ def main():
                     help="directory holding Michelle's round-3 markdown "
                          "(default round_3/michelle; point at michelle/"
                          "as_received to score her arm before corrections)")
+    ap.add_argument("--production-size", type=int, default=None,
+                    help="cap the production set at this many conversations, "
+                         "taking the lowest project-1 inner_ids")
+    ap.add_argument("--draw-production", nargs="?", const="round3",
+                    choices=sorted(PRODUCTION_EXCLUSIONS),
+                    help="build the production task file: which agreement "
+                         "sets to leave out of A's 148 (none=148, "
+                         "round3=138, rounds23=128, all=118)")
     ap.add_argument("--round3-review", metavar="SIGNAL",
                     help="round-3 review packet for SIGNAL: full block text, both "
                          "raters' spans, Michelle's own Step-fired line, and the "
@@ -869,6 +1062,12 @@ def main():
                       rater_by_project=RATER_BY_PROJECT_PRIYA,
                       rater_user_id=RATER_USER_ID_PRIYA,
                       conv_map_path=ROUND2_PRIYA_CONV_MAP)
+        return
+
+    if args.draw_production is not None:
+        draw_production(args.db, exclude=args.draw_production,
+                        limit=args.production_size,
+                        write=not args.no_write)
         return
 
     if args.draw_round3 is not None:

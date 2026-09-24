@@ -40,7 +40,6 @@
 
     <!-- ══ TEAL: evaluation / failure signal, κ ≥ 0.4 ══════════════ -->
     <Label value="false_confidence"             background="#76b7b2"/>  <!-- κ=0.46 -->
-    <Label value="performative_hedge"           background="#76b7b2"/>  <!-- κ=0.67 -->
     <Label value="appropriate_confidence"       background="#76b7b2"/>  <!-- κ=0.49 -->
     <Label value="problem_ignored"              background="#76b7b2"/>  <!-- κ=0.56 -->
     <Label value="repetition"                   background="#76b7b2"/>  <!-- κ=0.44 -->
@@ -65,7 +64,6 @@
     <Label value="user_ambiguous_request"       background="#b07aa1"/>
     <Label value="user_validation_seeking"      background="#b07aa1"/>
     <Label value="user_multi_request"           background="#b07aa1"/>
-    <Label value="user_abandons_thread"         background="#b07aa1"/>
     <Label value="user_provides_invalid_input"  background="#b07aa1"/>
 
     <!-- ══ GREY: candidate signals ══════════════════════════════════ -->
