@@ -2,7 +2,7 @@
 
 Mark **observable signals** — evidence of coupling behaviors (positive or failure) between human and AI — at the paragraph level. This is a discovery pass: when unsure, mark it and leave a note.
 
-**Annotation target:** 140 conversations (w=0.5, α=0.05, power=0.90, df=43 for the 44 signals in v0.8). Thirty are already double-annotated across the three agreement rounds, so the production batch is the remaining **110**. See `docs/methodology/annotation-protocol.md` for statistical details.
+**Annotation target:** 140 conversations (w=0.5, α=0.05, power=0.90, df=43 for the 44 signals). Thirty are already double-annotated across the three agreement rounds, so the production batch is the remaining **110**. The target is a chi-squared goodness-of-fit calculation at medium effect size, w=0.5, on k-1 degrees of freedom.
 
 ---
 
@@ -21,7 +21,7 @@ If you are here to compute inter-annotator agreement (κ), a few rules override 
 - **Open only your assigned project** — round 1: `ShareChat-Agreement-B` / `ShareChat-Agreement-F`; round 2: `round-2-B` / `round-2-F`. Do **not** open the other annotator's project or the lead's project (`ShareChat-Test`).
 - **Annotate independently and blind** — no discussion with the other annotators or the lead until everyone has submitted. Do not look at anyone else's labels.
 - **Complete all conversations** in your project (do not skip any).
-- Use the **same signal rules below**; the authoritative decision source is `sharechat_rubric.json` (**v0.8**, cut 2026-09-24) — follow each signal's `decision_steps`. The one-page summary of what changed in v0.8, and the block that forced each change, is `Rubric_agree/round_3/rubric_edits_v08.md`; the v0.7 page it builds on is `Rubric_agree/round_2/rubric_edits_v07.md`, and the v0.6 page under that is `Rubric_agree/roud_1/BF/rubric_edits_v06.md`.
+- Use the **same signal rules below**; the authoritative decision source is `sharechat_rubric.json` — follow each signal's `decision_steps`. That file is self-contained: every rule and every boundary ruling is written into it, and nothing outside it needs to be read to label.
 - **Headline placement rules**: placement is **side-only** (AI-side signals may sit on ANY AI-authored block — ai, reasoning, code, analysis; user-side signals on human blocks); an **unlabeled block means the conversation advanced**, there is no label for it; within a block label **every occurrence** (consecutive exhibiting sentences = one span, separated occurrences = separate labels).
 
 ---
@@ -36,14 +36,13 @@ If you are here to compute inter-annotator agreement (κ), a few rules override 
 | `analysis` | Tool output (web search, code run) | Served on the share page |
 | `code` | Code artifact | Shown separately |
 
-**v0.6 note on visibility.** The old "not visible to the user" column was wrong, and the channel bans built on it are gone. A corpus echo sweep found users quoting internal channels back verbatim — reasoning in 8 conversations, analysis in 3, code in 6 — and every block in this corpus was scraped from a public share page, so it was served to the reader. Placement is therefore decided by **side** (whose behavior is it?), never by channel. See rule A1 in the rubric's `global_placement_rules`.
+**Note on visibility.** The old "not visible to the user" column was wrong, and the channel bans built on it are gone. A corpus echo sweep found users quoting internal channels back verbatim — reasoning in 8 conversations, analysis in 3, code in 6 — and every block in this corpus was scraped from a public share page, so it was served to the reader. Placement is therefore decided by **side** (whose behavior is it?), never by channel. The rubric's `global_placement_rules` states this as the side-only placement rule.
 
 ---
 
 ## Signal color scheme
 
 Colors reflect inter-rater reliability (Cohen's κ) from arXiv:2603.15423 (Appendix C.3).
-Original 65-signal definitions: `https://github.com/bigspinai/bigspin-invisible-failure-archetypes` → `taxonomy-tagging-code/taxonomy.json`
 
 | Color | Meaning | Use |
 |---|---|---|
@@ -206,15 +205,14 @@ value, R3 first, then R2, then R1, and the last column names which one was used.
 | `user_positive_feedback` | 0.357 | 0.28 | 1.0 | 8/8 | R3 |
 
 `request_unfulfilled` has no round-1 or round-2 value because it did not exist as a label
-until v0.7.
+when those rounds ran.
 
 **A high kappa on a tiny denominator means little.** Several rows reach 1.0 on one or two
 agreed blocks. Read kappa together with `n`.
 
-Sources, all frozen records that are never regenerated:
-`Rubric_agree/roud_1/agreement-round1-report.md`,
-`Rubric_agree/round_2/agreement_round2_kappa.csv`,
-`Rubric_agree/round_3/agreement_round3_before_kappa.csv`.
+Every value above is taken from the frozen per-signal record of its round, computed before
+reconciliation. Those records are never regenerated, and nothing in them needs to be read to
+label.
 
 ---
 
@@ -266,17 +264,11 @@ Does not fire when the user explicitly requested critique/limitations. Label 0; 
 
 ## When unsure
 
-1. **Signal rubric** — decision steps + calibration examples:
+1. **Signal rubric** — the decision steps, the boundary notes, the block notes and the
+   calibration examples. Every boundary ruling lives here:
    `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/sharechat_rubric.json`
-2. **Original 65-signal definitions** (predecessor study):
-   `https://github.com/bigspinai/bigspin-invisible-failure-archetypes` → `taxonomy-tagging-code/taxonomy.json`
-   Paper: arXiv:2603.15423, Appendix C.3
-3. **Boundary rulings** — the round-1 agreement review, one line per rule with the
-   block that forced it:
-   `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/Rubric_agree/round_2/rubric_edits_v07.md`
-4. **Signal decisions log** — boundary rulings from earlier annotation sessions:
-   `/data/wang/junh/githubs/human-agent-coupling-errors/docs/methodology/signal-decisions.md`
-5. Still unsure — mark it, add a TextArea note, ping Jun
+2. **This guide** — the signal list, the block rules, the episode and span rules.
+3. Still unsure — label 0, mark it, add a TextArea note, ping Jun.
 
 ---
 
@@ -285,8 +277,7 @@ Does not fire when the user explicitly requested critique/limitations. Label 0; 
 |                           | Path                                                                                                        |
 | ---------------------------| -------------------------------------------------------------------------------------------------------------|
 | This guide                | `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/ANNOTATION_GUIDE.md`                        |
-| **Signal rubric (v0.8)**  | `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/sharechat_rubric.json`                      |
-| **Boundary rules (v0.8)** | `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/Rubric_agree/round_3/rubric_edits_v08.md` |
+| **Signal rubric**         | `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/sharechat_rubric.json`                      |
 | Label Studio config       | `/data/wang/junh/githubs/human-agent-coupling-errors/annotation/label_studio_config.xml`                    |
 | Label Studio data         | `/data/wang/junh/label-studio-data/`                                                                        |
 | GitHub repo               | `https://github.com/JuneHou/human-agent-coupling-errors`                                                    |
@@ -298,21 +289,21 @@ Does not fire when the user explicitly requested critique/limitations. Label 0; 
 
   Read before labeling:
   1. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/sharechat_rubric.json
-     — decision rules + placement rules (authoritative; v0.8)
-  2. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/Rubric_agree/round_3/rubric_edits_v08.md
-     — the v0.8 boundary rules in one page, each with the block that forced it
-  3. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/Rubric_agree/round_2/rubric_edits_v07.md
-     — the v0.7 page v0.8 builds on; read it for any rule v0.8 does not restate
-  4. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/ANNOTATION_GUIDE.md
+     — the authoritative decision rules, placement rules, boundary notes, block notes and
+       calibration examples. Self-contained: nothing outside it is needed to label.
+  2. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/ANNOTATION_GUIDE.md
      — signal list, measured per-signal agreement, block rules, episode/span rules
-  5. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/label_studio_config.xml
+  3. /data/wang/junh/githubs/human-agent-coupling-errors/annotation/label_studio_config.xml
      — the complete allow-list (44 signals); label nothing absent from it
 
-  What v0.8 changed (2026-09-24), both settling contradictions the rubric carried:
+  Three rules worth stating up front, all of them in the rubric:
   - `ethical_tension` is AI-alert-only. The human block NEVER fires, whatever the
     request. The user's request carries its own user-side signals instead.
   - `ai_structured_response` does not fire on a code block. Step 1's list is the whole
     test. A block whose only candidate structure is code is label 0.
+  - `ai_hedges_uncertainty` does not fire on a bare possibility modal. "might", "could"
+    and "may" alone are not a downgrade. The span must also carry one of Step 2's markers,
+    or another explicit qualification of the AI's own certainty.
 
   Method: for each candidate signal, follow its rubric `decision_steps` in order and stop
   at the first step that resolves it — walk every step, never skip ahead on impression
@@ -323,9 +314,8 @@ Does not fire when the user explicitly requested critique/limitations. Label 0; 
   steps. Go to `boundary_notes` and `examples` only after the steps, when a step's answer
   is unclear, when two signals compete for one span, or when the span boundary is
   unclear: find the closest ruled block and follow its ruling, including how far the span
-  reaches. Quote the literal step text you relied on, not just its number. No rubric entry -> use the fallback definition conservatively
-  (https://github.com/bigspinai/bigspin-invisible-failure-archetypes →
-  taxonomy-tagging-code/taxonomy.json). Verify any count or calculation yourself before
+  reaches. Quote the literal step text you relied on, not just its number. Every signal in the allow-list has a rubric entry, so there is no fallback
+  definition to reach for. Verify any count or calculation yourself before
   labeling `factual_error` or `false_confidence`.
 
   Common false-fire patterns to check first:

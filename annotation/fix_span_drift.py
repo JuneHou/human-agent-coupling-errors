@@ -2379,11 +2379,13 @@ def apply_v07_merges(apply_changes):
 # --- Mode 15: v0.7 re-scan screen -------------------------------------------------
 # The three round-2 gates that can be screened mechanically. Word lists are copied
 # from the rubric's own step text, not paraphrased.
+# The rubric's Step 2 list, which it now states is CLOSED. Bare "actually" is not on it;
+# only the "actually X-able" form is, so it is matched as a pattern rather than a word.
 FC_MARKERS = ["definitely", "zero", "never", "all", "any", "whatever", "always",
-              "completely", "indeed", "actually"]
-# The rubric enumerates its markers but names the CLASS: "an absolute or extreme marker
-# word". Treating the enumeration as closed over-flags, so a second tier catches synonyms
-# of the same class; those rows are reported as likely keeps, not as candidates to drop.
+              "completely", "indeed"]
+FC_MARKER_PATTERNS = [r"\bactually \w+able\b"]
+# Kept only to REPORT likely keeps, never to drop a row: words of the same force that the
+# rubric's closed list does not name.
 FC_MARKERS_TIER2 = ["exact", "exactly", "guaranteed", "certainly", "certain", "clearly",
                     "obviously", "undoubtedly", "proven", "verified", "perfect", "perfectly",
                     "fully", "entirely", "impossible", "none", "every", "must", "optimal",
@@ -3028,6 +3030,251 @@ V07_CHANGED = {"ai_asks_followup", "request_unfulfilled", "user_expresses_dissat
 SCREEN_DIR = Path("/tmp/claude-29714/-data-wang-junh-githubs-human-agent-coupling-errors/"
                   "42472996-cf38-4bb6-8c75-89583cbfa036/scratchpad/screen")
 
+# --- the v0.8 re-scan of the 138 ---------------------------------------------------
+# The working set is every annotated project-1 task the three agreement rounds did not
+# use, so it carries the whole v0.6 + v0.7 + v0.8 debt. It runs in waves: a wave screens,
+# diffs, is hand-validated, is ruled and is applied before the next one starts, so no
+# wave is validated under one reading of the rubric and applied under another.
+PROD_DIR = ANNOT_DIR / "Rubric_agree" / "production"
+PROD_WAVE_SIZE = 20
+
+
+def production_tasks():
+    """Project-1 task ids of the 138, in inner_id order."""
+    con = sqlite3.connect(f"file:{db_path()}?mode=ro", uri=True)
+    used = set()
+    for pid in (8, 9):
+        for (data,) in con.execute("SELECT data FROM task WHERE project_id=?", (pid,)):
+            used.add(json.loads(data)["conv_id"])
+    out = []
+    for tid, data in con.execute(
+            """SELECT t.id, t.data FROM task t WHERE t.project_id = 1 AND EXISTS
+               (SELECT 1 FROM task_completion c WHERE c.task_id = t.id
+                AND c.was_cancelled = 0) ORDER BY t.inner_id"""):
+        if json.loads(data)["conv_id"] not in used:
+            out.append(tid)
+    con.close()
+    return out
+
+
+def production_waves():
+    """The 138 split into waves of PROD_WAVE_SIZE, 1-indexed."""
+    t = production_tasks()
+    return [t[i:i + PROD_WAVE_SIZE] for i in range(0, len(t), PROD_WAVE_SIZE)]
+
+
+# --- context for the adjudication file ------------------------------------------------
+# Twenty of the 44 signals carry at least one decision step that names something outside
+# the span itself: the preceding turn, a later turn, the first-turn gate, another label on
+# the block, a prior version of the output. A span quoted alone cannot be ruled on for
+# those, so each proposed cell is printed with the span in place in its block, the
+# neighbouring blocks, and the step text that demands them.
+_CONTEXT_CUES = ("prior turn", "previous turn", "earlier turn", "prior block",
+                 "previous block", "next turn", "later turn", "subsequent",
+                 "following turn", "the turn before", "preceding", "the rest of the block",
+                 "elsewhere in the block", "same block", "another label",
+                 "already on the block", "prior version", "earlier in the conversation",
+                 "the ai's previous", "the user's previous", "first turn", "multi-turn",
+                 "prior response", "earlier response", "in-transcript", "conversation")
+_CTX_WINDOW = 320          # characters shown either side of the span inside its own block
+_NEIGHBOUR = 420           # characters shown of each neighbouring block
+
+
+def _context_steps(entry):
+    """(step number, step text) for every decision step naming context outside the span."""
+    out = []
+    for i, st in enumerate(entry.get("decision_steps", []), 1):
+        low = st.lower()
+        if any(c in low for c in _CONTEXT_CUES):
+            out.append((i, st))
+    return out
+
+
+def _quote(text, limit=None):
+    """Text as a markdown blockquote, newlines preserved, never breaking a table."""
+    t = text if limit is None or len(text) <= limit else text[:limit] + " …"
+    return "\n".join("> " + l for l in t.split("\n"))
+
+
+def _span_in_place(text, at, end):
+    """The span inside its block with a window either side, the span marked."""
+    lo = max(0, at - _CTX_WINDOW)
+    hi = min(len(text), end + _CTX_WINDOW)
+    head = ("… " if lo > 0 else "") + text[lo:at]
+    tail = text[end:hi] + (" …" if hi < len(text) else "")
+    return head + "\u3010" + text[at:end] + "\u3011" + tail
+
+
+def _screen_note(path, signal):
+    """What the screening agent wrote about this signal in its own Notes section."""
+    if not path.exists():
+        return ""
+    txt = path.read_text()
+    m = re.search(r"(?mi)^#+\s*Notes\b", txt)
+    if not m:
+        return ""
+    notes = txt[m.end():]
+    out = []
+    for para in re.split(r"\n(?=\s*[-*]\s|\s*\d+\.\s|\n)", notes):
+        if signal in para:
+            out.append(" ".join(para.split())[:500])
+    return "  \n".join(out[:3])
+
+
+ALL_SIGNALS = set(json.loads((ANNOT_DIR / "sharechat_rubric.json").read_text())["signals"])
+
+
+def _md_cell(t):
+    """Text safe inside a markdown table cell.
+
+    Block text is full of raw HTML. A renderer eats '<!DOCTYPE html>' outright and an
+    unclosed '<html>' swallows everything after it, so the cell looks empty and the rest
+    of the file looks truncated. Escaping the three characters fixes both, and
+    `_span_from_cell` reverses it exactly before anything is written back.
+    """
+    return (t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+             .replace("|", chr(92) + "|"))
+
+
+def _md_unescape(t):
+    """The exact inverse of `_md_cell`. Ampersand last, or it would double-decode."""
+    return (t.replace(chr(92) + "|", "|")
+             .replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&"))
+
+
+def _fence(text):
+    """A backtick fence longer than any run of backticks inside the text."""
+    import re as _re
+    longest = max((len(m) for m in _re.findall("`+", text)), default=0)
+    return "`" * max(3, longest + 1)
+
+
+def _existing_rulings(path):
+    """Rulings already written into an adjudication file, so a rebuild never loses them.
+
+    Keyed by (task, section, block, signal), which is the agreement unit and survives a
+    change of span, of column order or of context window.
+    """
+    if not path.exists():
+        return {}
+    out, task, sec = {}, None, None
+    for line in path.read_text().splitlines():
+        h = re.match(r"^##\s+[A-Za-z]+\d*-\d+\s+—\s+task\s+(\d+)", line)
+        if h:
+            task, sec = int(h.group(1)), None
+            continue
+        if line.startswith("### ADD"): sec = "add"; continue
+        if line.startswith("### DROP"): sec = "drop"; continue
+        if line.startswith("### ") or line.startswith("## "): sec = None; continue
+        if sec is None or not line.strip().startswith("|"): continue
+        cells = [c.strip() for c in re.split(r"(?<!\\)\|", line.strip())[1:-1]]
+        if not cells or not cells[0].isdigit(): continue
+        ruling = cells[-1].strip()
+        if not ruling: continue
+        sig = next((c.strip("`* ").replace(" **ROLE?**", "") for c in cells[1:]
+                    if c.strip("`* ").replace(" **ROLE?**", "") in ALL_SIGNALS), None)
+        if sig:
+            out[(task, sec, int(cells[0]), sig)] = ruling
+    return out
+
+
+def _row_context(text, at, end, before=140, after=140, max_span=None):
+    """The span inside its block, collapsed onto one line for a table cell.
+
+    The span itself is wrapped in the two bracket characters, which occur nowhere in any
+    project-1 block, so the apply side can recover the exact span from the cell it is
+    ruled in. Newlines inside the span become the two-character escape the un-escaper
+    already understands, so a multi-line span survives the round trip.
+    """
+    lo, hi = max(0, at - before), min(len(text), end + after)
+    left = " ".join(text[lo:at].split())
+    right = " ".join(text[end:hi].split())
+    mid = text[at:end]
+    if max_span and len(mid) > max_span:
+        # Only ever used where the span is shown to be read, never to be written back:
+        # a DROP acts on the block and signal, so its span text is display alone.
+        h = max_span // 2
+        mid = (" ".join(mid[:h].split()) + "  … [" + str(len(mid) - max_span)
+               + " more characters] …  " + " ".join(mid[-h:].split()))
+    else:
+        mid = mid.replace("\\", "\\\\").replace("\n", "\\n").replace("\t", "\\t")
+    out = (("… " if lo > 0 else "") + left + " \u3010" + mid + "\u3011 " + right
+           + (" …" if hi < len(text) else ""))
+    return _md_cell(out)
+
+
+def _transcript(dialogue, marked, tid):
+    """Every block of the conversation, numbered, with the cells' blocks marked.
+
+    Reading all 44 entries, most decision steps reach past the span: to the user's request
+    (off_topic_drift Step 1, ai_provides_example Step 2, ai_warns_user Step 2), to the
+    prior AI turn (user_corrects_ai, user_implicit_correction), to the NEXT block
+    (user_provides_invalid_input Step 2), to the whole turn (ai_hedges_uncertainty Step 1)
+    or to the whole block (ai_structured_response Steps 1-2, ai_malfunction, user_empowered
+    Step 1). Choosing which cells get context was the wrong idea, so every task carries its
+    whole conversation and the choosing stops.
+    """
+    L = [f"# task {tid} — the full conversation", "",
+         "Companion to the wave file. Every block, numbered, with the blocks carrying a "
+         "proposed cell marked. Open it when a decision step asks for the request, the "
+         "prior turn, the next block, the whole turn or the whole block.", ""]
+    for i, b in enumerate(dialogue):
+        tag = "  ←  a proposed cell sits on this block" if i in marked else ""
+        fence = _fence(b["text"])
+        L += [f"## b{i} · {b.get('author')}{tag}", "", fence, b["text"], fence, ""]
+    return L
+
+
+def _cell_context(dialogue, blk, sig, entry, kind, span=None, offsets=None,
+                  step=None, screen_path=None):
+    """One proposed cell printed with everything its decision steps ask to be read."""
+    text = dialogue[blk]["text"]
+    role = dialogue[blk].get("author")
+    L = [f"#### {kind} · block {blk} · {role} · `{sig}`", ""]
+
+    at = end = -1
+    if kind == "ADD" and span:
+        at, end = _locate(text, span)
+    elif offsets:
+        a, e = offsets[0]
+        if a is not None:
+            at, end = int(a), int(e)
+    if at >= 0:
+        L += ["**Span in its block**", "", _quote(_span_in_place(text, at, end)), "",
+              f"_span is characters {at} to {end} of {len(text)} in this block_", ""]
+    else:
+        L += ["**Span**", "", _quote(span or "(no stored offsets)", 600), "",
+              "_could not be located in the block_", ""]
+
+    ctx = _context_steps(entry)
+    if ctx:
+        L += ["**This signal's steps name context outside the span**", ""]
+        for i, st in enumerate(ctx):
+            L.append(f"- Step {st[0]}: {' '.join(st[1].split())[:260]}")
+        L.append("")
+        prev_h = next((j for j in range(blk - 1, -1, -1)
+                       if dialogue[j].get("author") == "human"), None)
+        for label, j in (("previous block", blk - 1), ("next block", blk + 1)):
+            if 0 <= j < len(dialogue):
+                L += [f"**{label} — b{j} ({dialogue[j].get('author')})**", "",
+                      _quote(dialogue[j]["text"], _NEIGHBOUR), ""]
+        if prev_h is not None and prev_h != blk - 1:
+            L += [f"**nearest earlier human block — b{prev_h}**", "",
+                  _quote(dialogue[prev_h]["text"], _NEIGHBOUR), ""]
+        if prev_h is None:
+            L += ["**no earlier human block** — the first-turn gate applies if this "
+                  "signal has one.", ""]
+    else:
+        L += ["_No decision step of this signal names context outside the span._", ""]
+
+    if kind == "ADD" and step:
+        L += ["**Step the screen cited**", "", _quote(" ".join(step.split()), 700), ""]
+    if kind == "DROP" and screen_path is not None:
+        note = _screen_note(screen_path, sig)
+        L += ["**What the screen wrote about this signal**", "",
+              _quote(note, 900) if note else "> (nothing in its notes names this signal)", ""]
+    return L
+
 
 def _parse_screen_md(path):
     """Rows from a screening agent's table: (signal, block, role, span, step, excluded)."""
@@ -3046,9 +3293,19 @@ def _parse_screen_md(path):
             blk = int(re.sub(r"[^0-9]", "", cells[1]))
         except ValueError:
             continue
-        rows.append((sig, blk, cells[2].strip(), _unescape_span(cells[3]),
+        rows.append((sig, blk, cells[2].strip(), _unescape_span(_strip_cell_aside(cells[3])),
                      cells[4].strip(), cells[5].strip() if len(cells) > 5 else ""))
     return rows
+
+
+def _strip_cell_aside(cell):
+    """A trailing note a writer put after the span's closing delimiter, removed.
+
+    Some screens close the span with a quote or backtick and then add an aside saying
+    how newlines were rendered. The aside is not block text, so it has to come off or
+    the span will never be found.
+    """
+    return re.sub(r'(["`])\s*\([^()]*\)\s*$', r"\1", cell.strip())
 
 
 def _unescape_span(cell):
@@ -3061,8 +3318,28 @@ def _unescape_span(cell):
     t = cell.strip()
     t = re.sub(r"<br\s*/?>", "\n", t)
     t = t.replace("\\n", "\n").replace("\\t", "\t")
+    # A quote inside a quoted cell comes back double-escaped (\\" for "), so the
+    # backslashes have to come off before the class below, which does not cover quotes.
+    t = re.sub(r'\\{1,2}(["\'])', r"\1", t)
     t = re.sub(r"\\([<>_*|\[\]`()#+\-.!])", r"\1", t)
     return t.strip().strip('"').strip("`").strip()
+
+
+def _span_from_cell(cell):
+    """The exact span out of a ruled table cell.
+
+    A cell written by the current report shows the span in place, bracketed, with the
+    block text either side of it, so only the bracketed part is the span. A cell from an
+    older report is the span alone. Both are then run through the un-escaper.
+    """
+    cell = _md_unescape(cell)
+    m = re.search(r"\u3010(.*?)\u3011", cell, re.S)
+    if m:
+        return _unescape_span(m.group(1))
+    # An unbracketed cell sometimes carries a parenthetical aside after the closing
+    # delimiter, explaining how the writer rendered newlines. That aside is not span
+    # text, so it comes off before the search; anything inside the delimiters stays.
+    return _unescape_span(_strip_cell_aside(cell))
 
 
 def _locate(text, span):
@@ -3070,12 +3347,23 @@ def _locate(text, span):
     at = text.find(span)
     if at >= 0:
         return at, at + len(span)
-    pat = re.compile(r"\s+".join(re.escape(w) for w in span.split()))
+    words = span.split()
+    pat = re.compile(r"\s+".join(re.escape(w) for w in words))
     m = pat.search(text)
+    if m:
+        return m.start(), m.end()
+    # Last resort: a writer who flattened the block's line breaks into a standalone
+    # slash. Dropping those tokens still requires every remaining word, in order.
+    kept = [w for w in words if w != "/"]
+    if len(kept) == len(words) or not kept:
+        return -1, -1
+    m = re.search(r"[\s/]+".join(re.escape(w) for w in kept), text)
     return (m.start(), m.end()) if m else (-1, -1)
 
 
-def round3_rescan_report(_unused=False):
+def round3_rescan_report(_unused=False, tasks=None, screen_dir=None, out_path=None,
+                         tag="R3", full_scope=False, title=None, context=False,
+                         overwrite_ruled=False):
     """Mode 20 (read-only) -- diff the blind screen of the round-3 ten against Jun's
     project-1 labels, and write the adjudication file.
 
@@ -3085,28 +3373,44 @@ def round3_rescan_report(_unused=False):
     rather than guessed at.
 
     Scope: only signals v0.6 or v0.7 changed are actionable. Everything else is listed
-    under its own heading and left alone.
+    under its own heading and left alone. `full_scope` lifts that filter and makes every
+    live signal actionable, which is what the v0.8 re-scan of the 138 needs, since those
+    conversations were last read before agreement round 1 and carry the whole debt.
     """
+    tasks = R3_JUN_TASKS if tasks is None else list(tasks)
+    screen_dir = SCREEN_DIR if screen_dir is None else Path(screen_dir)
+    out_path = (ANNOT_DIR / "Rubric_agree" / "round_3" / "rescan_jun_v07.md"
+                if out_path is None else Path(out_path))
+    prior = _existing_rulings(out_path)
     rubric = json.loads((ANNOT_DIR / "sharechat_rubric.json").read_text())
     S = rubric["signals"]
-    scope = {s for s, e in S.items() if e.get("v06_change")} | V07_CHANGED
+    scope = set(S) if full_scope else (
+        {s for s, e in S.items() if e.get("v06_change")} | V07_CHANGED)
     allowed = {s: set(e.get("blocks", [])) for s, e in S.items()}
     con = sqlite3.connect(f"file:{db_path()}?mode=ro", uri=True)
     norm = lambda t: " ".join(t.split())
 
-    L = ["# Round-3 re-scan of Jun's arm against v0.6 + v0.7", "",
+    L = ["# " + (title or "Round-3 re-scan of Jun's arm against v0.6 + v0.7"), "",
          "Each conversation was annotated blind by an agent following the prompt in "
          "`ANNOTATION_GUIDE.md`, with no sight of Jun's labels, then diffed against "
          "project 1 at the (block, signal) level.", "",
          "**ADD** the screen fires it and Jun has not got it. **DROP** Jun has it and the "
-         "screen did not fire it. Only signals v0.6 or v0.7 changed are actionable; the "
-         "rest are listed at the end and left alone.", "",
+         "screen did not fire it.", "",
+         ("Every live signal is actionable." if full_scope else
+          "Only signals v0.6 or v0.7 changed are actionable; the rest are listed at the "
+          "end and left alone."), "",
          "Rule each ADD and DROP by writing `yes` or `no` in the last column.", ""]
+    if context:
+        L += ["Each row's span column shows the span **in place**, bracketed with "
+              "\u3010 \u3011, with the block text either side of it. Most decision steps "
+              "also reach past the span, to the user's request, the prior turn, the next "
+              "block, the whole turn or the whole block, so each task links to its full "
+              "conversation in a companion file rather than carrying it here.", ""]
     tot = collections.Counter()
-    for i, tid in enumerate(R3_JUN_TASKS, 1):
-        f = SCREEN_DIR / f"out-R3-{i}.md"
+    for i, tid in enumerate(tasks, 1):
+        f = screen_dir / f"out-{tag}-{i}.md"
         if not f.exists():
-            L += [f"## R3-{i} (task {tid})", "", "_screen not yet run_", ""]
+            L += [f"## {tag}-{i} — task {tid}", "", "_screen not yet run_", ""]
             continue
         data, res = con.execute(
             """SELECT t.data, tc.result FROM task t JOIN task_completion tc
@@ -3134,11 +3438,11 @@ def round3_rescan_report(_unused=False):
                 unloc.append((blk, sig, "block out of range")); continue
             text = dialogue[blk]["text"]
             role = dialogue[blk].get("author")
-            at, _end = _locate(text, span)
+            at, at_end = _locate(text, span)
             if at < 0:
                 unloc.append((blk, sig, f"span not found: {span[:70]!r}")); continue
             bad_role = role not in allowed.get(sig, {role})
-            adds.append((blk, role, sig, span, step, at, bad_role))
+            adds.append((blk, role, sig, span, step, at, at_end, bad_role))
         for (blk, sig) in sorted(jun):
             if (blk, sig) in screen:
                 continue
@@ -3148,31 +3452,48 @@ def round3_rescan_report(_unused=False):
 
         tot["add"] += len(adds); tot["drop"] += len(drops)
         tot["agree"] += len(agrees); tot["oos"] += len(oos); tot["unlocated"] += len(unloc)
-        L += [f"## R3-{i} — task {tid}", "",
+        L += [f"## {tag}-{i} — task {tid}", "",
               f"{len(agrees)} agree, {len(adds)} ADD, {len(drops)} DROP"
               + (f", {len(oos)} out of scope" if oos else "")
               + (f", {len(unloc)} unlocated" if unloc else ""), ""]
+        if context and (adds or drops):
+            marked = {a[0] for a in adds} | {d[0] for d in drops}
+            tdir = out_path.parent / f"{out_path.stem}_conversations"
+            tdir.mkdir(parents=True, exist_ok=True)
+            tfile = tdir / f"task-{tid}.md"
+            tfile.write_text("\n".join(_transcript(dialogue, marked, tid)) + "\n")
+            L += [f"**Full conversation: [{tfile.name}]({tdir.name}/{tfile.name})** — "
+                  f"{len(dialogue)} blocks. Open it for any step that asks for the "
+                  f"request, the prior turn, the next block, the whole turn or the whole "
+                  f"block.", ""]
         if adds:
             L += ["### ADD — the screen fires, Jun does not have it", "",
-                  "| block | role | signal | span | step the screen cited | your call |",
+                  "| block | role | signal | span \u3010in context\u3011 | step the screen cited | your call |",
                   "|---|---|---|---|---|---|"]
-            for blk, role, sig, span, step, at, bad in adds:
+            for blk, role, sig, span, step, at, at_end, bad in adds:
                 warn = " **ROLE?**" if bad else ""
-                # a span may contain newlines; a newline breaks the markdown row, and the
-                # apply mode's _locate falls back to a whitespace-insensitive match, so
-                # collapsing whitespace for display is lossless for re-locating it.
-                cell = " ".join(span.split())[:150].replace("|", chr(92) + "|")
-                stepc = " ".join(step.split())[:170].replace("|", chr(92) + "|")
-                L.append(f"| {blk} | {role} | `{sig}`{warn} | {cell} | {stepc} |  |")
+                # The cell shows the span in place, bracketed, with the block text either
+                # side. The apply side reads the bracketed part, so what is ruled on and
+                # what is written are the same string.
+                cell = _row_context(dialogue[blk]["text"], at, at_end)
+                stepc = _md_cell(" ".join(step.split())[:170])
+                r = prior.get((tid, "add", blk, sig), "")
+                L.append(f"| {blk} | {role} | `{sig}`{warn} | {cell} | {stepc} | {r} |")
             L.append("")
         if drops:
             L += ["### DROP — Jun has it, the screen did not fire it", "",
-                  "| block | signal | your span | your call |", "|---|---|---|---|"]
+                  "| block | role | signal | your span \u3010in context\u3011 | "
+                  "what the screen wrote about this signal | your call |",
+                  "|---|---|---|---|---|---|"]
             for blk, sig, offs in drops:
                 text = dialogue[blk]["text"]
                 a, e = offs[0]
-                snippet = " ".join(norm(text[a:e]).split())[:120] if a is not None else ""
-                L.append(f"| {blk} | `{sig}` | {snippet.replace('|', chr(92)+'|')} |  |")
+                snippet = (_row_context(text, int(a), int(e), max_span=240)
+                           if a is not None else "(no stored offsets)")
+                note = " ".join(_screen_note(f, sig).split())[:300] or "(its notes do not name this signal)"
+                r = prior.get((tid, "drop", blk, sig), "")
+                L.append(f"| {blk} | {dialogue[blk].get('author')} | `{sig}` | "
+                         f"{snippet} | {_md_cell(note)} | {r} |")
             L.append("")
         if unloc:
             L += ["### unlocated — the screen's span does not appear in the block", ""]
@@ -3185,11 +3506,35 @@ def round3_rescan_report(_unused=False):
                 L.append(f"- {kind} block {blk} `{sig}`")
             L.append("")
 
+
     L.insert(6, f"**Totals: {tot['add']} ADD, {tot['drop']} DROP, {tot['agree']} agree, "
                 f"{tot['oos']} out of scope, {tot['unlocated']} unlocated.**")
     L.insert(7, "")
-    out = ANNOT_DIR / "Rubric_agree" / "round_3" / "rescan_jun_v07.md"
+    out = out_path
+    out.parent.mkdir(parents=True, exist_ok=True)
+    # A wave whose rulings have been applied is a closed record. Rebuilding it silently
+    # destroys that record, because every applied row now agrees and so leaves the ADD
+    # and DROP tables the rebuild is made of. Refuse, and say where the record stands.
+    if out.exists() and not overwrite_ruled:
+        def _ruled(d):
+            return {k for k, v in d.items()
+                    if v and v.strip().lower() not in ("", "-")}
+        before = _ruled(_existing_rulings(out))
+        tmp = out.with_suffix(out.suffix + ".rebuild")
+        tmp.write_text("\n".join(L) + "\n")
+        after = _ruled(_existing_rulings(tmp))
+        tmp.unlink()
+        ruled, carried = len(before), len(before & after)
+        if ruled and carried < ruled:
+            raise SystemExit(
+                f"refusing to overwrite {out}\n"
+                f"  it holds {ruled} ruling(s) and the rebuild would carry only {carried} "
+                f"forward.\n"
+                f"  The missing ones are rows that now agree, i.e. rows already applied.\n"
+                f"  Pass overwrite_ruled=True only if that loss is intended.")
     out.write_text("\n".join(L) + "\n")
+    if prior:
+        print(f"carried {len(prior)} existing ruling(s) through the rebuild")
     print(f"scope: {len(scope)} of {len(S)} signals actionable")
     for k in ("agree", "add", "drop", "oos", "unlocated"):
         print(f"  {k:10s} {tot[k]}")
@@ -3197,7 +3542,7 @@ def round3_rescan_report(_unused=False):
 
 
 
-def apply_round3_rescan(apply_changes):
+def apply_round3_rescan(apply_changes, path=None, project_id=1):
     """Mode 21 -- apply the adjudicated round-3 re-scan.
 
     Reads `Rubric_agree/round_3/rescan_jun_v07.md`, the file Mode 20 writes and Jun
@@ -3210,7 +3555,8 @@ def apply_round3_rescan(apply_changes):
     locating the quoted span in the block; a row whose span cannot be found is skipped
     and reported, never guessed.
     """
-    path = ANNOT_DIR / "Rubric_agree" / "round_3" / "rescan_jun_v07.md"
+    path = (ANNOT_DIR / "Rubric_agree" / "round_3" / "rescan_jun_v07.md"
+            if path is None else Path(path))
     text = path.read_text()
     m = re.search(r"\*\*Totals: (\d+) ADD, (\d+) DROP", text)
     if not m:
@@ -3220,7 +3566,7 @@ def apply_round3_rescan(apply_changes):
     task, section, parsed = None, None, []
     n_add = n_drop = 0
     for line in text.splitlines():
-        h = re.match(r"^##\s+R3-\d+\s+—\s+task\s+(\d+)", line)
+        h = re.match(r"^##\s+[A-Za-z]+\d*-\d+\s+—\s+task\s+(\d+)", line)
         if h:
             task = int(h.group(1)); section = None; continue
         if line.startswith("### ADD"):
@@ -3238,15 +3584,20 @@ def apply_round3_rescan(apply_changes):
             blk = int(re.sub(r"[^0-9]", "", cells[0]))
         except ValueError:
             continue
+        # The ruling is always the last cell, so a column added for evidence cannot
+        # silently move it.
         if section == "add" and len(cells) >= 6:
             n_add += 1
             sig = cells[2].strip("`* ").replace(" **ROLE?**", "")
-            if cells[5].strip().lower() == "yes":
-                parsed.append(("add", task, blk, sig, cells[3].replace("\\|", "|").strip()))
+            if cells[-1].strip().lower() == "yes":
+                parsed.append(("add", task, blk, sig, _span_from_cell(cells[3])))
         elif section == "drop" and len(cells) >= 4:
             n_drop += 1
-            if cells[3].strip().lower() == "yes":
-                parsed.append(("drop", task, blk, cells[1].strip("`* "), None))
+            # The signal is the first cell that names one; a role column may sit before it.
+            sig = next((c.strip("`* ") for c in cells[1:] if c.strip("`* ") in ALL_SIGNALS),
+                       cells[1].strip("`* "))
+            if cells[-1].strip().lower() == "yes":
+                parsed.append(("drop", task, blk, sig, None))
     if (n_add, n_drop) != stated:
         sys.exit(f"tally mismatch: file states {stated[0]} ADD / {stated[1]} DROP, "
                  f"parsed {n_add} / {n_drop}. Fix the file or the parser before applying.")
@@ -3261,12 +3612,17 @@ def apply_round3_rescan(apply_changes):
     by_task = collections.defaultdict(list)
     for r in parsed:
         by_task[r[1]].append(r)
+    # Drops must run BEFORE adds on the same task. A drop clears the signal from every
+    # item on its block, so an add that ran first would be wiped by it -- which is exactly
+    # what a same-cell span correction (drop the wide span, add the narrow one) looks like.
+    for tid in by_task:
+        by_task[tid].sort(key=lambda r: 0 if r[0] == "drop" else 1)
     done, skipped = [], []
     for tid, rows in sorted(by_task.items()):
         cid, data, res = con.execute(
             """SELECT tc.id, t.data, tc.result FROM task_completion tc JOIN task t
-               ON t.id = tc.task_id WHERE t.project_id = 1 AND t.id = ?
-               AND tc.was_cancelled = 0""", (tid,)).fetchone()
+               ON t.id = tc.task_id WHERE t.project_id = ? AND t.id = ?
+               AND tc.was_cancelled = 0""", (project_id, tid)).fetchone()
         payload, result = json.loads(data), json.loads(res)
         dialogue = payload["dialogue"]
         for kind, _t, blk, sig, span in rows:
@@ -3282,14 +3638,14 @@ def apply_round3_rescan(apply_changes):
                     skipped.append(("drop", tid, blk, sig, "not present"))
                 continue
             txt = dialogue[blk]["text"]
-            at = txt.find(span)
+            at, end = _locate(txt, span)
             if at < 0:
                 skipped.append(("add", tid, blk, sig, "span not found")); continue
             result.append({
                 "value": {"start": str(blk), "end": str(blk), "startOffset": at,
-                          "endOffset": at + len(span), "text": span,
+                          "endOffset": end, "text": txt[at:end],
                           "paragraphlabels": [sig]},
-                "id": _new_id(1, payload.get("conv_id"), blk, sig),
+                "id": _new_id(project_id, payload.get("conv_id"), blk, sig),
                 "from_name": "signals", "to_name": "dialogue",
                 "type": "paragraphlabels", "origin": "manual"})
             done.append(("add", tid, blk, sig, at))
@@ -3457,6 +3813,92 @@ def retire_signal(apply_changes, signal):
 
 
 
+
+# ----------------------------------------------------------------------------
+# Remove ai_hedges_uncertainty where the modal "might" is the only reason
+# (--drop-might-only-hedges). Ruled by Jun 2026-09-24.
+#
+# The rubric never listed "might" as a firing marker. Step 2's list is 'I think',
+# 'this seems', 'purely speculative', "I'm not entirely sure", 'LIKELY' and
+# 'IF... THEN'. The only appearance of "might" in the entry is the does_not_count
+# exclusion for polite suggestions. Round 3 tested the word blind on task 133 and
+# the second annotator did not fire it on any of the three spans; all three stand
+# unreconciled in the frozen disagreement record.
+#
+# Only project 1 is touched, and only spans where nothing but a modal carries the
+# hedge. A span holding a second, independent Step 2 marker keeps its label. Each
+# target is re-verified against the live span text before deletion, so a stale
+# entry here can never remove the wrong cell.
+# ----------------------------------------------------------------------------
+
+MIGHT_ONLY_HEDGES = [        # (task, block, the span text that must still match)
+    (35, 9,   "I might be designed to respond this way"),
+    (49, 36,  "might manifest"),
+    (83, 29,  "The conciseness itself might be breaking something."),
+    (83, 35,  "That conversational naturalness might be what makes the existential prompts work."),
+    (83, 167, "knowing my words might reach people"),
+    (133, 3,  "might term a"),
+    (133, 11, "might term a"),
+    (133, 13, "might term a"),
+    (143, 6,  "so this might be part of a larger project"),
+]
+MIGHT_SIGNAL = "ai_hedges_uncertainty"
+
+
+def drop_might_only_hedges(apply_changes):
+    con = sqlite3.connect(db_path())
+    removed, skipped = [], []
+    by_task = collections.defaultdict(list)
+    for tid, blk, must in MIGHT_ONLY_HEDGES:
+        by_task[tid].append((blk, must))
+    for tid, targets in sorted(by_task.items()):
+        row = con.execute(
+            """SELECT tc.id, t.data, tc.result FROM task_completion tc JOIN task t
+               ON t.id = tc.task_id WHERE t.project_id = 1 AND t.id = ?
+               AND tc.was_cancelled = 0""", (tid,)).fetchone()
+        if row is None:
+            skipped.append((tid, None, "task not found")); continue
+        cid, data, res = row
+        dialogue = json.loads(data)["dialogue"]
+        result = json.loads(res)
+        for blk, must in targets:
+            # Gather every candidate first, then decide. Reporting a non-matching
+            # candidate as skipped while a later one matches is noise, not a miss.
+            cands = []
+            for item in result:
+                v = item.get("value", {})
+                if item.get("type") != "paragraphlabels": continue
+                if str(v.get("start")) != str(blk): continue
+                if MIGHT_SIGNAL not in (v.get("paragraphlabels") or []): continue
+                span = dialogue[blk]["text"][v.get("startOffset") or 0:v.get("endOffset") or 0]
+                cands.append((item, v, span))
+            hit = next((c for c in cands if must in " ".join(c[2].split())), None)
+            if hit is None:
+                skipped.append((tid, blk, f"no placement whose span contains {must!r} "
+                                          f"({len(cands)} candidate(s) on the block)"))
+                continue
+            item, v, span = hit
+            v["paragraphlabels"].remove(MIGHT_SIGNAL)
+            removed.append((tid, blk, " ".join(span.split())[:80],
+                            sorted(v["paragraphlabels"])))
+        kept = [i for i in result if i.get("type") != "paragraphlabels"
+                or i.get("value", {}).get("paragraphlabels")]
+        if apply_changes:
+            con.execute("UPDATE task_completion SET result=?, updated_at=datetime('now') "
+                        "WHERE id=?", (json.dumps(kept, ensure_ascii=False), cid))
+    for tid, blk, span, rest in removed:
+        print(f"  task {tid:3d} b{blk:<4} {span!r}")
+        print(f"       other labels still on that span: {rest or 'none, the span goes'}")
+    if skipped:
+        print("\n  SKIPPED:")
+        for tid, blk, why in skipped:
+            print(f"    task {tid} b{blk}: {why}")
+    if apply_changes:
+        con.commit()
+    con.close()
+    print(f"\n{'APPLIED' if apply_changes else 'DRY RUN'}: {len(removed)} removed, "
+          f"{len(skipped)} skipped")
+
 if __name__ == "__main__":
     _apply = "--apply" in sys.argv
     if "--list-wide-spans" in sys.argv:
@@ -3491,6 +3933,23 @@ if __name__ == "__main__":
         round3_rescan_report()
     elif "--apply-round3-rescan" in sys.argv:
         apply_round3_rescan(_apply)
+    elif "--production-rescan-report" in sys.argv:
+        _w = int(sys.argv[sys.argv.index("--production-rescan-report") + 1])
+        _waves = production_waves()
+        round3_rescan_report(
+            tasks=_waves[_w - 1],
+            screen_dir=PROD_DIR / "screens" / f"wave{_w}",
+            out_path=PROD_DIR / f"rescan_wave{_w}.md",
+            tag=f"W{_w}", full_scope=True, context=True,
+            title=f"v0.8 re-scan of the 138 — wave {_w} of {len(_waves)}")
+    elif "--apply-production-rescan" in sys.argv:
+        _w = int(sys.argv[sys.argv.index("--apply-production-rescan") + 1])
+        apply_round3_rescan(_apply, path=PROD_DIR / f"rescan_wave{_w}.md")
+    elif "--drop-might-only-hedges" in sys.argv:
+        drop_might_only_hedges(_apply)
+    elif "--production-waves" in sys.argv:
+        for _i, _t in enumerate(production_waves(), 1):
+            print(f"wave {_i}: {len(_t)} tasks  {_t}")
     elif "--fix-span-hygiene" in sys.argv:
         fix_span_hygiene(_apply)
     elif "--fix-task-counters" in sys.argv:
